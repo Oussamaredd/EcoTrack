@@ -107,6 +107,22 @@ Equivalent compose command:
 docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile core up --build -d
 ```
 
+## Cloudflare Worker Deploy (Static Assets)
+
+Build frontend assets for Worker static hosting:
+
+```bash
+npm run build:cf
+```
+
+Deploy Worker using repo `wrangler.toml`:
+
+```bash
+npm run deploy:cf
+```
+
+The Worker serves static assets from `app/dist` via the `ASSETS` binding with SPA fallback routing.
+
 ## Env Key Canonicalization
 
 Canonical keys:
@@ -136,6 +152,8 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run db:migrate` - run Drizzle migrations
 - `npm run db:seed` - run seeders
 - `npm run infra:up` / `npm run infra:down` / `npm run infra:health` - Docker lifecycle wrappers
+- `npm run build:cf` - build frontend-only artifacts for Cloudflare Worker static serving
+- `npm run deploy:cf` - deploy Worker using `wrangler.toml`
 
 ## Architecture Contract
 
