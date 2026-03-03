@@ -15,9 +15,11 @@ import RequireGuest from "./guards/RequireGuest";
 const PublicLayout = lazy(() => import("../layouts/PublicLayout"));
 const AuthLayout = lazy(() => import("../layouts/AuthLayout"));
 const AppLayout = lazy(() => import("../layouts/AppLayout"));
+const AppHomePage = lazy(() => import("../pages/AppHomePage"));
 const Dashboard = lazy(() => import("../pages/Dashboard"));
 const AgentTourPage = lazy(() => import("../pages/AgentTourPage"));
 const ManagerPlanningPage = lazy(() => import("../pages/ManagerPlanningPage"));
+const ManagerToursPage = lazy(() => import("../pages/ManagerToursPage"));
 const ManagerReportsPage = lazy(() => import("../pages/ManagerReportsPage"));
 const CitizenChallengesPage = lazy(() => import("../pages/CitizenChallengesPage"));
 const CitizenProfilePage = lazy(() => import("../pages/CitizenProfilePage"));
@@ -63,7 +65,7 @@ function RootLandingRoute() {
   }
 
   if (isLoggedIn && !location.hash) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to="/app" replace />;
   }
 
   return withRouteSuspense(<LandingPage />);
@@ -82,6 +84,16 @@ function AdminRoute() {
   }
 
   return withRouteSuspense(<AdminDashboard />);
+}
+
+function DashboardRoute() {
+  const { user } = useCurrentUser();
+
+  if (!hasManagerAccess(user)) {
+    return <Navigate to="/app" replace />;
+  }
+
+  return withRouteSuspense(<Dashboard />);
 }
 
 function ManagerRoute() {
@@ -112,6 +124,21 @@ function ManagerReportsRoute() {
   }
 
   return withRouteSuspense(<ManagerReportsPage />);
+}
+
+function ManagerToursRoute() {
+  const { user } = useCurrentUser();
+
+  if (!hasManagerAccess(user)) {
+    return (
+      <div className="app-access-denied">
+        <h2>Access Denied</h2>
+        <p>You don&apos;t have permission to access manager tour operations.</p>
+      </div>
+    );
+  }
+
+  return withRouteSuspense(<ManagerToursPage />);
 }
 
 function AccessDeniedMessage({ message }: { message: string }) {
@@ -179,12 +206,13 @@ export default function AppRouter() {
 
         <Route element={<RequireAuth />}>
           <Route path="/app" element={withRouteSuspense(<AppLayout />)}>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={withRouteSuspense(<Dashboard />)} />
+            <Route index element={withRouteSuspense(<AppHomePage />)} />
+            <Route path="dashboard" element={<DashboardRoute />} />
             <Route path="agent" element={<AgentRouteGuard />}>
               <Route path="tour" element={withRouteSuspense(<AgentTourPage />)} />
             </Route>
             <Route path="manager/planning" element={<ManagerRoute />} />
+            <Route path="manager/tours" element={<ManagerToursRoute />} />
             <Route path="manager/reports" element={<ManagerReportsRoute />} />
             <Route path="citizen" element={<CitizenRouteGuard />}>
               <Route path="report" element={withRouteSuspense(<CitizenReportPage />)} />
@@ -199,7 +227,7 @@ export default function AppRouter() {
             <Route path="tickets/:id/treat" element={withRouteSuspense(<TreatTicketPage />)} />
             <Route path="settings" element={withRouteSuspense(<SettingsPage />)} />
             <Route path="admin" element={<AdminRoute />} />
-            <Route path="*" element={<Navigate to="dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/app" replace />} />
           </Route>
         </Route>
 

@@ -25,7 +25,7 @@ const footerColumns = [
     links: [
       { label: MARKETING_PAGES.support.label, href: MARKETING_PAGES.support.href },
       { label: "Log in", href: "/login" },
-      { label: "Dashboard", href: "/app/dashboard" },
+      { label: "Workspace", href: "/app" },
     ],
   },
   {

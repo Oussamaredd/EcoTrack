@@ -16,6 +16,10 @@ const PAGE_FILE_CONTRACTS = {
     requiredSnippets: ['ops-admin-shell'],
     requiredImports: ['styles/OperationsPages.css'],
   },
+  'src/pages/AppHomePage.tsx': {
+    requiredSnippets: ['app-home-page'],
+    requiredImports: [],
+  },
   'src/pages/AdvancedTicketList.tsx': {
     requiredSnippets: ['advanced-ticket-page'],
     requiredImports: ['styles/AdvancedTicketList.css'],
@@ -49,6 +53,10 @@ const PAGE_FILE_CONTRACTS = {
     requiredImports: ['styles/OperationsPages.css'],
   },
   'src/pages/ManagerReportsPage.tsx': {
+    requiredSnippets: ['ops-page'],
+    requiredImports: ['styles/OperationsPages.css'],
+  },
+  'src/pages/ManagerToursPage.tsx': {
     requiredSnippets: ['ops-page'],
     requiredImports: ['styles/OperationsPages.css'],
   },

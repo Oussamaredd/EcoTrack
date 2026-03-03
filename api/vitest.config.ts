@@ -15,8 +15,9 @@ export default defineConfig({
     environment: 'node',
     include: ['src/tests/**/*.test.ts'],
     pool: 'threads',
-    // Nest integration-style suites can starve each other under file-level parallelism on Windows CI/dev.
-    // Keep API tests deterministic for full monorepo runs.
+    // Reusing the worker context avoids repeated Nest/bootstrap imports across files.
+    isolate: false,
+    // Keep file execution deterministic now that shared module state removes the import bottleneck.
     fileParallelism: false,
     hookTimeout: 60000,
     testTimeout: 30000,

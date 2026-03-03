@@ -1,5 +1,13 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { auditLogs, systemSettings, type DatabaseClient } from 'ecotrack-database';
+import { desc, eq } from 'drizzle-orm';
+import {
+  alertRules,
+  auditLogs,
+  notificationDeliveries,
+  notifications,
+  systemSettings,
+  type DatabaseClient,
+} from 'ecotrack-database';
 
 import { DRIZZLE } from '../database/database.constants.js';
 
@@ -145,36 +153,172 @@ export class AdminSettingsRepository {
 
     const routedChannels = payload.channel ? [payload.channel] : (routing[payload.severity] ?? ['email']);
 
-    const deliveries = routedChannels.map((channel) => {
+    const [notification] = await this.db
+      .insert(notifications)
+      .values({
+        eventType: `admin.test_notification.${payload.severity}`,
+        entityType: 'admin_settings',
+        entityId: 'test-notification',
+        audienceScope: payload.recipient ? 'direct' : 'configured',
+        title: `Test ${payload.severity} notification`,
+        body: payload.message,
+        preferredChannels: routedChannels,
+        scheduledAt: new Date(),
+        status: 'sent',
+      })
+      .returning();
+
+    if (!notification) {
+      throw new Error('Failed to create test notification');
+    }
+
+    const deliveries = [];
+    for (const channel of routedChannels) {
       const configuredRecipient = channels.find(
         (entry) => entry.channel === channel && entry.enabled === true,
       )?.recipient;
+      const recipientAddress = payload.recipient ?? (typeof configuredRecipient === 'string' ? configuredRecipient : '');
+      const deliveryStatus = recipientAddress ? 'delivered' : 'failed';
 
-      return {
+      const [createdDelivery] = await this.db
+        .insert(notificationDeliveries)
+        .values({
+          notificationId: notification.id,
+          channel,
+          recipientAddress: recipientAddress || `unconfigured:${channel}`,
+          deliveryStatus,
+          attemptCount: 1,
+          lastAttemptAt: new Date(),
+          deliveredAt: deliveryStatus === 'delivered' ? new Date() : null,
+          errorCode: deliveryStatus === 'failed' ? 'missing_recipient' : null,
+        })
+        .returning();
+
+      deliveries.push({
         channel,
-        recipient: payload.recipient ?? configuredRecipient ?? null,
-        status: 'delivered',
-      };
-    });
+        recipient: recipientAddress || null,
+        status: deliveryStatus,
+        deliveryId: createdDelivery?.id ?? null,
+      });
+    }
 
     await this.db.insert(auditLogs).values({
       userId: actorId ?? null,
       action: 'communication_dispatched',
-      resourceType: 'communications',
-      resourceId: null,
+      resourceType: 'notifications',
+      resourceId: notification.id,
       oldValues: null,
       newValues: {
         severity: payload.severity,
         message: payload.message,
+        notificationId: notification.id,
         deliveries,
       },
     });
 
     return {
+      notificationId: notification.id,
       severity: payload.severity,
       deliveries,
-      status: 'ok',
+      status: deliveries.every((delivery) => delivery.status === 'delivered') ? 'ok' : 'partial',
     };
+  }
+
+  async listAlertRules() {
+    return this.db.select().from(alertRules).orderBy(desc(alertRules.updatedAt));
+  }
+
+  async upsertAlertRule(
+    payload: {
+      id?: string;
+      scopeType: string;
+      scopeKey?: string | null;
+      warningFillPercent?: number | null;
+      criticalFillPercent?: number | null;
+      anomalyTypeCode?: string | null;
+      notifyChannels: string[];
+      recipientRole?: string | null;
+      isActive?: boolean;
+    },
+  ) {
+    const normalizedScopeKey = payload.scopeKey?.trim() || null;
+    const normalizedRecipientRole = payload.recipientRole?.trim() || null;
+    const now = new Date();
+
+    if (payload.id) {
+      const [updatedRule] = await this.db
+        .update(alertRules)
+        .set({
+          scopeType: payload.scopeType,
+          scopeKey: normalizedScopeKey,
+          warningFillPercent: payload.warningFillPercent ?? null,
+          criticalFillPercent: payload.criticalFillPercent ?? null,
+          anomalyTypeCode: payload.anomalyTypeCode?.trim() || null,
+          notifyChannels: payload.notifyChannels,
+          recipientRole: normalizedRecipientRole,
+          isActive: payload.isActive ?? true,
+          updatedAt: now,
+        })
+        .where(eq(alertRules.id, payload.id))
+        .returning();
+
+      if (!updatedRule) {
+        throw new BadRequestException('Alert rule not found');
+      }
+
+      return updatedRule;
+    }
+
+    const candidates = await this.db
+      .select()
+      .from(alertRules)
+      .where(eq(alertRules.scopeType, payload.scopeType));
+    const matchingRule = candidates.find(
+      (rule) =>
+        (rule.scopeKey ?? null) === normalizedScopeKey &&
+        (rule.recipientRole ?? null) === normalizedRecipientRole,
+    );
+
+    if (matchingRule) {
+      const [updatedRule] = await this.db
+        .update(alertRules)
+        .set({
+          warningFillPercent: payload.warningFillPercent ?? null,
+          criticalFillPercent: payload.criticalFillPercent ?? null,
+          anomalyTypeCode: payload.anomalyTypeCode?.trim() || null,
+          notifyChannels: payload.notifyChannels,
+          isActive: payload.isActive ?? true,
+          updatedAt: now,
+        })
+        .where(eq(alertRules.id, matchingRule.id))
+        .returning();
+
+      if (!updatedRule) {
+        throw new Error('Failed to update alert rule');
+      }
+
+      return updatedRule;
+    }
+
+    const [createdRule] = await this.db
+      .insert(alertRules)
+      .values({
+        scopeType: payload.scopeType,
+        scopeKey: normalizedScopeKey,
+        warningFillPercent: payload.warningFillPercent ?? null,
+        criticalFillPercent: payload.criticalFillPercent ?? null,
+        anomalyTypeCode: payload.anomalyTypeCode?.trim() || null,
+        notifyChannels: payload.notifyChannels,
+        recipientRole: normalizedRecipientRole,
+        isActive: payload.isActive ?? true,
+      })
+      .returning();
+
+    if (!createdRule) {
+      throw new Error('Failed to create alert rule');
+    }
+
+    return createdRule;
   }
 
   private normalizePayload(payload: Record<string, unknown>) {

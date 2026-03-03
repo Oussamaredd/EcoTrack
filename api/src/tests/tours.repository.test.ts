@@ -93,7 +93,8 @@ describe('ToursRepository invariants', () => {
               longitude: '10.19',
             },
           ]),
-        ),
+        )
+        .mockReturnValueOnce(createLimitSelectionChain([])),
     };
 
     const repository = new ToursRepository(dbMock as any);
@@ -202,5 +203,69 @@ describe('ToursRepository invariants', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(tx.insert).not.toHaveBeenCalled();
+  });
+
+  it('stamps startedAt when a planned tour is started for the first time', async () => {
+    const updateTourSet = vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([
+          {
+            id: 'tour-1',
+            status: 'in_progress',
+            startedAt: new Date('2026-03-03T08:00:00.000Z'),
+          },
+        ]),
+      }),
+    });
+
+    const tx = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(
+          createLimitSelectionChain([
+            {
+              id: 'tour-1',
+              status: 'planned',
+              assignedAgentId: 'agent-1',
+              startedAt: null,
+            },
+          ]),
+        )
+        .mockReturnValueOnce(createOrderedLimitSelectionChain([]))
+        .mockReturnValueOnce(createOrderedLimitSelectionChain([{ id: 'stop-1' }])),
+      update: vi
+        .fn()
+        .mockReturnValueOnce({
+          set: updateTourSet,
+        })
+        .mockReturnValueOnce({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        }),
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn().mockResolvedValue(undefined),
+      }),
+    };
+
+    const dbMock = {
+      transaction: vi.fn(async (callback: (trx: typeof tx) => unknown) => callback(tx)),
+    };
+
+    const repository = new ToursRepository(dbMock as any);
+    const result = await repository.startTour('tour-1', 'agent-1');
+
+    expect(updateTourSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'in_progress',
+        startedAt: expect.any(Date),
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: 'in_progress',
+        firstActiveStopId: 'stop-1',
+      }),
+    );
   });
 });

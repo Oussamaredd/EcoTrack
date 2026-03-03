@@ -4,9 +4,8 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 
 ## Start Here
 - `../README.md` - repository quick start and canonical command surface
-- `ROADMAP.md` - development roadmap and progress tracking (canonical)
+- `ROADMAP.md` - development roadmap, sprint status, and canonical progress tracking
 - `ROADMAP.md` section "UI Completion Execution Plan (Live)" - agent-dispatch sprint plan for remaining UI gaps
-- `PR_TASKS.md` - sprint gate tracker aligned with `ROADMAP.md`
 - `ARCHITECTURE_OVERVIEW.md` - layer boundaries and architecture contract
 - `ENVIRONMENT_SETUP.md` - host/Docker/deploy environment setup
 
@@ -32,6 +31,11 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `guides/` - end-user quick guides (citizen/agent/manager)
 - `features/` - feature-level behavior notes
 - `specs/` - source requirement inputs and planning references
+
+## Local Source Inputs
+- `ECOTRACK_CDC_COMMUN_V2 .docx` and `ECOTRACK_M2_DEV.xlsx` are local working inputs used to derive tracked documentation.
+- Keep decisions and implementation-ready outputs in tracked Markdown files such as `DB_SCHEMA_NAMESPACE_PLAN.md`.
+- Keep `PR_TASKS.md` only while its checklist still has open items; remove it after the checklist is fully closed.
 
 ## Historical Baselines
 - `baselines/` - captured validation outputs used during remediation phases

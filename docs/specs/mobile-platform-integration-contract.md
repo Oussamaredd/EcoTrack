@@ -26,7 +26,7 @@ Scope note:
 | `UC-C01` Citizen overflow report | `POST /api/citizen/reports` | `containerId`, `description` | optional `latitude`, `longitude` (validated) |
 | `UC-C02` Citizen profile/history | `GET /api/citizen/profile`, `GET /api/citizen/history` | auth context | none |
 | `UC-C03` Citizen challenges | `GET /api/citizen/challenges`, `POST /api/citizen/challenges/:challengeId/enroll`, `POST /api/citizen/challenges/:challengeId/progress` | `challengeId` and action payload | none |
-| `UC-A01` Agent receives daily tour | `GET /api/tours/agent/me`, `POST /api/tours/:tourId/start` | `tourId` for start | tour stop container coordinates provided by API |
+| `UC-A01` Agent receives daily tour | `GET /api/tours/agent/me`, `POST /api/tours/:tourId/start` | `tourId` for start | tour stop container coordinates and route geometry provided by API |
 | `UC-A02` Agent validates collection | `POST /api/tours/:tourId/stops/:stopId/validate` | `volumeLiters` (+ optional `containerId`/`qrCode`) | optional `latitude`, `longitude` (validated) |
 | `UC-A03` Agent anomaly report | `POST /api/tours/:tourId/anomalies` | `anomalyTypeId` (+ optional details) | link via `tourStopId` when location traceability is needed |
 | `UC-G01` Manager optimized tour | `POST /api/planning/optimize-tour`, `POST /api/planning/create-tour` | `zoneId`, `scheduledFor`, thresholds/route payload | container coordinates used in optimization |

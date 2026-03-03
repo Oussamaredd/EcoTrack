@@ -1,4 +1,9 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import type { DivIcon, LayerGroup, Map as LeafletMap, TileLayer } from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+import type { GeoJsonLineString, TourRouteGeometry } from "../../hooks/useAgentTours";
+import { MAP_TILE_ATTRIBUTION, MAP_TILE_URL_TEMPLATE } from "../../lib/mapConfig";
 
 type RouteStop = {
   id: string;
@@ -12,9 +17,10 @@ type RouteStop = {
 
 type AgentRouteMapProps = {
   stops: RouteStop[];
+  routeGeometry?: TourRouteGeometry | null;
 };
 
-type ProjectedStop = {
+type NormalizedRouteStop = {
   id: string;
   stopOrder: number;
   status: string;
@@ -22,29 +28,9 @@ type ProjectedStop = {
   containerLabel: string;
   latitude: number;
   longitude: number;
-  x: number;
-  y: number;
 };
 
-type MapBounds = {
-  minLatitude: number;
-  maxLatitude: number;
-  minLongitude: number;
-  maxLongitude: number;
-};
-
-const VIEWBOX_WIDTH = 100;
-const VIEWBOX_HEIGHT = 68;
-const PARIS_CENTER = {
-  latitude: 48.8566,
-  longitude: 2.3522,
-};
-const MIN_LATITUDE_SPAN = 0.014;
-const MIN_LONGITUDE_SPAN = 0.02;
-const MAP_PADDING_RATIO = 0.26;
-const MAP_EMBED_BASE_URL =
-  (import.meta.env as Record<string, string | undefined>).VITE_MAP_EMBED_BASE_URL?.trim() ||
-  "https://www.openstreetmap.org/export/embed.html";
+const PARIS_CENTER: [number, number] = [48.8566, 2.3522];
 
 const toNumberOrNull = (value: string | null | undefined) => {
   if (value == null) {
@@ -57,224 +43,290 @@ const toNumberOrNull = (value: string | null | undefined) => {
 
 const normalizeStatus = (status: string) => status.trim().toLowerCase();
 
-const clamp = (value: number, minimum: number, maximum: number) =>
-  Math.min(maximum, Math.max(minimum, value));
+const normalizeStops = (stops: RouteStop[]) =>
+  stops
+    .map((stop) => {
+      const latitude = toNumberOrNull(stop.latitude);
+      const longitude = toNumberOrNull(stop.longitude);
 
-const createBounds = (latitudes: number[], longitudes: number[]): MapBounds => {
-  const rawMinLatitude = Math.min(...latitudes);
-  const rawMaxLatitude = Math.max(...latitudes);
-  const rawMinLongitude = Math.min(...longitudes);
-  const rawMaxLongitude = Math.max(...longitudes);
-  const centerLatitude = (rawMinLatitude + rawMaxLatitude) / 2;
-  const centerLongitude = (rawMinLongitude + rawMaxLongitude) / 2;
-  const latitudeSpan = Math.max(rawMaxLatitude - rawMinLatitude, MIN_LATITUDE_SPAN);
-  const longitudeSpan = Math.max(rawMaxLongitude - rawMinLongitude, MIN_LONGITUDE_SPAN);
-  const paddedLatitudeSpan = latitudeSpan * (1 + MAP_PADDING_RATIO);
-  const paddedLongitudeSpan = longitudeSpan * (1 + MAP_PADDING_RATIO);
-
-  const minLatitude = clamp(centerLatitude - paddedLatitudeSpan / 2, -85, 85);
-  const maxLatitude = clamp(centerLatitude + paddedLatitudeSpan / 2, -85, 85);
-  const minLongitude = clamp(centerLongitude - paddedLongitudeSpan / 2, -180, 180);
-  const maxLongitude = clamp(centerLongitude + paddedLongitudeSpan / 2, -180, 180);
-
-  return {
-    minLatitude,
-    maxLatitude,
-    minLongitude,
-    maxLongitude,
-  };
-};
-
-const createParisFallbackBounds = () =>
-  createBounds([PARIS_CENTER.latitude], [PARIS_CENTER.longitude]);
-
-const buildEmbedUrl = (bounds: MapBounds) => {
-  const params = new URLSearchParams({
-    bbox: [
-      bounds.minLongitude.toFixed(6),
-      bounds.minLatitude.toFixed(6),
-      bounds.maxLongitude.toFixed(6),
-      bounds.maxLatitude.toFixed(6),
-    ].join(","),
-    layer: "mapnik",
-  });
-
-  return `${MAP_EMBED_BASE_URL}?${params.toString()}`;
-};
-
-const buildProjectedStops = (geoStops: Omit<ProjectedStop, "x" | "y">[], bounds: MapBounds) => {
-  const latitudeSpan = Math.max(bounds.maxLatitude - bounds.minLatitude, Number.EPSILON);
-  const longitudeSpan = Math.max(bounds.maxLongitude - bounds.minLongitude, Number.EPSILON);
-
-  return geoStops.map((stop) => {
-    const x = ((stop.longitude - bounds.minLongitude) / longitudeSpan) * VIEWBOX_WIDTH;
-    const y = ((bounds.maxLatitude - stop.latitude) / latitudeSpan) * VIEWBOX_HEIGHT;
-
-    return {
-      ...stop,
-      x: Number(x.toFixed(2)),
-      y: Number(y.toFixed(2)),
-    };
-  });
-};
-
-export default function AgentRouteMap({ stops }: AgentRouteMapProps) {
-  const mapState = useMemo(() => {
-    const geoStops = stops
-      .map((stop) => {
-        const latitude = toNumberOrNull(stop.latitude);
-        const longitude = toNumberOrNull(stop.longitude);
-
-        if (latitude == null || longitude == null) {
-          return null;
-        }
-
-        return {
-          ...stop,
-          latitude,
-          longitude,
-        };
-      })
-      .filter((stop): stop is Omit<ProjectedStop, "x" | "y"> => stop != null);
-
-    if (geoStops.length === 0) {
-      const fallbackBounds = createParisFallbackBounds();
-
-      return {
-        hasRoute: false,
-        embedUrl: buildEmbedUrl(fallbackBounds),
-        projectedStops: [] as ProjectedStop[],
-      };
-    }
-
-    const bounds = createBounds(
-      geoStops.map((stop) => stop.latitude),
-      geoStops.map((stop) => stop.longitude),
-    );
-
-    return {
-      hasRoute: true,
-      embedUrl: buildEmbedUrl(bounds),
-      projectedStops: buildProjectedStops(geoStops, bounds),
-    };
-  }, [stops]);
-
-  const routePath = useMemo(() => {
-    if (mapState.projectedStops.length < 2) {
-      return "";
-    }
-
-    return mapState.projectedStops.reduce((path, stop, index) => {
-      if (index === 0) {
-        return `M ${stop.x} ${stop.y}`;
+      if (latitude == null || longitude == null) {
+        return null;
       }
 
-      return `${path} L ${stop.x} ${stop.y}`;
-    }, "");
-  }, [mapState.projectedStops]);
+      return {
+        ...stop,
+        latitude,
+        longitude,
+      } satisfies NormalizedRouteStop;
+    })
+    .filter((stop): stop is NormalizedRouteStop => stop != null)
+    .sort((left, right) => left.stopOrder - right.stopOrder);
+
+const buildFallbackLineString = (stops: NormalizedRouteStop[]): GeoJsonLineString | null =>
+  stops.length >= 2
+    ? {
+        type: "LineString",
+        coordinates: stops.map((stop) => [stop.longitude, stop.latitude]),
+      }
+    : null;
+
+const toLatLngPath = (geometry: GeoJsonLineString | null) =>
+  geometry?.coordinates
+    .filter(
+      (coordinate): coordinate is [number, number] =>
+        Array.isArray(coordinate) &&
+        coordinate.length >= 2 &&
+        Number.isFinite(coordinate[0]) &&
+        Number.isFinite(coordinate[1]),
+    )
+    .map((coordinate) => [coordinate[1], coordinate[0]] as [number, number]) ?? [];
+
+const buildOverlaySignature = (
+  stops: NormalizedRouteStop[],
+  geometry: GeoJsonLineString | null,
+  geometrySource: string,
+) =>
+  [
+    stops
+      .map(
+        (stop) =>
+          `${stop.id}:${stop.stopOrder}:${stop.latitude.toFixed(6)},${stop.longitude.toFixed(6)}:${stop.status}`,
+      )
+      .join("|"),
+    geometrySource,
+    geometry?.coordinates
+      .map((coordinate) => `${coordinate[0].toFixed(6)},${coordinate[1].toFixed(6)}`)
+      .join("|") ?? "no-geometry",
+  ].join("::");
+
+const getMarkerTheme = (status: string) => {
+  switch (normalizeStatus(status)) {
+    case "completed":
+      return {
+        fill: "#49d9a2",
+        stroke: "#0c3c2c",
+        className: "ops-stop-marker ops-stop-marker-completed",
+      };
+    case "active":
+      return {
+        fill: "#ffd166",
+        stroke: "#4d3b00",
+        className: "ops-stop-marker ops-stop-marker-active",
+      };
+    default:
+      return {
+        fill: "#2bd4a8",
+        stroke: "#093c32",
+        className: "ops-stop-marker ops-stop-marker-pending",
+      };
+  }
+};
+
+export default function AgentRouteMap({ stops, routeGeometry }: AgentRouteMapProps) {
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const tileLayerRef = useRef<TileLayer | null>(null);
+  const overlayLayerRef = useRef<LayerGroup | null>(null);
+  const leafletModuleRef = useRef<typeof import("leaflet") | null>(null);
+  const markerIconRef = useRef<Map<string, DivIcon>>(new Map());
+
+  const normalizedStops = useMemo(() => normalizeStops(stops), [stops]);
+  const displayGeometry = useMemo(
+    () => routeGeometry?.geometry ?? buildFallbackLineString(normalizedStops),
+    [normalizedStops, routeGeometry],
+  );
+  const shouldUseStaticPreview = import.meta.env.MODE === "test";
+  const routePath = useMemo(() => toLatLngPath(displayGeometry), [displayGeometry]);
+  const fitBoundsPoints = useMemo(() => {
+    if (routePath.length > 0) {
+      return routePath;
+    }
+
+    if (normalizedStops.length > 0) {
+      return normalizedStops.map((stop) => [stop.latitude, stop.longitude] as [number, number]);
+    }
+
+    return [PARIS_CENTER];
+  }, [normalizedStops, routePath]);
+  const overlaySignature = useMemo(
+    () => buildOverlaySignature(normalizedStops, displayGeometry, routeGeometry?.source ?? "fallback"),
+    [displayGeometry, normalizedStops, routeGeometry?.source],
+  );
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const renderMap = async () => {
+      if (shouldUseStaticPreview) {
+        return;
+      }
+
+      if (!mapContainerRef.current) {
+        return;
+      }
+
+      const L = leafletModuleRef.current ?? (await import("leaflet"));
+      if (isCancelled || !mapContainerRef.current) {
+        return;
+      }
+
+      leafletModuleRef.current = L;
+
+      if (!mapRef.current) {
+        const map = L.map(mapContainerRef.current, {
+          zoomControl: true,
+        });
+
+        const tileLayer = L.tileLayer(MAP_TILE_URL_TEMPLATE, {
+          attribution: MAP_TILE_ATTRIBUTION,
+          maxZoom: 19,
+          crossOrigin: true,
+        });
+
+        tileLayer.addTo(map);
+        mapRef.current = map;
+        tileLayerRef.current = tileLayer;
+      }
+
+      const map = mapRef.current;
+      if (!map) {
+        return;
+      }
+
+      if (overlayLayerRef.current) {
+        overlayLayerRef.current.remove();
+        overlayLayerRef.current = null;
+      }
+
+      const overlayLayer = L.layerGroup();
+
+      if (routePath.length >= 2) {
+        const shadowLine = L.polyline(routePath, {
+          color: "#081225",
+          weight: 8,
+          opacity: 0.28,
+          lineCap: "round",
+          lineJoin: "round",
+        });
+        const primaryLine = L.polyline(routePath, {
+          color: "#2f7bff",
+          weight: 5,
+          opacity: 0.9,
+          lineCap: "round",
+          lineJoin: "round",
+        });
+
+        shadowLine.addTo(overlayLayer);
+        primaryLine.addTo(overlayLayer);
+      }
+
+      normalizedStops.forEach((stop) => {
+        const markerTheme = getMarkerTheme(stop.status);
+        const circle = L.circleMarker([stop.latitude, stop.longitude], {
+          radius: 7,
+          fillColor: markerTheme.fill,
+          fillOpacity: 0.95,
+          color: markerTheme.stroke,
+          weight: 2,
+        });
+
+        circle.bindTooltip(`#${stop.stopOrder} ${stop.containerCode} - ${stop.containerLabel}`, {
+          direction: "top",
+          offset: [0, -8],
+          opacity: 0.95,
+        });
+        circle.addTo(overlayLayer);
+
+        const iconCacheKey = `${markerTheme.className}:${stop.stopOrder}`;
+        let labelIcon = markerIconRef.current.get(iconCacheKey);
+        if (!labelIcon) {
+          labelIcon = L.divIcon({
+            className: markerTheme.className,
+            html: `<span>${stop.stopOrder}</span>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          });
+          markerIconRef.current.set(iconCacheKey, labelIcon);
+        }
+
+        const labelMarker = L.marker([stop.latitude, stop.longitude], {
+          icon: labelIcon,
+          keyboard: false,
+          interactive: false,
+        });
+        labelMarker.addTo(overlayLayer);
+      });
+
+      overlayLayer.addTo(map);
+      overlayLayerRef.current = overlayLayer;
+
+      const bounds = L.latLngBounds(fitBoundsPoints);
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, {
+          padding: [28, 28],
+          maxZoom: normalizedStops.length <= 1 ? 16 : 15,
+        });
+      }
+    };
+
+    void renderMap();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [fitBoundsPoints, normalizedStops.length, overlaySignature, routePath, shouldUseStaticPreview]);
+
+  useEffect(
+    () => () => {
+      overlayLayerRef.current = null;
+      tileLayerRef.current = null;
+      markerIconRef.current.clear();
+      const existingMap = mapRef.current;
+      mapRef.current = null;
+      existingMap?.remove();
+    },
+    [],
+  );
+
+  if (shouldUseStaticPreview) {
+    return (
+      <div className="ops-route-map-shell">
+        <div
+          className="ops-route-map-leaflet ops-route-map-static"
+          role="img"
+          aria-label="Leaflet route map with road-snapped geometry"
+        >
+          <p className="ops-route-map-static-label">
+            Leaflet preview is disabled in automated tests. Route rendering is validated in the browser.
+          </p>
+        </div>
+
+        <div className="ops-route-map-legend" aria-hidden="true">
+          <span>Leaflet basemap</span>
+          <span>Static test preview</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ops-route-map-shell">
-      <div className="ops-route-map-stack">
-        <iframe
-          title={mapState.hasRoute ? "OpenStreetMap tour overview" : "OpenStreetMap Paris fallback"}
-          src={mapState.embedUrl}
-          className="ops-route-map-frame"
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-        />
-
-        <svg
-          viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
-          className="ops-route-map-overlay"
-          role="img"
-          aria-label={
-            mapState.hasRoute
-              ? "OpenStreetMap route overview with numbered stops"
-              : "OpenStreetMap Paris fallback view"
-          }
-        >
-          <rect
-            x="0"
-            y="0"
-            width={VIEWBOX_WIDTH}
-            height={VIEWBOX_HEIGHT}
-            fill="rgba(5, 12, 22, 0.08)"
-          />
-
-          {routePath ? (
-            <>
-              <path
-                d={routePath}
-                fill="none"
-                stroke="rgba(10, 18, 32, 0.55)"
-                strokeWidth="2.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d={routePath}
-                fill="none"
-                stroke="#2f7bff"
-                strokeWidth="1.35"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </>
-          ) : null}
-
-          {mapState.projectedStops.map((stop) => {
-            const status = normalizeStatus(stop.status);
-            const markerFill =
-              status === "completed"
-                ? "#49d9a2"
-                : status === "active"
-                  ? "#ffd166"
-                  : "#2bd4a8";
-
-            return (
-              <g key={stop.id}>
-                <circle
-                  cx={stop.x}
-                  cy={stop.y}
-                  r="3.3"
-                  fill={markerFill}
-                  stroke="rgba(5, 12, 22, 0.95)"
-                  strokeWidth="0.8"
-                />
-                <circle
-                  cx={stop.x}
-                  cy={stop.y}
-                  r="6"
-                  fill="none"
-                  stroke="rgba(47, 123, 255, 0.24)"
-                  strokeWidth="0.7"
-                />
-                <text
-                  x={stop.x}
-                  y={stop.y + 1.2}
-                  textAnchor="middle"
-                  fontSize="3"
-                  fontWeight="700"
-                  fill="#06111f"
-                >
-                  {stop.stopOrder}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-
-        {!mapState.hasRoute ? (
-          <div className="ops-route-map-banner">
-            No stop coordinates were available. Showing the Paris service area fallback.
-          </div>
-        ) : null}
-      </div>
+      <div
+        ref={mapContainerRef}
+        className="ops-route-map-leaflet"
+        role="img"
+        aria-label="Leaflet route map with road-snapped geometry"
+      />
 
       <div className="ops-route-map-legend" aria-hidden="true">
-        <span>OpenStreetMap basemap</span>
-        <span>{mapState.hasRoute ? "Ordered stop overlay" : "Paris fallback view"}</span>
+        <span>Leaflet basemap</span>
+        <span>
+          {routeGeometry?.source === "live"
+            ? "Stored road route"
+            : routePath.length >= 2
+              ? "Stored fallback route"
+              : "Paris focus view"}
+        </span>
       </div>
     </div>
   );

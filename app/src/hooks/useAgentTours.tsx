@@ -2,11 +2,124 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../services/api';
 
+type CachedEnvelope<T> = {
+  cachedAt: string;
+  data: T;
+};
+
+export type GeoJsonLineString = {
+  type: 'LineString';
+  coordinates: Array<[number, number]>;
+};
+
+export type TourRouteGeometry = {
+  geometry: GeoJsonLineString;
+  distanceKm: number | null;
+  durationMinutes: number | null;
+  source: 'live' | 'fallback';
+  provider: string;
+  resolvedAt: string;
+};
+
+const AGENT_TOUR_CACHE_KEY = 'ecotrack.agentTour.cache.v1';
+
+const canUseStorage = () => typeof window !== 'undefined' && 'localStorage' in window;
+
+const readCachedEnvelope = <T,>(key: string) => {
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(key);
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsed = JSON.parse(rawValue) as Partial<CachedEnvelope<T>>;
+    if (!parsed || !parsed.cachedAt || !('data' in parsed)) {
+      return null;
+    }
+
+    return {
+      cachedAt: parsed.cachedAt,
+      data: parsed.data as T,
+    } satisfies CachedEnvelope<T>;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedEnvelope = (key: string, data: unknown) => {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  try {
+    const payload: CachedEnvelope<unknown> = {
+      cachedAt: new Date().toISOString(),
+      data,
+    };
+
+    window.localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // Ignore storage quota and serialization failures; the live response still succeeds.
+  }
+};
+
+const hasSeedFallbackRoute = (data: unknown) => {
+  if (!data || typeof data !== 'object') {
+    return false;
+  }
+
+  const routeGeometry = (data as Record<string, unknown>).routeGeometry;
+  if (!routeGeometry || typeof routeGeometry !== 'object') {
+    return false;
+  }
+
+  const provider = (routeGeometry as Record<string, unknown>).provider;
+  const source = (routeGeometry as Record<string, unknown>).source;
+
+  return (
+    typeof provider === 'string' &&
+    provider.trim().toLowerCase() === 'seed' &&
+    (typeof source !== 'string' || source.trim().toLowerCase() !== 'live')
+  );
+};
+
+const readReusableAgentTourCache = () => {
+  const cached = readCachedEnvelope<unknown>(AGENT_TOUR_CACHE_KEY);
+  if (!cached) {
+    return null;
+  }
+
+  return hasSeedFallbackRoute(cached.data) ? null : cached;
+};
+
 export const useAgentTour = () =>
   useQuery({
     queryKey: ['agent-tour'],
-    queryFn: async () => apiClient.get('/api/tours/agent/me'),
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get('/api/tours/agent/me');
+        writeCachedEnvelope(AGENT_TOUR_CACHE_KEY, response);
+        return response;
+      } catch (error) {
+        const cached = readReusableAgentTourCache();
+        if (cached) {
+          return cached.data;
+        }
+
+        throw error;
+      }
+    },
     staleTime: 30_000,
+    initialData: () => readReusableAgentTourCache()?.data,
+    initialDataUpdatedAt: () => {
+      const cached = readReusableAgentTourCache();
+      return cached ? Date.parse(cached.cachedAt) : undefined;
+    },
+    retry: false,
   });
 
 export const useStartAgentTour = () => {

@@ -7,13 +7,13 @@ This React 18 app runs on Vite and React Router (`BrowserRouter` in `app/src/mai
 | Path | Auth state | Result |
 | --- | --- | --- |
 | `/` | Unauthenticated | Marketing landing page |
-| `/` | Authenticated | Redirect to `/app/dashboard` |
+| `/` | Authenticated | Redirect to `/app` |
 | `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages |
 | `/login` | Unauthenticated | Login page (local email/password + Google OAuth button) with a cursor-following spotlight overlay on pointer devices |
 | `/signup` | Unauthenticated | Local account registration page |
 | `/forgot-password` | Unauthenticated | Password reset request page |
 | `/reset-password` | Unauthenticated | Local password reset page |
-| `/auth/callback` | Any | Exchanges one-time auth code, then redirects to `/app/*`; shows loading/error states and a brief success state with a green checkmark before redirect |
+| `/auth/callback` | Any | Exchanges one-time auth code, restores any pending post-login route, then redirects to `/app/*`; shows loading/error states and a brief success state with a green checkmark before redirect |
 | `/app/*` | Unauthenticated | Redirect to `/login` (with `next` query) |
 | `/app/*` | Authenticated | Product app pages |
 | `/faq` | Any | Compatibility redirect to `/support` |
@@ -28,12 +28,14 @@ Special case:
 
 | Path | Component | Notes |
 | --- | --- | --- |
-| `/app/dashboard` | `Dashboard` | Main overview |
+| `/app` | `AppHomePage` | Shared authenticated app home for all users; intended host for chatbot and role-specific guidance |
+| `/app/dashboard` | `Dashboard` | Live operational overview; requires `manager`/`admin`/`super_admin`, otherwise redirects to `/app` |
 | `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied |
-| `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization and assignment |
+| `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization, assignment, and manual persisted-route rebuild for the last created tour |
+| `/app/manager/tours` | `ManagerToursPage` | Manager tour operations list for reviewing scheduled tours and rebuilding any persisted route |
 | `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history |
 | `/app/support` | `SupportPage` | Unified support workspace with Advanced, Simple, and Create views |
 | `/app/tickets` | `Navigate` redirect | Compatibility redirect to `/app/support#simple` |
@@ -48,7 +50,7 @@ Authenticated shell behavior:
 
 - All `/app/*` routes render inside a shared sidebar layout.
 - Sidebar top: logo link on the left and sidebar toggle on the right.
-- Sidebar navigation is priority-ordered with Dashboard first.
+- Sidebar navigation is priority-ordered with the shared Workspace hub first.
 - Sidebar bottom: Settings, Support, optional Admin Center, and Sign Out actions.
 - Sidebar toggle behavior:
   - Desktop (`min-width: 721px`): docked sidebar that expands/collapses and pushes content; collapsed state persists in browser local storage.
@@ -60,6 +62,7 @@ Authenticated shell behavior:
 - Non-dashboard `/app/*` workspace pages use full main-section width (`width: 100%`) with container-aware responsive styles, so grid/tab/detail layouts reflow when sidebar width changes (expanded vs compressed), not only on viewport breakpoints.
 - Sign Out returns users to the landing page (`/`).
 - Role-protected app surfaces use a shared Access Denied presentation pattern (`app-access-denied`).
+- Unauthorized authenticated requests for `/app/dashboard` are redirected back to `/app` instead of rendering the dashboard.
 
 ## Landing sections and hash navigation
 

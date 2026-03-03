@@ -38,6 +38,10 @@ export class CreateContainerDto {
   zoneId?: string;
 
   @IsOptional()
+  @IsUUID()
+  containerTypeId?: string;
+
+  @IsOptional()
   @IsLatitude()
   latitude?: string;
 

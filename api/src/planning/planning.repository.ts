@@ -1,14 +1,19 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import {
+  alertEvents,
   anomalyReports,
   auditLogs,
   collectionEvents,
   containers,
   type DatabaseClient,
+  measurements,
+  notificationDeliveries,
+  notifications,
   type ReportExport,
   reportExports,
   roles,
+  sensorDevices,
   tourStops,
   tours,
   userRoles,
@@ -240,7 +245,9 @@ export class PlanningRepository {
   }
 
   async getManagerDashboard() {
-    const [ecoSummary, criticalContainers] = await Promise.all([
+    const telemetryWindowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [ecoSummary, criticalContainers, openAlertRows, latestAlerts, telemetryStats] = await Promise.all([
       Promise.all([
         this.db.select({ value: sql`count(*)`.mapWith(Number) }).from(containers),
         this.db.select({ value: sql`count(*)`.mapWith(Number) }).from(zones),
@@ -262,7 +269,57 @@ export class PlanningRepository {
         .where(or(gte(containers.fillLevelPercent, 80), eq(containers.status, 'attention_required')))
         .orderBy(desc(containers.fillLevelPercent))
         .limit(20),
+      this.db
+        .select({
+          severity: alertEvents.severity,
+          total: sql`count(*)`.mapWith(Number),
+        })
+        .from(alertEvents)
+        .where(or(eq(alertEvents.currentStatus, 'open'), eq(alertEvents.currentStatus, 'acknowledged')))
+        .groupBy(alertEvents.severity),
+      this.db
+        .select({
+          id: alertEvents.id,
+          eventType: alertEvents.eventType,
+          severity: alertEvents.severity,
+          currentStatus: alertEvents.currentStatus,
+          triggeredAt: alertEvents.triggeredAt,
+          containerId: alertEvents.containerId,
+          containerCode: containers.code,
+          zoneName: zones.name,
+        })
+        .from(alertEvents)
+        .leftJoin(containers, eq(alertEvents.containerId, containers.id))
+        .leftJoin(zones, eq(alertEvents.zoneId, zones.id))
+        .where(or(eq(alertEvents.currentStatus, 'open'), eq(alertEvents.currentStatus, 'acknowledged')))
+        .orderBy(desc(alertEvents.triggeredAt))
+        .limit(10),
+      Promise.all([
+        this.db
+          .select({
+            value: sql`count(distinct ${measurements.containerId})`.mapWith(Number),
+          })
+          .from(measurements)
+          .where(gte(measurements.measuredAt, telemetryWindowStart)),
+        this.db
+          .select({
+            value: sql`count(*)`.mapWith(Number),
+          })
+          .from(sensorDevices)
+          .where(sql`${sensorDevices.lastSeenAt} is null or ${sensorDevices.lastSeenAt} < ${telemetryWindowStart}`),
+        this.db
+          .select({
+            value: sql`max(${measurements.measuredAt})`,
+          })
+          .from(measurements),
+      ]),
     ]);
+
+    const activeAlertsBySeverity = openAlertRows.reduce<Record<string, number>>((acc, row) => {
+      const key = row.severity?.trim().toLowerCase() || 'unknown';
+      acc[key] = (acc[key] ?? 0) + (row.total ?? 0);
+      return acc;
+    }, {});
 
     return {
       ecoKpis: {
@@ -271,6 +328,16 @@ export class PlanningRepository {
         tours: ecoSummary[2][0]?.value ?? 0,
       },
       criticalContainers,
+      activeAlerts: {
+        totalOpen: openAlertRows.reduce((sum, row) => sum + (row.total ?? 0), 0),
+        bySeverity: activeAlertsBySeverity,
+        latest: latestAlerts,
+      },
+      telemetryHealth: {
+        reportingContainers: telemetryStats[0][0]?.value ?? 0,
+        staleSensors: telemetryStats[1][0]?.value ?? 0,
+        lastMeasurementAt: telemetryStats[2][0]?.value ?? null,
+      },
       thresholds: {
         criticalFillPercent: 80,
       },
@@ -328,11 +395,179 @@ export class PlanningRepository {
         },
       });
 
+      const [createdAlert] = await tx
+        .insert(alertEvents)
+        .values({
+          ruleId: null,
+          containerId: container.id,
+          zoneId: container.zoneId,
+          eventType: 'emergency_collection',
+          severity: 'critical',
+          triggeredAt: new Date(),
+          currentStatus: 'open',
+          acknowledgedByUserId: null,
+          payloadSnapshot: {
+            containerCode: container.code,
+            reason: dto.reason,
+            emergencyTourId: emergencyTour.id,
+          },
+        })
+        .returning();
+
+      const [createdNotification] = await tx
+        .insert(notifications)
+        .values({
+          eventType: 'emergency_collection_triggered',
+          entityType: 'alert_event',
+          entityId: createdAlert?.id ?? emergencyTour.id,
+          audienceScope: 'role:manager',
+          title: `Emergency collection for ${container.code}`,
+          body: dto.reason,
+          preferredChannels: ['email'],
+          scheduledAt: new Date(),
+          status: 'queued',
+          createdAt: new Date(),
+        })
+        .returning();
+
+      if (createdNotification) {
+        await tx.insert(notificationDeliveries).values({
+          notificationId: createdNotification.id,
+          channel: 'email',
+          recipientAddress: 'role:manager',
+          deliveryStatus: 'pending',
+          attemptCount: 0,
+          createdAt: new Date(),
+        });
+      }
+
       return {
         emergencyTour,
         alertTriggered: true,
+        alertEventId: createdAlert?.id ?? null,
       };
     });
+  }
+
+  async listAlerts(filters: { status?: string; severity?: string; limit: number }) {
+    const conditions = [];
+    if (filters.status) {
+      conditions.push(eq(alertEvents.currentStatus, filters.status));
+    }
+    if (filters.severity) {
+      conditions.push(eq(alertEvents.severity, filters.severity));
+    }
+
+    const safeLimit = Math.max(1, Math.min(filters.limit, 100));
+    const query = this.db
+      .select({
+        id: alertEvents.id,
+        ruleId: alertEvents.ruleId,
+        containerId: alertEvents.containerId,
+        containerCode: containers.code,
+        zoneId: alertEvents.zoneId,
+        zoneName: zones.name,
+        eventType: alertEvents.eventType,
+        severity: alertEvents.severity,
+        currentStatus: alertEvents.currentStatus,
+        triggeredAt: alertEvents.triggeredAt,
+        acknowledgedByUserId: alertEvents.acknowledgedByUserId,
+        acknowledgedByDisplayName: users.displayName,
+        resolvedAt: alertEvents.resolvedAt,
+        payloadSnapshot: alertEvents.payloadSnapshot,
+      })
+      .from(alertEvents)
+      .leftJoin(containers, eq(alertEvents.containerId, containers.id))
+      .leftJoin(zones, eq(alertEvents.zoneId, zones.id))
+      .leftJoin(users, eq(alertEvents.acknowledgedByUserId, users.id))
+      .orderBy(desc(alertEvents.triggeredAt))
+      .limit(safeLimit);
+
+    return conditions.length > 0 ? query.where(and(...conditions)) : query;
+  }
+
+  async acknowledgeAlert(alertId: string, actorUserId: string) {
+    const [updatedAlert] = await this.db
+      .update(alertEvents)
+      .set({
+        currentStatus: 'acknowledged',
+        acknowledgedByUserId: actorUserId,
+      })
+      .where(eq(alertEvents.id, alertId))
+      .returning();
+
+    if (!updatedAlert) {
+      throw new NotFoundException('Alert not found');
+    }
+
+    await this.db.insert(auditLogs).values({
+      userId: actorUserId,
+      action: 'manager_alert_acknowledged',
+      resourceType: 'alert_events',
+      resourceId: alertId,
+      oldValues: null,
+      newValues: {
+        currentStatus: 'acknowledged',
+      },
+    });
+
+    return updatedAlert;
+  }
+
+  async listNotifications(limit = 50) {
+    const safeLimit = Math.max(1, Math.min(limit, 100));
+    const notificationRows = await this.db
+      .select({
+        id: notifications.id,
+        eventType: notifications.eventType,
+        entityType: notifications.entityType,
+        entityId: notifications.entityId,
+        audienceScope: notifications.audienceScope,
+        title: notifications.title,
+        body: notifications.body,
+        preferredChannels: notifications.preferredChannels,
+        scheduledAt: notifications.scheduledAt,
+        status: notifications.status,
+        createdAt: notifications.createdAt,
+      })
+      .from(notifications)
+      .orderBy(desc(notifications.createdAt))
+      .limit(safeLimit);
+
+    if (notificationRows.length === 0) {
+      return [];
+    }
+
+    const notificationIds = notificationRows.map((row) => row.id);
+    const deliveryRows = await this.db
+      .select({
+        id: notificationDeliveries.id,
+        notificationId: notificationDeliveries.notificationId,
+        channel: notificationDeliveries.channel,
+        recipientAddress: notificationDeliveries.recipientAddress,
+        providerMessageId: notificationDeliveries.providerMessageId,
+        deliveryStatus: notificationDeliveries.deliveryStatus,
+        attemptCount: notificationDeliveries.attemptCount,
+        lastAttemptAt: notificationDeliveries.lastAttemptAt,
+        deliveredAt: notificationDeliveries.deliveredAt,
+        errorCode: notificationDeliveries.errorCode,
+        createdAt: notificationDeliveries.createdAt,
+      })
+      .from(notificationDeliveries)
+      .where(inArray(notificationDeliveries.notificationId, notificationIds))
+      .orderBy(desc(notificationDeliveries.createdAt));
+
+    const deliveriesByNotificationId = new Map<string, typeof deliveryRows>();
+    for (const delivery of deliveryRows) {
+      const existing = deliveriesByNotificationId.get(delivery.notificationId) ?? [];
+      existing.push(delivery);
+      deliveriesByNotificationId.set(delivery.notificationId, existing);
+    }
+
+    return notificationRows.map((notification) => ({
+      ...notification,
+      deliveries: deliveriesByNotificationId.get(notification.id) ?? [],
+    }));
   }
 
   async generateReport(dto: GenerateReportDto, actorUserId: string) {

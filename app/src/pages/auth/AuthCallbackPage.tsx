@@ -4,6 +4,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from '../../components/branding/BrandLogo';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi, type AuthSuccess } from '../../services/authApi';
+import {
+  clearPendingAuthRedirect,
+  resolveAuthRedirectTarget,
+} from '../../services/authRedirect';
 
 const EXCHANGE_RETRY_WINDOW_MS = 10_000;
 const EXCHANGE_RETRY_DELAY_MS = 1_000;
@@ -40,16 +44,6 @@ const isNetworkExchangeError = (error: unknown) => {
   return /failed to fetch|network|connection/i.test(error.message);
 };
 
-const resolveNextPath = (search: string) => {
-  const next = new URLSearchParams(search).get('next');
-  if (!next) {
-    return '/app';
-  }
-
-  const decoded = decodeURIComponent(next);
-  return decoded.startsWith('/') ? decoded : '/app';
-};
-
 export default function AuthCallbackPage() {
   const [attemptVersion, setAttemptVersion] = useState(0);
   const location = useLocation();
@@ -59,7 +53,7 @@ export default function AuthCallbackPage() {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const exchangeCode = (searchParams.get('code') ?? '').trim();
   const callbackError = searchParams.get('error');
-  const nextPath = useMemo(() => resolveNextPath(location.search), [location.search]);
+  const nextPath = useMemo(() => resolveAuthRedirectTarget(location.search), [location.search]);
   const initialError = callbackError ?? (exchangeCode ? null : 'Missing sign-in code. Please start again from the login page.');
   const [phase, setPhase] = useState<'loading' | 'success' | 'error'>(() => (
     initialError ? 'error' : 'loading'
@@ -97,6 +91,7 @@ export default function AuthCallbackPage() {
             return;
           }
 
+          clearPendingAuthRedirect();
           navigate(nextPath, { replace: true });
         }, SUCCESS_REDIRECT_DELAY_MS);
       } catch (error) {

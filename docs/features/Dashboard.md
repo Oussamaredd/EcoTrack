@@ -1,7 +1,9 @@
 # Dashboard Feature
 
 ## Overview
-The dashboard at `/app/dashboard` is the default operational overview for EcoTrack. It highlights ticket flow and activity for all authenticated users.
+The dashboard at `/app/dashboard` is the live operational overview for manager-capable users only. It is no longer the default app entry point; `/app` is now the shared authenticated home for all users.
+
+Users with `manager`, `admin`, or `super_admin` access can reach the page. Authenticated users without manager-capable access are redirected back to `/app`.
 
 For users with `admin` or `super_admin` access, the page also includes a lightweight "Admin center" panel with links into `/app/admin` for governance workflows.
 
@@ -15,8 +17,9 @@ For users with `admin` or `super_admin` access, the page also includes a lightwe
 - Admin-only panel with quick links to the Admin Center for user management, audit logs, and system settings.
 
 ## Navigation Behavior
-- Non-admin users see dashboard analytics only.
-- Admin users see an additional panel that links to `/app/admin`.
+- Manager users see dashboard analytics plus the manager planning and realtime integrations.
+- Admin and super admin users see the same manager-capable dashboard plus an additional panel that links to `/app/admin`.
+- Agent and citizen users do not see dashboard navigation and are redirected to `/app` if they manually request `/app/dashboard`.
 - Global app navigation remains available through the shared sidebar (`AppLayout`).
 
 ## Data Contract
@@ -25,6 +28,8 @@ Dashboard data comes from:
 ```http
 GET /api/dashboard
 ```
+
+The API route now requires `ecotrack.analytics.read`, which aligns the backend guard with the manager/admin/super_admin UI policy.
 
 The response powers:
 - `summary`

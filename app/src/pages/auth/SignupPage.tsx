@@ -29,7 +29,7 @@ export default function SignupPage() {
     try {
       const payload = await authApi.signup(email, password, displayName || undefined);
       login(payload);
-      navigate('/app/dashboard', { replace: true });
+      navigate('/app', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to create account.');
     } finally {

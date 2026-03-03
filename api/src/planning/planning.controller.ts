@@ -2,11 +2,14 @@ import {
   BadRequestException,
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   Inject,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -18,6 +21,7 @@ import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
 import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
+import { normalizeSearchTerm } from '../common/http/pagination.js';
 
 import { CreatePlannedTourDto } from './dto/create-planned-tour.dto.js';
 import { GenerateReportDto } from './dto/generate-report.dto.js';
@@ -76,6 +80,39 @@ export class PlanningController {
   @RequirePermissions('ecotrack.analytics.read')
   async dashboard() {
     return this.planningService.getManagerDashboard();
+  }
+
+  @Get('alerts')
+  @RequirePermissions('ecotrack.analytics.read')
+  async alerts(
+    @Query('status') status?: string,
+    @Query('severity') severity?: string,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+  ) {
+    return {
+      alerts: await this.planningService.listAlerts({
+        status: normalizeSearchTerm(status),
+        severity: normalizeSearchTerm(severity),
+        limit: limit ?? 50,
+      }),
+    };
+  }
+
+  @Post('alerts/:id/acknowledge')
+  @RequirePermissions('ecotrack.analytics.read')
+  async acknowledgeAlert(
+    @Req() request: RequestWithAuthUser,
+    @Param('id', new ParseUUIDPipe()) alertId: string,
+  ) {
+    return this.planningService.acknowledgeAlert(alertId, this.requireUserId(request));
+  }
+
+  @Get('notifications')
+  @RequirePermissions('ecotrack.analytics.read')
+  async notifications(@Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number) {
+    return {
+      notifications: await this.planningService.listNotifications(limit ?? 50),
+    };
   }
 
   @Get('realtime/health')

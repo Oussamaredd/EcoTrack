@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AgentRouteMap from "../components/agent/AgentRouteMap";
 import {
+  type TourRouteGeometry,
   useAgentTour,
   useAnomalyTypes,
   useReportAnomaly,
@@ -145,6 +146,14 @@ const getTourStatusToneClass = (status: string) => {
   }
 };
 
+const getRouteStatusToneClass = (routeGeometry: TourRouteGeometry | null) => {
+  if (!routeGeometry) {
+    return "ops-chip ops-chip-info";
+  }
+
+  return routeGeometry.source === "live" ? "ops-chip ops-chip-success" : "ops-chip ops-chip-warning";
+};
+
 const captureCurrentPosition = () =>
   new Promise<CapturedPosition | null>((resolve) => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
@@ -195,12 +204,14 @@ export default function AgentTourPage() {
         zoneName?: string | null;
         scheduledFor?: string;
         stops?: TourStop[];
+        routeGeometry?: TourRouteGeometry | null;
         routeSummary?: RouteSummary;
       }
     | null;
 
   const stops = Array.isArray(tour?.stops) ? tour.stops : [];
   const routeSummary = tour?.routeSummary ?? null;
+  const routeGeometry = tour?.routeGeometry ?? null;
   const activeStop = useMemo(
     () =>
       stops.find((stop) => normalizeStatus(stop.status) === "active") ??
@@ -241,6 +252,16 @@ export default function AgentTourPage() {
   const completionPercent =
     routeSummary?.completionPercent ??
     (totalStops === 0 ? 0 : Math.round((completedStops / totalStops) * 100));
+  const displayedDistanceKm = routeGeometry?.distanceKm ?? routeSummary?.totalDistanceKm ?? null;
+  const displayedDurationMinutes =
+    routeGeometry?.durationMinutes ?? routeSummary?.estimatedDurationMinutes ?? 0;
+  const routeStatusLabel = routeGeometry
+    ? routeGeometry.source === "live"
+      ? `Stored road route (${routeGeometry.provider})`
+      : `Stored fallback route (${routeGeometry.provider})`
+    : stops.length >= 2
+      ? "Route pending persistence"
+      : "Not enough mapped stops";
   const tourStatus = normalizeStatus(tour?.status);
   const canStartTour =
     Boolean(tour) && totalStops > 0 && tourStatus !== "in_progress" && tourStatus !== "completed";
@@ -492,10 +513,10 @@ export default function AgentTourPage() {
           </div>
           <div className="ops-kpi-card">
             <p className="ops-kpi-label">Estimated Route</p>
-            <p className="ops-kpi-value">{formatDistanceKm(routeSummary?.totalDistanceKm)}</p>
+            <p className="ops-kpi-value">{formatDistanceKm(displayedDistanceKm)}</p>
             <p className="ops-list-meta">
-              {(routeSummary?.estimatedDurationMinutes ?? 0) > 0
-                ? `${routeSummary?.estimatedDurationMinutes} min`
+              {displayedDurationMinutes > 0
+                ? `${displayedDurationMinutes} min`
                 : "Duration pending"}
             </p>
           </div>
@@ -537,16 +558,19 @@ export default function AgentTourPage() {
           <div>
             <h2>Route Overview</h2>
             <p className="ops-card-intro">
-              OpenStreetMap view centered on the stored stop coordinates with the live stop order overlaid.
+              Persisted route data from the API. When live routing is unavailable, the stored fallback line is shown.
             </p>
           </div>
-          {activeStop ? (
-            <span className="ops-chip ops-chip-info">Current stop #{activeStop.stopOrder}</span>
-          ) : (
-            <span className="ops-chip ops-chip-info">No active stop</span>
-          )}
+          <div className="ops-card-head-badges">
+            {activeStop ? (
+              <span className="ops-chip ops-chip-info">Current stop #{activeStop.stopOrder}</span>
+            ) : (
+              <span className="ops-chip ops-chip-info">No active stop</span>
+            )}
+            <span className={getRouteStatusToneClass(routeGeometry)}>{routeStatusLabel}</span>
+          </div>
         </div>
-        <AgentRouteMap stops={stops} />
+        <AgentRouteMap stops={stops} routeGeometry={routeGeometry} />
       </article>
 
       <article className="ops-card">

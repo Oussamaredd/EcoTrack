@@ -29,6 +29,7 @@ vi.mock('../hooks/usePlanning', () => ({
   useCreatePlannedTour: vi.fn(),
   useOptimizeTourPlan: vi.fn(),
   usePlanningAgents: vi.fn(),
+  useRebuildTourRoute: vi.fn(),
   usePlanningZones: vi.fn(),
 }));
 
@@ -91,6 +92,20 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
         name: 'North Zone Round',
         status: 'assigned',
         zoneName: 'North Zone',
+        routeGeometry: {
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [2.3522, 48.8566],
+              [2.354, 48.8589],
+            ],
+          },
+          distanceKm: 0.5,
+          durationMinutes: 4,
+          source: 'live',
+          provider: 'router.example.test',
+          resolvedAt: '2026-03-02T09:00:00.000Z',
+        },
         stops: [
           {
             id: 'stop-1',
@@ -114,7 +129,7 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
       data: { anomalyTypes: [{ id: 'blocked', label: 'Blocked container access' }] },
     });
     (agentHooks.useReportAnomaly as Mock).mockReturnValue({ mutateAsync: reportAnomaly, isPending: false });
-    (agentHooks.useTourActivity as Mock).mockReturnValue({ data: { activity: [] } });
+    (agentHooks.useTourActivity as Mock).mockReturnValue({ data: { activity: [] }, isFetching: false });
 
     const user = userEvent.setup();
     renderWithProviders(<AgentTourPage />);
@@ -168,6 +183,12 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
       ],
     });
     const createTour = vi.fn().mockResolvedValue({ id: 'tour-1' });
+    const rebuildTourRoute = vi.fn().mockResolvedValue({
+      tourId: 'tour-1',
+      routeGeometry: {
+        source: 'live',
+      },
+    });
     const resetOptimization = vi.fn();
 
     (planningHooks.usePlanningZones as Mock).mockReturnValue({
@@ -187,6 +208,10 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
       reset: resetOptimization,
     });
     (planningHooks.useCreatePlannedTour as Mock).mockReturnValue({ mutateAsync: createTour, isPending: false });
+    (planningHooks.useRebuildTourRoute as Mock).mockReturnValue({
+      mutateAsync: rebuildTourRoute,
+      isPending: false,
+    });
 
     const user = userEvent.setup();
     const { container } = renderWithProviders(<ManagerPlanningPage />);
@@ -218,6 +243,12 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
     );
     expect(await screen.findByRole('status')).toHaveTextContent(/created and assigned successfully/i);
     expect(screen.getByRole('button', { name: /Tour Created/i })).toBeDisabled();
+    expect(screen.getByText(/Last created tour: tour-1/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Rebuild Stored Route/i }));
+
+    expect(rebuildTourRoute).toHaveBeenCalledWith('tour-1');
+    expect(await screen.findByRole('status')).toHaveTextContent(/stored route rebuilt successfully/i);
     expect(container.querySelector('[class*="sm:grid-cols-2"]')).toBeTruthy();
   }, 15000);
 
@@ -254,6 +285,10 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
       reset: resetOptimization,
     });
     (planningHooks.useCreatePlannedTour as Mock).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+    (planningHooks.useRebuildTourRoute as Mock).mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
     });
@@ -313,6 +348,10 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
       mutateAsync: vi.fn(),
       isPending: false,
     });
+    (planningHooks.useRebuildTourRoute as Mock).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
 
     const user = userEvent.setup();
     renderWithProviders(<ManagerPlanningPage />);
@@ -345,6 +384,10 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
       reset: vi.fn(),
     });
     (planningHooks.useCreatePlannedTour as Mock).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+    (planningHooks.useRebuildTourRoute as Mock).mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
     });

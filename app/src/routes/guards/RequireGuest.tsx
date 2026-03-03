@@ -14,7 +14,7 @@ export default function RequireGuest() {
   }
 
   if (isLoggedIn) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to="/app" replace />;
   }
 
   return <Outlet />;

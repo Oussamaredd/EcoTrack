@@ -6,18 +6,11 @@ import LoginButton from '../../components/LoginButton';
 import { useApiReady } from '../../hooks/useApiReady';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
-
-const DEFAULT_REDIRECT = '/app';
-
-const resolveNextPath = (search: string) => {
-  const next = new URLSearchParams(search).get('next');
-  if (!next) {
-    return DEFAULT_REDIRECT;
-  }
-
-  const decoded = decodeURIComponent(next);
-  return decoded.startsWith('/') ? decoded : DEFAULT_REDIRECT;
-};
+import {
+  clearPendingAuthRedirect,
+  resolveRequestedAuthRedirect,
+  storePendingAuthRedirect,
+} from '../../services/authRedirect';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -33,9 +26,16 @@ export default function LoginPage() {
     import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
   const { isApiReady } = useApiReady(configuredApiBase);
 
-  const redirectTarget = useMemo(() => resolveNextPath(location.search), [location.search]);
+  const redirectTarget = useMemo(() => resolveRequestedAuthRedirect(location.search), [location.search]);
   const oauthError = useMemo(() => new URLSearchParams(location.search).get('error'), [location.search]);
   const isAuthDisabled = !isApiReady || isSigningIn;
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (!searchParams.has('next')) {
+      clearPendingAuthRedirect();
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const overlay = spotlightOverlayRef.current;
@@ -85,6 +85,7 @@ export default function LoginPage() {
   }, []);
 
   const handleGoogleStart = () => {
+    storePendingAuthRedirect(redirectTarget);
     setError(null);
     setSignInMethod('google');
     setIsSigningIn(true);
@@ -108,6 +109,7 @@ export default function LoginPage() {
           accessToken: payload.accessToken,
           user: payload.user,
         });
+        clearPendingAuthRedirect();
         navigate(redirectTarget, { replace: true });
         return;
       }

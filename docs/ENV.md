@@ -23,7 +23,13 @@ Database package runtime note:
 
 - `DATABASE_URL` for database connectivity
 - `API_PORT` for API listen port
+- `ROUTING_API_BASE_URL` for backend road-routing service lookups
 - `VITE_API_BASE_URL` for frontend API base URL
+- `VITE_MAP_TILE_URL_TEMPLATE` for the frontend Leaflet tile source template
+- `VITE_MAP_TILE_ATTRIBUTION` for the frontend map attribution label
+
+Agent tour mapping note:
+- `ROUTING_API_BASE_URL` is used by the API to build and persist `tour_routes` records; the frontend does not call the routing provider directly.
 - `APP_BASE_URL` for backend-to-frontend auth callback redirects (fallbacks: `APP_URL`, `CLIENT_ORIGIN`)
 - `JWT_ACCESS_SECRET` for local access-token signing (Bearer JWT)
 - `JWT_ACCESS_EXPIRES_IN` for local access-token TTL (for example `15m`)

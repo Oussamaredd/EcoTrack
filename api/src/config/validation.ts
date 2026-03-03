@@ -13,6 +13,7 @@ const envSchema = z.object({
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
   LOG_FORMAT: z.enum(['json', 'pretty']).optional(),
+  ROUTING_API_BASE_URL: z.string().url().optional(),
   CORS_ORIGINS: z.string().optional(),
   APP_BASE_URL: z.string().url().optional(),
   APP_URL: z.string().url().optional(),

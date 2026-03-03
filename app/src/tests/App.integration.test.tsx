@@ -132,7 +132,7 @@ describe("App Integration", () => {
       true,
     );
 
-    const dashboardLinks = screen.getAllByRole("link", { name: "Dashboard" });
-    expect(dashboardLinks.some((link) => link.getAttribute("href") === "/app/dashboard")).toBe(true);
+    const workspaceLinks = screen.getAllByRole("link", { name: "Workspace" });
+    expect(workspaceLinks.some((link) => link.getAttribute("href") === "/app")).toBe(true);
   });
 });

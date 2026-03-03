@@ -1,6 +1,8 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { createDatabaseInstance } from './client.js';
 import {
+  alertEvents,
+  alertRules,
   anomalyReports,
   anomalyTypes,
   challengeParticipations,
@@ -8,11 +10,17 @@ import {
   citizenReports,
   collectionEvents,
   comments,
+  containerTypes,
   containers,
   gamificationProfiles,
+  measurements,
+  notificationDeliveries,
+  notifications,
   roles,
+  sensorDevices,
   systemSettings,
   tickets,
+  tourRoutes,
   tourStops,
   tours,
   userRoles,
@@ -71,8 +79,19 @@ type ContainerSeed = {
   status: string;
   fillLevelPercent: number;
   zoneCode: string;
+  containerTypeCode: string;
   latitude?: string;
   longitude?: string;
+};
+
+type ContainerTypeSeed = {
+  code: string;
+  label: string;
+  wasteStream: string;
+  nominalCapacityLiters: number;
+  defaultFillAlertPercent: number;
+  defaultCriticalAlertPercent: number;
+  colorCode: string;
 };
 
 type TourSeed = {
@@ -130,6 +149,81 @@ type AnomalyReportSeed = {
   comments: string;
   photoUrl?: string;
   severity: string;
+};
+
+type SensorDeviceSeed = {
+  containerCode: string;
+  deviceUid: string;
+  hardwareModel: string;
+  firmwareVersion: string;
+  installStatus: string;
+  batteryPercent: number;
+  lastSeenAt: string;
+  installedAt: string;
+};
+
+type MeasurementSeed = {
+  deviceUid: string;
+  containerCode: string;
+  measuredAt: string;
+  fillLevelPercent: number;
+  temperatureC: number;
+  batteryPercent: number;
+  signalStrength: number;
+  measurementQuality: string;
+};
+
+type AlertRuleSeed = {
+  scopeType: string;
+  scopeKey?: string | null;
+  warningFillPercent?: number | null;
+  criticalFillPercent?: number | null;
+  anomalyTypeCode?: string | null;
+  notifyChannels: string[];
+  recipientRole?: string | null;
+  isActive: boolean;
+};
+
+type AlertEventSeed = {
+  ruleScopeType?: string | null;
+  ruleScopeKey?: string | null;
+  containerCode?: string | null;
+  zoneCode?: string | null;
+  eventType: string;
+  severity: string;
+  currentStatus: string;
+  acknowledgedByEmail?: string | null;
+  payloadSnapshot: Record<string, unknown>;
+};
+
+type NotificationSeed = {
+  eventType: string;
+  entityType: string;
+  entityId: string;
+  audienceScope: string;
+  title: string;
+  body: string;
+  preferredChannels: string[];
+  status: string;
+  deliveries: Array<{
+    channel: string;
+    recipientAddress: string;
+    deliveryStatus: string;
+    attemptCount: number;
+  }>;
+};
+
+type RouteGeometryLineString = {
+  type: 'LineString';
+  coordinates: Array<[number, number]>;
+};
+
+type PersistedRouteSeed = {
+  geometry: RouteGeometryLineString;
+  distanceMeters: number | null;
+  durationMinutes: number | null;
+  source: 'fallback';
+  provider: 'seed';
 };
 
 const LEGACY_ADMIN_PERMISSIONS = [
@@ -371,6 +465,36 @@ const ZONE_SEEDS: ZoneSeed[] = [
   },
 ];
 
+const CONTAINER_TYPE_SEEDS: ContainerTypeSeed[] = [
+  {
+    code: 'glass',
+    label: 'Glass',
+    wasteStream: 'glass',
+    nominalCapacityLiters: 1000,
+    defaultFillAlertPercent: 70,
+    defaultCriticalAlertPercent: 90,
+    colorCode: '#457B9D',
+  },
+  {
+    code: 'recyclables',
+    label: 'Recyclables',
+    wasteStream: 'recyclable',
+    nominalCapacityLiters: 1000,
+    defaultFillAlertPercent: 75,
+    defaultCriticalAlertPercent: 90,
+    colorCode: '#2A9D8F',
+  },
+  {
+    code: 'general_mixed',
+    label: 'General Mixed Waste',
+    wasteStream: 'mixed',
+    nominalCapacityLiters: 1000,
+    defaultFillAlertPercent: 80,
+    defaultCriticalAlertPercent: 95,
+    colorCode: '#4F5D75',
+  },
+];
+
 const CONTAINER_SEEDS: ContainerSeed[] = [
   {
     code: 'CTR-1001',
@@ -378,6 +502,7 @@ const CONTAINER_SEEDS: ContainerSeed[] = [
     status: 'available',
     fillLevelPercent: 35,
     zoneCode: 'ZONE-DOWNTOWN',
+    containerTypeCode: 'glass',
     latitude: '48.8566',
     longitude: '2.3522',
   },
@@ -387,6 +512,7 @@ const CONTAINER_SEEDS: ContainerSeed[] = [
     status: 'attention_required',
     fillLevelPercent: 82,
     zoneCode: 'ZONE-DOWNTOWN',
+    containerTypeCode: 'recyclables',
     latitude: '48.8589',
     longitude: '2.3540',
   },
@@ -396,6 +522,7 @@ const CONTAINER_SEEDS: ContainerSeed[] = [
     status: 'available',
     fillLevelPercent: 55,
     zoneCode: 'ZONE-HARBOR',
+    containerTypeCode: 'general_mixed',
     latitude: '48.8362',
     longitude: '2.3700',
   },
@@ -495,7 +622,227 @@ const ANOMALY_REPORT_SEEDS: AnomalyReportSeed[] = [
   },
 ];
 
+const SENSOR_DEVICE_SEEDS: SensorDeviceSeed[] = [
+  {
+    containerCode: 'CTR-1001',
+    deviceUid: 'sensor-ctr-1001',
+    hardwareModel: 'EcoSense-A1',
+    firmwareVersion: '1.2.0',
+    installStatus: 'active',
+    batteryPercent: 88,
+    lastSeenAt: '2026-03-03T08:00:00.000Z',
+    installedAt: '2026-02-15T09:00:00.000Z',
+  },
+  {
+    containerCode: 'CTR-1002',
+    deviceUid: 'sensor-ctr-1002',
+    hardwareModel: 'EcoSense-A1',
+    firmwareVersion: '1.2.1',
+    installStatus: 'active',
+    batteryPercent: 61,
+    lastSeenAt: '2026-03-03T08:05:00.000Z',
+    installedAt: '2026-02-16T09:00:00.000Z',
+  },
+  {
+    containerCode: 'CTR-2001',
+    deviceUid: 'sensor-ctr-2001',
+    hardwareModel: 'EcoSense-B2',
+    firmwareVersion: '2.0.0',
+    installStatus: 'maintenance',
+    batteryPercent: 48,
+    lastSeenAt: '2026-03-02T22:00:00.000Z',
+    installedAt: '2026-02-18T09:00:00.000Z',
+  },
+];
+
+const MEASUREMENT_SEEDS: MeasurementSeed[] = [
+  {
+    deviceUid: 'sensor-ctr-1001',
+    containerCode: 'CTR-1001',
+    measuredAt: '2026-03-03T07:45:00.000Z',
+    fillLevelPercent: 38,
+    temperatureC: 21,
+    batteryPercent: 88,
+    signalStrength: -67,
+    measurementQuality: 'valid',
+  },
+  {
+    deviceUid: 'sensor-ctr-1002',
+    containerCode: 'CTR-1002',
+    measuredAt: '2026-03-03T07:50:00.000Z',
+    fillLevelPercent: 84,
+    temperatureC: 23,
+    batteryPercent: 61,
+    signalStrength: -71,
+    measurementQuality: 'valid',
+  },
+  {
+    deviceUid: 'sensor-ctr-2001',
+    containerCode: 'CTR-2001',
+    measuredAt: '2026-03-02T21:45:00.000Z',
+    fillLevelPercent: 57,
+    temperatureC: 19,
+    batteryPercent: 48,
+    signalStrength: -79,
+    measurementQuality: 'suspect',
+  },
+];
+
+const ALERT_RULE_SEEDS: AlertRuleSeed[] = [
+  {
+    scopeType: 'global',
+    scopeKey: null,
+    warningFillPercent: 80,
+    criticalFillPercent: 95,
+    anomalyTypeCode: null,
+    notifyChannels: ['email'],
+    recipientRole: 'manager',
+    isActive: true,
+  },
+  {
+    scopeType: 'container_type',
+    scopeKey: 'recyclables',
+    warningFillPercent: 75,
+    criticalFillPercent: 90,
+    anomalyTypeCode: null,
+    notifyChannels: ['email', 'push'],
+    recipientRole: 'manager',
+    isActive: true,
+  },
+];
+
+const ALERT_EVENT_SEEDS: AlertEventSeed[] = [
+  {
+    ruleScopeType: 'container_type',
+    ruleScopeKey: 'recyclables',
+    containerCode: 'CTR-1002',
+    zoneCode: 'ZONE-DOWNTOWN',
+    eventType: 'fill_threshold_exceeded',
+    severity: 'warning',
+    currentStatus: 'open',
+    acknowledgedByEmail: null,
+    payloadSnapshot: {
+      fillLevelPercent: 84,
+      measuredAt: '2026-03-03T07:50:00.000Z',
+    },
+  },
+];
+
+const NOTIFICATION_SEEDS: NotificationSeed[] = [
+  {
+    eventType: 'seed.alert_raised',
+    entityType: 'alert_event',
+    entityId: 'seed-fill-threshold-ctr-1002',
+    audienceScope: 'role:manager',
+    title: 'Container nearing capacity',
+    body: 'CTR-1002 has crossed the warning threshold.',
+    preferredChannels: ['email'],
+    status: 'sent',
+    deliveries: [
+      {
+        channel: 'email',
+        recipientAddress: 'ops@example.com',
+        deliveryStatus: 'delivered',
+        attemptCount: 1,
+      },
+    ],
+  },
+];
+
 const CLOSED_STATUSES = new Set(['completed', 'closed']);
+const EARTH_RADIUS_KM = 6371;
+const AVERAGE_ROUTE_SPEED_KMH = 24;
+const STOP_SERVICE_DURATION_MINUTES = 4;
+
+const toNumberOrNull = (value: unknown) => {
+  if (value == null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toRadians = (value: number) => (value * Math.PI) / 180;
+
+const haversineDistanceKm = (
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+) => {
+  const dLat = toRadians(to.latitude - from.latitude);
+  const dLng = toRadians(to.longitude - from.longitude);
+  const lat1 = toRadians(from.latitude);
+  const lat2 = toRadians(to.latitude);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return EARTH_RADIUS_KM * c;
+};
+
+const buildPersistedRouteSeed = (
+  stops: Array<{ stopOrder: number; latitude: string | null; longitude: string | null }>,
+): PersistedRouteSeed | null => {
+  const normalizedStops = stops
+    .map((stop) => {
+      const latitude = toNumberOrNull(stop.latitude);
+      const longitude = toNumberOrNull(stop.longitude);
+
+      if (latitude == null || longitude == null) {
+        return null;
+      }
+
+      return {
+        stopOrder: stop.stopOrder,
+        latitude,
+        longitude,
+      };
+    })
+    .filter(
+      (
+        stop,
+      ): stop is {
+        stopOrder: number;
+        latitude: number;
+        longitude: number;
+      } => stop != null,
+    )
+    .sort((left, right) => left.stopOrder - right.stopOrder);
+
+  if (normalizedStops.length === 0) {
+    return null;
+  }
+
+  let totalDistanceKm = 0;
+  for (let index = 1; index < normalizedStops.length; index += 1) {
+    totalDistanceKm += haversineDistanceKm(normalizedStops[index - 1], normalizedStops[index]);
+  }
+
+  return {
+    geometry: {
+      type: 'LineString',
+      coordinates:
+        normalizedStops.length === 1
+          ? [
+              [normalizedStops[0].longitude, normalizedStops[0].latitude],
+              [normalizedStops[0].longitude, normalizedStops[0].latitude],
+            ]
+          : normalizedStops.map((stop) => [stop.longitude, stop.latitude]),
+    },
+    distanceMeters: Math.max(0, Math.round(totalDistanceKm * 1000)),
+    durationMinutes: Math.max(
+      STOP_SERVICE_DURATION_MINUTES,
+      Math.round(
+        (totalDistanceKm / AVERAGE_ROUTE_SPEED_KMH) * 60 +
+          normalizedStops.length * STOP_SERVICE_DURATION_MINUTES,
+      ),
+    ),
+    source: 'fallback',
+    provider: 'seed',
+  };
+};
 
 export async function seedDatabase() {
   const { db, dispose } = createDatabaseInstance();
@@ -742,11 +1089,55 @@ export async function seedDatabase() {
         zoneIds.set(seed.code, row.id);
       }
 
+      const containerTypeIds = new Map<string, string>();
+      for (const seed of CONTAINER_TYPE_SEEDS) {
+        await tx
+          .insert(containerTypes)
+          .values({
+            code: seed.code,
+            label: seed.label,
+            wasteStream: seed.wasteStream,
+            nominalCapacityLiters: seed.nominalCapacityLiters,
+            defaultFillAlertPercent: seed.defaultFillAlertPercent,
+            defaultCriticalAlertPercent: seed.defaultCriticalAlertPercent,
+            colorCode: seed.colorCode,
+            isActive: true,
+          })
+          .onConflictDoUpdate({
+            target: containerTypes.code,
+            set: {
+              label: seed.label,
+              wasteStream: seed.wasteStream,
+              nominalCapacityLiters: seed.nominalCapacityLiters,
+              defaultFillAlertPercent: seed.defaultFillAlertPercent,
+              defaultCriticalAlertPercent: seed.defaultCriticalAlertPercent,
+              colorCode: seed.colorCode,
+              isActive: true,
+              updatedAt: now,
+            },
+          });
+
+        const [row] = await tx
+          .select()
+          .from(containerTypes)
+          .where(eq(containerTypes.code, seed.code))
+          .limit(1);
+        if (!row) {
+          throw new Error(`Failed to resolve container type: ${seed.code}`);
+        }
+
+        containerTypeIds.set(seed.code, row.id);
+      }
+
       const containerIds = new Map<string, string>();
       for (const seed of CONTAINER_SEEDS) {
         const zoneId = zoneIds.get(seed.zoneCode);
+        const containerTypeId = containerTypeIds.get(seed.containerTypeCode);
         if (!zoneId) {
           throw new Error(`Zone not found for container ${seed.code}: ${seed.zoneCode}`);
+        }
+        if (!containerTypeId) {
+          throw new Error(`Container type not found for container ${seed.code}: ${seed.containerTypeCode}`);
         }
 
         await tx
@@ -757,6 +1148,7 @@ export async function seedDatabase() {
             status: seed.status,
             fillLevelPercent: seed.fillLevelPercent,
             zoneId,
+            containerTypeId,
             latitude: seed.latitude ?? null,
             longitude: seed.longitude ?? null,
           })
@@ -767,6 +1159,7 @@ export async function seedDatabase() {
               status: seed.status,
               fillLevelPercent: seed.fillLevelPercent,
               zoneId,
+              containerTypeId,
               latitude: seed.latitude ?? null,
               longitude: seed.longitude ?? null,
               updatedAt: now,
@@ -779,6 +1172,88 @@ export async function seedDatabase() {
         }
 
         containerIds.set(seed.code, row.id);
+      }
+
+      const sensorDeviceIds = new Map<string, string>();
+      for (const seed of SENSOR_DEVICE_SEEDS) {
+        const containerId = containerIds.get(seed.containerCode);
+        if (!containerId) {
+          throw new Error(`Container not found for sensor device ${seed.deviceUid}: ${seed.containerCode}`);
+        }
+
+        await tx
+          .insert(sensorDevices)
+          .values({
+            containerId,
+            deviceUid: seed.deviceUid,
+            hardwareModel: seed.hardwareModel,
+            firmwareVersion: seed.firmwareVersion,
+            installStatus: seed.installStatus,
+            batteryPercent: seed.batteryPercent,
+            lastSeenAt: new Date(seed.lastSeenAt),
+            installedAt: new Date(seed.installedAt),
+          })
+          .onConflictDoUpdate({
+            target: sensorDevices.deviceUid,
+            set: {
+              containerId,
+              hardwareModel: seed.hardwareModel,
+              firmwareVersion: seed.firmwareVersion,
+              installStatus: seed.installStatus,
+              batteryPercent: seed.batteryPercent,
+              lastSeenAt: new Date(seed.lastSeenAt),
+              installedAt: new Date(seed.installedAt),
+              updatedAt: now,
+            },
+          });
+
+        const [row] = await tx
+          .select()
+          .from(sensorDevices)
+          .where(eq(sensorDevices.deviceUid, seed.deviceUid))
+          .limit(1);
+        if (!row) {
+          throw new Error(`Failed to resolve sensor device: ${seed.deviceUid}`);
+        }
+
+        sensorDeviceIds.set(seed.deviceUid, row.id);
+      }
+
+      for (const seed of MEASUREMENT_SEEDS) {
+        const sensorDeviceId = sensorDeviceIds.get(seed.deviceUid);
+        const containerId = containerIds.get(seed.containerCode);
+
+        if (!sensorDeviceId || !containerId) {
+          throw new Error(`Missing references for measurement seed: ${seed.deviceUid}/${seed.containerCode}`);
+        }
+
+        const measuredAt = new Date(seed.measuredAt);
+        const [existingMeasurement] = await tx
+          .select({
+            id: measurements.id,
+            measuredAt: measurements.measuredAt,
+          })
+          .from(measurements)
+          .where(and(eq(measurements.sensorDeviceId, sensorDeviceId), eq(measurements.measuredAt, measuredAt)))
+          .limit(1);
+
+        if (!existingMeasurement) {
+          await tx.insert(measurements).values({
+            sensorDeviceId,
+            containerId,
+            measuredAt,
+            fillLevelPercent: seed.fillLevelPercent,
+            temperatureC: seed.temperatureC,
+            batteryPercent: seed.batteryPercent,
+            signalStrength: seed.signalStrength,
+            measurementQuality: seed.measurementQuality,
+            sourcePayload: {
+              source: 'seed',
+              deviceUid: seed.deviceUid,
+            },
+            receivedAt: measuredAt,
+          });
+        }
       }
 
       for (const seed of TOUR_SEEDS) {
@@ -1057,6 +1532,254 @@ export async function seedDatabase() {
             notes: 'Seeded initial collection event',
           });
         }
+      }
+
+      const alertRuleIds = new Map<string, string>();
+      for (const seed of ALERT_RULE_SEEDS) {
+        const matchingRules = await tx
+          .select()
+          .from(alertRules)
+          .where(eq(alertRules.scopeType, seed.scopeType));
+        const existingRule = matchingRules.find(
+          (row) =>
+            (row.scopeKey ?? null) === (seed.scopeKey ?? null) &&
+            (row.recipientRole ?? null) === (seed.recipientRole ?? null),
+        );
+
+        if (existingRule) {
+          const [updatedRule] = await tx
+            .update(alertRules)
+            .set({
+              warningFillPercent: seed.warningFillPercent ?? null,
+              criticalFillPercent: seed.criticalFillPercent ?? null,
+              anomalyTypeCode: seed.anomalyTypeCode ?? null,
+              notifyChannels: seed.notifyChannels,
+              isActive: seed.isActive,
+              updatedAt: now,
+            })
+            .where(eq(alertRules.id, existingRule.id))
+            .returning();
+
+          if (!updatedRule) {
+            throw new Error(`Failed to update alert rule: ${seed.scopeType}/${seed.scopeKey ?? 'global'}`);
+          }
+
+          alertRuleIds.set(`${seed.scopeType}:${seed.scopeKey ?? 'global'}`, updatedRule.id);
+          continue;
+        }
+
+        const [createdRule] = await tx
+          .insert(alertRules)
+          .values({
+            scopeType: seed.scopeType,
+            scopeKey: seed.scopeKey ?? null,
+            warningFillPercent: seed.warningFillPercent ?? null,
+            criticalFillPercent: seed.criticalFillPercent ?? null,
+            anomalyTypeCode: seed.anomalyTypeCode ?? null,
+            notifyChannels: seed.notifyChannels,
+            recipientRole: seed.recipientRole ?? null,
+            isActive: seed.isActive,
+          })
+          .returning();
+
+        if (!createdRule) {
+          throw new Error(`Failed to create alert rule: ${seed.scopeType}/${seed.scopeKey ?? 'global'}`);
+        }
+
+        alertRuleIds.set(`${seed.scopeType}:${seed.scopeKey ?? 'global'}`, createdRule.id);
+      }
+
+      for (const seed of ALERT_EVENT_SEEDS) {
+        const containerId = seed.containerCode ? containerIds.get(seed.containerCode) ?? null : null;
+        const zoneId = seed.zoneCode ? zoneIds.get(seed.zoneCode) ?? null : null;
+        const acknowledgedByUserId = seed.acknowledgedByEmail ? userIds.get(seed.acknowledgedByEmail) ?? null : null;
+        const ruleId =
+          seed.ruleScopeType != null
+            ? alertRuleIds.get(`${seed.ruleScopeType}:${seed.ruleScopeKey ?? 'global'}`) ?? null
+            : null;
+
+        const matchingEvents = await tx
+          .select()
+          .from(alertEvents)
+          .where(eq(alertEvents.eventType, seed.eventType));
+        const existingEvent = matchingEvents.find(
+          (row) =>
+            (row.containerId ?? null) === containerId &&
+            row.currentStatus === seed.currentStatus,
+        );
+
+        if (existingEvent) {
+          const [updatedEvent] = await tx
+            .update(alertEvents)
+            .set({
+              ruleId,
+              zoneId,
+              severity: seed.severity,
+              acknowledgedByUserId,
+              payloadSnapshot: seed.payloadSnapshot,
+            })
+            .where(eq(alertEvents.id, existingEvent.id))
+            .returning();
+
+          if (!updatedEvent) {
+            throw new Error(`Failed to update alert event: ${seed.eventType}`);
+          }
+
+          continue;
+        }
+
+        const [createdEvent] = await tx
+          .insert(alertEvents)
+          .values({
+            ruleId,
+            containerId,
+            zoneId,
+            eventType: seed.eventType,
+            severity: seed.severity,
+            triggeredAt: now,
+            currentStatus: seed.currentStatus,
+            acknowledgedByUserId,
+            payloadSnapshot: seed.payloadSnapshot,
+          })
+          .returning();
+
+        if (!createdEvent) {
+          throw new Error(`Failed to create alert event: ${seed.eventType}`);
+        }
+
+      }
+
+      for (const seed of NOTIFICATION_SEEDS) {
+        const [existingNotification] = await tx
+          .select()
+          .from(notifications)
+          .where(
+            and(
+              eq(notifications.eventType, seed.eventType),
+              eq(notifications.entityType, seed.entityType),
+              eq(notifications.entityId, seed.entityId),
+            ),
+          )
+          .limit(1);
+
+        const notification =
+          existingNotification
+            ? (
+                await tx
+                  .update(notifications)
+                  .set({
+                    audienceScope: seed.audienceScope,
+                    title: seed.title,
+                    body: seed.body,
+                    preferredChannels: seed.preferredChannels,
+                    status: seed.status,
+                  })
+                  .where(eq(notifications.id, existingNotification.id))
+                  .returning()
+              )[0]
+            : (
+                await tx
+                  .insert(notifications)
+                  .values({
+                    eventType: seed.eventType,
+                    entityType: seed.entityType,
+                    entityId: seed.entityId,
+                    audienceScope: seed.audienceScope,
+                    title: seed.title,
+                    body: seed.body,
+                    preferredChannels: seed.preferredChannels,
+                    status: seed.status,
+                    scheduledAt: now,
+                  })
+                  .returning()
+              )[0];
+
+        if (!notification) {
+          throw new Error(`Failed to resolve notification seed: ${seed.eventType}`);
+        }
+
+        for (const delivery of seed.deliveries) {
+          const [existingDelivery] = await tx
+            .select()
+            .from(notificationDeliveries)
+            .where(
+              and(
+                eq(notificationDeliveries.notificationId, notification.id),
+                eq(notificationDeliveries.channel, delivery.channel),
+                eq(notificationDeliveries.recipientAddress, delivery.recipientAddress),
+              ),
+            )
+            .limit(1);
+
+          if (existingDelivery) {
+            await tx
+              .update(notificationDeliveries)
+              .set({
+                deliveryStatus: delivery.deliveryStatus,
+                attemptCount: delivery.attemptCount,
+                lastAttemptAt: now,
+                deliveredAt: delivery.deliveryStatus === 'delivered' ? now : null,
+                errorCode: delivery.deliveryStatus === 'failed' ? 'seed_failure' : null,
+              })
+              .where(eq(notificationDeliveries.id, existingDelivery.id));
+            continue;
+          }
+
+          await tx.insert(notificationDeliveries).values({
+            notificationId: notification.id,
+            channel: delivery.channel,
+            recipientAddress: delivery.recipientAddress,
+            deliveryStatus: delivery.deliveryStatus,
+            attemptCount: delivery.attemptCount,
+            lastAttemptAt: now,
+            deliveredAt: delivery.deliveryStatus === 'delivered' ? now : null,
+            errorCode: delivery.deliveryStatus === 'failed' ? 'seed_failure' : null,
+          });
+        }
+      }
+
+      const allTours = await tx.select({ id: tours.id }).from(tours);
+      for (const tourRow of allTours) {
+        const persistedStops = await tx
+          .select({
+            stopOrder: tourStops.stopOrder,
+            latitude: containers.latitude,
+            longitude: containers.longitude,
+          })
+          .from(tourStops)
+          .innerJoin(containers, eq(tourStops.containerId, containers.id))
+          .where(eq(tourStops.tourId, tourRow.id))
+          .orderBy(asc(tourStops.stopOrder));
+
+        const persistedRoute = buildPersistedRouteSeed(persistedStops);
+        if (!persistedRoute) {
+          await tx.delete(tourRoutes).where(eq(tourRoutes.tourId, tourRow.id));
+          continue;
+        }
+
+        await tx
+          .insert(tourRoutes)
+          .values({
+            tourId: tourRow.id,
+            geometry: persistedRoute.geometry,
+            distanceMeters: persistedRoute.distanceMeters,
+            durationMinutes: persistedRoute.durationMinutes,
+            source: persistedRoute.source,
+            provider: persistedRoute.provider,
+            resolvedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: tourRoutes.tourId,
+            set: {
+              geometry: persistedRoute.geometry,
+              distanceMeters: persistedRoute.distanceMeters,
+              durationMinutes: persistedRoute.durationMinutes,
+              source: persistedRoute.source,
+              provider: persistedRoute.provider,
+              resolvedAt: now,
+              updatedAt: now,
+            },
+          });
       }
     });
   } finally {

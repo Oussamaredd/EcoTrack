@@ -45,8 +45,8 @@ beforeEach(() => {
 
 test("renders navigation buttons", async () => {
   renderWithProviders(<App />, {
-    route: "/app/dashboard",
-    initialEntries: ["/app/dashboard"],
+    route: "/app",
+    initialEntries: ["/app"],
   });
 
   await waitFor(() => {
@@ -65,8 +65,8 @@ test("renders navigation buttons", async () => {
 test("mobile drawer toggle supports click and escape dismissal", async () => {
   setMatchMediaDesktop(false);
   renderWithProviders(<App />, {
-    route: "/app/dashboard",
-    initialEntries: ["/app/dashboard"],
+    route: "/app",
+    initialEntries: ["/app"],
   });
 
   await waitFor(() => {
