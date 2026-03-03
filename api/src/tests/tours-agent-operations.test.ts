@@ -27,6 +27,7 @@ describe('Tours agent operations', () => {
     listAnomalyTypes: vi.fn(),
     reportAnomaly: vi.fn(),
     getTourActivity: vi.fn(),
+    rebuildRoute: vi.fn(),
   };
 
   const authServiceMock = {
@@ -39,6 +40,15 @@ describe('Tours agent operations', () => {
   };
 
   let app: INestApplication;
+  const authUserState = {
+    id: authUserId,
+    email: 'manager@example.com',
+    displayName: 'Manager User',
+    role: 'manager',
+    roles: [{ id: 'role-1', name: 'manager' }],
+    permissions: ['ecotrack.tours.read', 'ecotrack.tours.write'],
+    isActive: true,
+  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -53,7 +63,7 @@ describe('Tours agent operations', () => {
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api');
     app.use((req: Request, _res: Response, next: NextFunction) => {
-      (req as { authUser?: { id: string } }).authUser = { id: authUserId };
+      (req as { authUser?: typeof authUserState }).authUser = { ...authUserState };
       next();
     });
     app.useGlobalPipes(
@@ -77,6 +87,29 @@ describe('Tours agent operations', () => {
     mockToursService.listAnomalyTypes.mockResolvedValue([{ id: anomalyTypeId, label: 'Blocked access' }]);
     mockToursService.reportAnomaly.mockResolvedValue({ id: 'report-1', managerAlertTriggered: true });
     mockToursService.getTourActivity.mockResolvedValue([]);
+    mockToursService.rebuildRoute.mockResolvedValue({
+      tourId,
+      routeGeometry: {
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [2.3522, 48.8566],
+            [2.354, 48.8589],
+          ],
+        },
+        distanceKm: 0.8,
+        durationMinutes: 5,
+        source: 'live',
+        provider: 'router.example.test',
+        resolvedAt: '2026-03-02T09:00:00.000Z',
+      },
+    });
+    authUserState.email = 'manager@example.com';
+    authUserState.displayName = 'Manager User';
+    authUserState.role = 'manager';
+    authUserState.roles = [{ id: 'role-1', name: 'manager' }];
+    authUserState.permissions = ['ecotrack.tours.read', 'ecotrack.tours.write'];
+    authUserState.isActive = true;
   });
 
   afterAll(async () => {
@@ -85,10 +118,39 @@ describe('Tours agent operations', () => {
   });
 
   it('GET /api/tours/agent/me resolves assigned tour for auth user', async () => {
+    mockToursService.getAgentTour.mockResolvedValueOnce({
+      id: tourId,
+      stops: [],
+      routeGeometry: {
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [2.3522, 48.8566],
+            [2.3531, 48.8573],
+            [2.354, 48.8589],
+          ],
+        },
+        distanceKm: 0.78,
+        durationMinutes: 5,
+        source: 'live',
+        provider: 'router.example.test',
+        resolvedAt: '2026-03-02T09:00:00.000Z',
+      },
+    });
     const response = await request(app.getHttpServer()).get('/api/tours/agent/me').expect(200);
 
     expect(mockToursService.getAgentTour).toHaveBeenCalledWith(authUserId);
-    expect(response.body).toEqual({ id: tourId, stops: [] });
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        id: tourId,
+        stops: [],
+        routeGeometry: expect.objectContaining({
+          source: 'live',
+          provider: 'router.example.test',
+          distanceKm: 0.78,
+        }),
+      }),
+    );
   });
 
   it('POST /api/tours/:id/start starts the tour', async () => {
@@ -128,5 +190,33 @@ describe('Tours agent operations', () => {
       authUserId,
       expect.objectContaining({ anomalyTypeId }),
     );
+  });
+
+  it('POST /api/tours/:id/route/rebuild rebuilds the persisted route for managers', async () => {
+    const response = await request(app.getHttpServer())
+      .post(`/api/tours/${tourId}/route/rebuild`)
+      .expect(201);
+
+    expect(mockToursService.rebuildRoute).toHaveBeenCalledWith(tourId, authUserId);
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        tourId,
+        routeGeometry: expect.objectContaining({
+          source: 'live',
+          provider: 'router.example.test',
+        }),
+      }),
+    );
+  });
+
+  it('POST /api/tours/:id/route/rebuild rejects non-manager roles', async () => {
+    authUserState.email = 'agent@example.com';
+    authUserState.displayName = 'Agent User';
+    authUserState.role = 'agent';
+    authUserState.roles = [{ id: 'role-2', name: 'agent' }];
+
+    await request(app.getHttpServer()).post(`/api/tours/${tourId}/route/rebuild`).expect(403);
+
+    expect(mockToursService.rebuildRoute).not.toHaveBeenCalled();
   });
 });

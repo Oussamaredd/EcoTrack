@@ -73,6 +73,14 @@
   font-size: 0.84rem;
 }
 
+.ops-card-head-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .ops-grid {
   display: grid;
   gap: 0.75rem;
@@ -434,43 +442,79 @@
   padding: 0.5rem;
 }
 
-.ops-route-map-stack {
-  position: relative;
-  overflow: hidden;
+.ops-route-map-leaflet {
+  width: 100%;
+  min-height: 320px;
+  height: min(52vh, 420px);
   border-radius: 12px;
-  min-height: 320px;
-  background: rgba(8, 14, 27, 0.86);
+  overflow: hidden;
+  border: 1px solid rgba(129, 167, 246, 0.18);
 }
 
-.ops-route-map-frame {
-  display: block;
-  width: 100%;
-  min-height: 320px;
-  height: min(52vh, 400px);
-  border: 0;
-  background: rgba(8, 14, 27, 0.92);
+.ops-route-map-static {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(47, 123, 255, 0.14), transparent 36%),
+    linear-gradient(145deg, rgba(8, 14, 27, 0.92), rgba(10, 18, 32, 0.88));
 }
 
-.ops-route-map-overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+.ops-route-map-static-label {
+  margin: 0;
+  max-width: 32ch;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
-.ops-route-map-banner {
-  position: absolute;
-  left: 0.75rem;
-  right: 0.75rem;
-  bottom: 0.75rem;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid rgba(129, 167, 246, 0.34);
-  border-radius: 10px;
-  background: rgba(8, 14, 27, 0.78);
+.ops-route-map-shell .leaflet-control-zoom a,
+.ops-route-map-shell .leaflet-control-attribution {
+  background: rgba(8, 14, 27, 0.84);
   color: var(--text);
+  border-color: rgba(129, 167, 246, 0.24);
+}
+
+.ops-route-map-shell .leaflet-control-attribution a {
+  color: #9dc2ff;
+}
+
+.ops-route-map-shell .leaflet-popup-content-wrapper,
+.ops-route-map-shell .leaflet-popup-tip {
+  background: rgba(8, 14, 27, 0.92);
+  color: var(--text);
+}
+
+.ops-stop-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid rgba(8, 14, 27, 0.92);
   font-size: 0.78rem;
-  line-height: 1.45;
+  font-weight: 800;
+  line-height: 1;
+  color: #07111f;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.24);
+}
+
+.ops-stop-marker span {
+  display: block;
+}
+
+.ops-stop-marker-active {
+  background: #ffd166;
+}
+
+.ops-stop-marker-completed {
+  background: #49d9a2;
+}
+
+.ops-stop-marker-pending {
+  background: #2bd4a8;
 }
 
 .ops-route-map-legend {

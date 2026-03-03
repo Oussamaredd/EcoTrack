@@ -76,7 +76,7 @@ describe("Routing Matrix", () => {
     ).toBeInTheDocument();
   });
 
-  test("`/` redirects to `/app/dashboard` when authenticated", async () => {
+  test("`/` redirects to `/app` when authenticated", async () => {
     setAuthState({
       user: { id: "123", name: "Test User" },
       isLoading: false,
@@ -86,8 +86,26 @@ describe("Routing Matrix", () => {
     const { getLocation } = renderRoute("/");
 
     await waitFor(() => {
-      expect(getLocation()?.pathname).toBe("/app/dashboard");
+      expect(getLocation()?.pathname).toBe("/app");
     });
+  });
+
+  test("`/app` renders the shared workspace home when authenticated", async () => {
+    setAuthState({
+      user: { id: "123", name: "Test User", role: "agent", roles: [] },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const { getLocation } = renderRoute("/app");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/app");
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: /Command your EcoTrack workspace\./i }),
+    ).toBeInTheDocument();
   });
 
   test("`/login` renders login page when unauthenticated", async () => {
@@ -115,7 +133,7 @@ describe("Routing Matrix", () => {
     expect(await screen.findByRole("heading", { name: /Sign-in failed\./i })).toBeInTheDocument();
   });
 
-  test("guest auth routes redirect to `/app/dashboard` when authenticated", async () => {
+  test("guest auth routes redirect to `/app` when authenticated", async () => {
     setAuthState({
       user: { id: "123", name: "Test User" },
       isLoading: false,
@@ -125,7 +143,7 @@ describe("Routing Matrix", () => {
     for (const route of ["/login", "/signup", "/forgot-password", "/reset-password"]) {
       const { getLocation, unmount } = renderRoute(route);
       await waitFor(() => {
-        expect(getLocation()?.pathname).toBe("/app/dashboard");
+        expect(getLocation()?.pathname).toBe("/app");
       });
       unmount();
     }
@@ -155,6 +173,7 @@ describe("Routing Matrix", () => {
       "/app/admin",
       "/app/agent/tour",
       "/app/manager/planning",
+      "/app/manager/tours",
       "/app/manager/reports",
       "/app/citizen/report",
       "/app/citizen/profile",
@@ -247,6 +266,20 @@ describe("Routing Matrix", () => {
     });
 
     expect(screen.queryByRole("heading", { name: /Access Denied/i })).not.toBeInTheDocument();
+  });
+
+  test("`/app/dashboard` redirects users without manager access to `/app`", async () => {
+    setAuthState({
+      user: { id: "123", role: "agent", roles: [] },
+      isLoading: false,
+      isAuthenticated: true,
+    });
+
+    const { getLocation } = renderRoute("/app/dashboard");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/app");
+    });
   });
 
   test("legacy ticket app routes redirect to support workspace views", async () => {

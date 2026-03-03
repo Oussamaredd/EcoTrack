@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  House,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
@@ -276,9 +277,16 @@ export default function AppLayout() {
   const navItems = React.useMemo<AppNavItem[]>(
     () => [
       {
+        to: "/app",
+        label: "Workspace",
+        icon: House,
+        matches: (pathname) => pathname === "/app",
+      },
+      {
         to: "/app/dashboard",
         label: "Dashboard",
         icon: LayoutDashboard,
+        requiresManager: true,
         matches: (pathname) => pathname === "/app/dashboard",
       },
       {
@@ -294,6 +302,13 @@ export default function AppLayout() {
         icon: MapPin,
         requiresManager: true,
         matches: (pathname) => isRouteActive(pathname, '/app/manager/planning'),
+      },
+      {
+        to: '/app/manager/tours',
+        label: 'Tour Operations',
+        icon: Truck,
+        requiresManager: true,
+        matches: (pathname) => isRouteActive(pathname, '/app/manager/tours'),
       },
       {
         to: '/app/manager/reports',
@@ -352,7 +367,12 @@ export default function AppLayout() {
   const currentPageCatalog = React.useMemo<PageMeta[]>(
     () => [
       {
+        label: "Workspace",
+        matches: (pathname) => pathname === "/app",
+      },
+      {
         label: "Dashboard",
+        requiresManager: true,
         matches: (pathname) => pathname === "/app/dashboard",
       },
       {
@@ -376,6 +396,11 @@ export default function AppLayout() {
         label: 'Tour Planning',
         requiresManager: true,
         matches: (pathname) => isRouteActive(pathname, '/app/manager/planning'),
+      },
+      {
+        label: 'Tour Operations',
+        requiresManager: true,
+        matches: (pathname) => isRouteActive(pathname, '/app/manager/tours'),
       },
       {
         label: 'Manager Reports',
@@ -495,7 +520,7 @@ export default function AppLayout() {
         tabIndex={-1}
       >
         <div className={sidebarTopClassName}>
-          <Link to="/app/dashboard" className={brandLinkClassName} aria-label="EcoTrack dashboard">
+          <Link to="/app" className={brandLinkClassName} aria-label="EcoTrack workspace">
             <BrandLogo imageClassName="app-brand-logo" textClassName="app-brand-wordmark" />
           </Link>
           <button

@@ -7,6 +7,7 @@ Plan optimized tours, monitor operations, and publish monthly reports.
 ## Main routes
 
 - Planning wizard: `/app/manager/planning`
+- Tour operations: `/app/manager/tours`
 - Report center: `/app/manager/reports`
 - Dashboard overview: `/app/dashboard`
 
@@ -14,8 +15,10 @@ Plan optimized tours, monitor operations, and publish monthly reports.
 
 1. Open `Tour Planning Wizard`, select zone/schedule/threshold, and run optimization.
 2. Adjust route order if needed and assign to an agent.
-3. Use `Manager Reports` to start from a calendar preset, confirm the local-time reporting window, and generate/download/regenerate exports.
-4. Track critical indicators on dashboard and trigger emergency collection when needed.
+3. Use the planning page `Rebuild Stored Route` action to refresh the last created tour if you need to regenerate persisted route geometry without changing stops.
+4. Use `Tour Operations` to review existing scheduled tours and trigger per-tour route rebuilds from the current queue.
+5. Use `Manager Reports` to start from a calendar preset, confirm the local-time reporting window, and generate/download/regenerate exports.
+6. Track critical indicators on dashboard and trigger emergency collection when needed.
 
 ## Planning form behavior
 
@@ -33,6 +36,13 @@ Plan optimized tours, monitor operations, and publish monthly reports.
 - Planning zone/agent metadata auto-refreshes every 30 seconds.
 - Background-tab polling is disabled to reduce unnecessary traffic.
 
+## Persisted route operations
+
+- `Tour Planning Wizard` exposes `Rebuild Stored Route` for the most recently created tour so managers can rerun route persistence immediately after assignment.
+- `Tour Operations` loads the current queue from `GET /api/tours` and shows scheduled time, zone, assignment state, and last update for each listed tour.
+- Per-tour rebuilds call `POST /api/tours/:tourId/route/rebuild` and return success/error feedback in the page.
+- Success feedback tells the manager whether the latest persisted result is a live road route or a fallback route.
+
 ## Manager reports behavior
 
 - `Manager Reports` defaults to the previous calendar month and offers `Month to date`, `Last 30 days`, and `Custom` presets.
@@ -43,6 +53,8 @@ Plan optimized tours, monitor operations, and publish monthly reports.
 
 ## Related APIs
 
+- `GET /api/tours`
+- `POST /api/tours/:tourId/route/rebuild`
 - `POST /api/planning/optimize-tour`
 - `POST /api/planning/create-tour`
 - `GET /api/planning/dashboard`

@@ -7,8 +7,12 @@ describe('PlanningService stream hardening', () => {
   const monitoringServiceMock = {
     setRealtimeDiagnostics: vi.fn(),
   };
+  const toursServiceMock = {
+    persistRouteForTour: vi.fn().mockResolvedValue(null),
+  };
 
   it('replays buffered events after Last-Event-ID', async () => {
+    toursServiceMock.persistRouteForTour.mockClear();
     const repositoryMock = {
       createPlannedTour: vi.fn().mockResolvedValue({
         id: 'tour-1',
@@ -26,7 +30,12 @@ describe('PlanningService stream hardening', () => {
       issuePlanningStreamSession: vi.fn(),
     };
 
-    const service = new PlanningService(repositoryMock as any, authServiceMock as any, monitoringServiceMock as any);
+    const service = new PlanningService(
+      repositoryMock as any,
+      authServiceMock as any,
+      monitoringServiceMock as any,
+      toursServiceMock as any,
+    );
     const capturedEvents: PlanningStreamEvent[] = [];
     service.subscribeRealtimeEvents((event) => {
       capturedEvents.push(event);
@@ -46,6 +55,7 @@ describe('PlanningService stream hardening', () => {
     const replayed = service.getReplayEventsAfter(capturedEvents[0]?.id ?? '');
     expect(replayed.length).toBe(capturedEvents.length - 1);
     expect(service.getReplayEventsAfter('missing-id')).toEqual([]);
+    expect(toursServiceMock.persistRouteForTour).toHaveBeenCalledWith('tour-1');
   });
 
   it('issues stream session only for manager/admin role users', () => {
@@ -63,7 +73,12 @@ describe('PlanningService stream hardening', () => {
       }),
     };
 
-    const service = new PlanningService(repositoryMock as any, authServiceMock as any, monitoringServiceMock as any);
+    const service = new PlanningService(
+      repositoryMock as any,
+      authServiceMock as any,
+      monitoringServiceMock as any,
+      toursServiceMock as any,
+    );
 
     expect(
       service.issueStreamSession({
@@ -139,7 +154,12 @@ describe('PlanningService stream hardening', () => {
   });
 
   it('tracks realtime diagnostics counters and emitted events', () => {
-    const service = new PlanningService({} as any, {} as any, monitoringServiceMock as any);
+    const service = new PlanningService(
+      {} as any,
+      {} as any,
+      monitoringServiceMock as any,
+      toursServiceMock as any,
+    );
 
     service.registerSseConnection();
     service.registerWebSocketConnection();

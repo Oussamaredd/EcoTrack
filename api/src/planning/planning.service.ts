@@ -3,6 +3,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service.js';
 import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import { MonitoringService } from '../monitoring/monitoring.service.js';
+import { ToursService } from '../tours/tours.service.js';
 
 import type { CreatePlannedTourDto } from './dto/create-planned-tour.dto.js';
 import type { GenerateReportDto } from './dto/generate-report.dto.js';
@@ -67,6 +68,7 @@ export class PlanningService {
     private readonly repository: PlanningRepository,
     private readonly authService: AuthService,
     private readonly monitoringService: MonitoringService,
+    private readonly toursService: ToursService,
   ) {
     this.syncRealtimeDiagnostics();
   }
@@ -85,6 +87,10 @@ export class PlanningService {
 
   async createPlannedTour(dto: CreatePlannedTourDto, actorUserId: string) {
     const tour = await this.repository.createPlannedTour(dto, actorUserId);
+    const tourId = this.readEntityId(tour);
+    if (tourId) {
+      await this.toursService.persistRouteForTour(tourId);
+    }
 
     this.publishStreamEvent(
       REALTIME_EVENT_NAMES.tourUpdated,
@@ -114,8 +120,29 @@ export class PlanningService {
     return this.repository.getManagerDashboard();
   }
 
+  async listAlerts(filters: { status?: string; severity?: string; limit: number }) {
+    return this.repository.listAlerts(filters);
+  }
+
+  async acknowledgeAlert(alertId: string, actorUserId: string) {
+    return this.repository.acknowledgeAlert(alertId, actorUserId);
+  }
+
+  async listNotifications(limit: number) {
+    return this.repository.listNotifications(limit);
+  }
+
   async triggerEmergencyCollection(dto: TriggerEmergencyCollectionDto, actorUserId: string) {
     const emergencyResult = await this.repository.triggerEmergencyCollection(dto, actorUserId);
+    const emergencyTourId = this.readEntityId(
+      typeof emergencyResult === 'object' && emergencyResult && 'emergencyTour' in emergencyResult
+        ? (emergencyResult as { emergencyTour?: unknown }).emergencyTour
+        : emergencyResult,
+    );
+
+    if (emergencyTourId) {
+      await this.toursService.persistRouteForTour(emergencyTourId);
+    }
 
     this.publishStreamEvent(
       REALTIME_EVENT_NAMES.emergencyCreated,
@@ -291,6 +318,8 @@ export class PlanningService {
       ecoKpis?: { containers?: number; zones?: number; tours?: number };
       thresholds?: { criticalFillPercent?: number };
       criticalContainers?: unknown[];
+      activeAlerts?: { totalOpen?: number };
+      telemetryHealth?: { reportingContainers?: number; staleSensors?: number };
     };
 
     return this.createStreamEvent(REALTIME_EVENT_NAMES.dashboardSnapshot, {
@@ -306,6 +335,11 @@ export class PlanningService {
       criticalContainersCount: Array.isArray(dashboard?.criticalContainers)
         ? dashboard.criticalContainers.length
         : 0,
+      activeAlertsCount: dashboard?.activeAlerts?.totalOpen ?? 0,
+      telemetryHealth: {
+        reportingContainers: dashboard?.telemetryHealth?.reportingContainers ?? 0,
+        staleSensors: dashboard?.telemetryHealth?.staleSensors ?? 0,
+      },
     });
   }
 

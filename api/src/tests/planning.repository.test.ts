@@ -332,4 +332,73 @@ describe('PlanningRepository invariants', () => {
     expect(dbMock.update).toHaveBeenCalledTimes(1);
     expect(result).toEqual(expect.objectContaining({ status: 'email_delivered' }));
   });
+
+  it('groups notification deliveries under their parent notifications', async () => {
+    const listNotificationsSelection = {
+      from: vi.fn().mockReturnValue({
+        orderBy: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([
+            {
+              id: 'notification-1',
+              eventType: 'anomaly_reported',
+              entityType: 'alert_event',
+              entityId: 'alert-1',
+              audienceScope: 'role:manager',
+              title: 'Anomaly reported',
+              body: 'Critical anomaly',
+              preferredChannels: ['email'],
+              scheduledAt: new Date('2026-03-03T09:00:00.000Z'),
+              status: 'queued',
+              createdAt: new Date('2026-03-03T09:00:00.000Z'),
+            },
+          ]),
+        }),
+      }),
+    };
+
+    const listDeliveriesSelection = {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          orderBy: vi.fn().mockResolvedValue([
+            {
+              id: 'delivery-1',
+              notificationId: 'notification-1',
+              channel: 'email',
+              recipientAddress: 'role:manager',
+              providerMessageId: null,
+              deliveryStatus: 'pending',
+              attemptCount: 0,
+              lastAttemptAt: null,
+              deliveredAt: null,
+              errorCode: null,
+              createdAt: new Date('2026-03-03T09:00:00.000Z'),
+            },
+          ]),
+        }),
+      }),
+    };
+
+    const dbMock = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(listNotificationsSelection)
+        .mockReturnValueOnce(listDeliveriesSelection),
+    };
+
+    const repository = new PlanningRepository(dbMock as any);
+    const result = await repository.listNotifications(25);
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 'notification-1',
+        deliveries: [
+          expect.objectContaining({
+            id: 'delivery-1',
+            notificationId: 'notification-1',
+            channel: 'email',
+          }),
+        ],
+      }),
+    ]);
+  });
 });

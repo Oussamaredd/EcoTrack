@@ -78,6 +78,27 @@
       "when": 1772202446623,
       "tag": "0010_rich_hardball",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1772492007424,
+      "tag": "0011_legal_captain_universe",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1772546803464,
+      "tag": "0012_schema_namespaces",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1772547172397,
+      "tag": "0013_cdc_storage_foundations",
+      "breakpoints": true
     }
   ]
 }

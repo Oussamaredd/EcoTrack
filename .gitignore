@@ -70,3 +70,7 @@ api/coverage/
 # Temporary local verification artifacts
 temp_dev_*
 *.pid
+
+# Local planning source artifacts
+docs/ECOTRACK_CDC_COMMUN_V2 .docx
+docs/ECOTRACK_M2_DEV.xlsx

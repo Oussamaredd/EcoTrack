@@ -11,6 +11,7 @@ const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 120;
 const DEFAULT_LOG_LEVEL = 'info';
 const DEFAULT_LOG_FORMAT: AppConfig['logging']['format'] = 'json';
+const DEFAULT_ROUTING_API_BASE_URL = 'https://router.project-osrm.org';
 
 const toPositiveInt = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
@@ -56,6 +57,9 @@ export type AppConfig = {
     level: string;
     format: 'json' | 'pretty';
   };
+  routing: {
+    baseUrl: string;
+  };
 };
 
 export default (): AppConfig => ({
@@ -73,5 +77,8 @@ export default (): AppConfig => ({
   logging: {
     level: normalizeLogLevel(process.env.LOG_LEVEL),
     format: normalizeLogFormat(process.env.LOG_FORMAT, process.env.NODE_ENV),
+  },
+  routing: {
+    baseUrl: process.env.ROUTING_API_BASE_URL ?? DEFAULT_ROUTING_API_BASE_URL,
   },
 });

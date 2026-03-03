@@ -19,6 +19,7 @@ import { AdminSettingsService } from './admin.settings.service.js';
 import type { AdminUserContext } from './admin.types.js';
 import { getRequestMetadata } from './admin.utils.js';
 import { DispatchTestNotificationDto } from './dto/dispatch-test-notification.dto.js';
+import { UpsertAlertRuleDto } from './dto/upsert-alert-rule.dto.js';
 
 @Controller('admin/settings')
 @UseGuards(AdminGuard)
@@ -85,6 +86,31 @@ export class AdminSettingsController {
         throw error;
       }
       throw new InternalServerErrorException('Unable to dispatch test notification');
+    }
+  }
+
+  @Get('alert-rules')
+  async listAlertRules() {
+    try {
+      const rules = await this.settingsService.listAlertRules();
+      return { data: rules };
+    } catch (error) {
+      console.error('Failed to fetch alert rules', error);
+      throw new InternalServerErrorException('Unable to fetch alert rules');
+    }
+  }
+
+  @Put('alert-rules')
+  async upsertAlertRule(@Body() body: UpsertAlertRuleDto) {
+    try {
+      const rule = await this.settingsService.upsertAlertRule(body);
+      return { data: rule };
+    } catch (error) {
+      console.error('Failed to upsert alert rule', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Unable to upsert alert rule');
     }
   }
 }

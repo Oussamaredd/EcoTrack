@@ -8,7 +8,7 @@ import { DashboardService } from './dashboard.service.js';
 
 @Controller('dashboard')
 @UseGuards(AuthenticatedUserGuard, PermissionsGuard)
-@RequirePermissions('tickets.read')
+@RequirePermissions('ecotrack.analytics.read')
 export class DashboardController {
   constructor(
     @Inject(DashboardService)

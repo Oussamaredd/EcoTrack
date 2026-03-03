@@ -7,12 +7,16 @@ import {
 } from '@nestjs/common';
 import { and, asc, count, eq, sql } from 'drizzle-orm';
 import {
+  alertEvents,
   anomalyReports,
   anomalyTypes,
   auditLogs,
   collectionEvents,
   containers,
   type DatabaseClient,
+  notificationDeliveries,
+  notifications,
+  tourRoutes,
   tourStops,
   tours,
   users,
@@ -37,6 +41,11 @@ type TourFilters = {
 type LatLngPoint = {
   latitude: number | null;
   longitude: number | null;
+};
+
+type RouteGeometryLineString = {
+  type: 'LineString';
+  coordinates: Array<[number, number]>;
 };
 
 const TERMINAL_TOUR_STATUSES = new Set(['completed', 'closed', 'cancelled']);
@@ -104,7 +113,29 @@ export class ToursRepository {
       return null;
     }
 
-    const stops = await this.db
+    const [stops, storedRoute] = await Promise.all([
+      this.getTourRouteStops(tour.id),
+      this.getStoredRoute(tour.id),
+    ]);
+
+    return {
+      ...tour,
+      stops,
+      storedRoute,
+      itinerary: stops.map((stop) => ({
+        stopId: stop.id,
+        order: stop.stopOrder,
+        status: stop.status,
+        eta: stop.eta,
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+      })),
+      routeSummary: this.buildRouteSummary(tour.scheduledFor, stops),
+    };
+  }
+
+  async getTourRouteStops(tourId: string) {
+    return this.db
       .select({
         id: tourStops.id,
         stopOrder: tourStops.stopOrder,
@@ -119,22 +150,119 @@ export class ToursRepository {
       })
       .from(tourStops)
       .innerJoin(containers, eq(tourStops.containerId, containers.id))
-      .where(eq(tourStops.tourId, tour.id))
+      .where(eq(tourStops.tourId, tourId))
       .orderBy(asc(tourStops.stopOrder));
+  }
 
-    return {
-      ...tour,
-      stops,
-      itinerary: stops.map((stop) => ({
-        stopId: stop.id,
-        order: stop.stopOrder,
-        status: stop.status,
-        eta: stop.eta,
-        latitude: stop.latitude,
-        longitude: stop.longitude,
-      })),
-      routeSummary: this.buildRouteSummary(tour.scheduledFor, stops),
-    };
+  async getStoredRoute(tourId: string) {
+    const [storedRoute] = await this.db
+      .select({
+        id: tourRoutes.id,
+        tourId: tourRoutes.tourId,
+        geometry: tourRoutes.geometry,
+        distanceMeters: tourRoutes.distanceMeters,
+        durationMinutes: tourRoutes.durationMinutes,
+        source: tourRoutes.source,
+        provider: tourRoutes.provider,
+        resolvedAt: tourRoutes.resolvedAt,
+        createdAt: tourRoutes.createdAt,
+        updatedAt: tourRoutes.updatedAt,
+      })
+      .from(tourRoutes)
+      .where(eq(tourRoutes.tourId, tourId))
+      .limit(1);
+
+    return storedRoute ?? null;
+  }
+
+  async getTourById(tourId: string) {
+    const [tour] = await this.db
+      .select({
+        id: tours.id,
+        name: tours.name,
+        status: tours.status,
+        scheduledFor: tours.scheduledFor,
+        zoneId: tours.zoneId,
+        assignedAgentId: tours.assignedAgentId,
+        createdAt: tours.createdAt,
+        updatedAt: tours.updatedAt,
+      })
+      .from(tours)
+      .where(eq(tours.id, tourId))
+      .limit(1);
+
+    return tour ?? null;
+  }
+
+  async upsertTourRoute(route: {
+    tourId: string;
+    geometry: RouteGeometryLineString;
+    distanceMeters?: number | null;
+    durationMinutes?: number | null;
+    source: string;
+    provider: string;
+    resolvedAt: Date;
+  }) {
+    const [storedRoute] = await this.db
+      .insert(tourRoutes)
+      .values({
+        tourId: route.tourId,
+        geometry: route.geometry,
+        distanceMeters: route.distanceMeters ?? null,
+        durationMinutes: route.durationMinutes ?? null,
+        source: route.source,
+        provider: route.provider,
+        resolvedAt: route.resolvedAt,
+      })
+      .onConflictDoUpdate({
+        target: tourRoutes.tourId,
+        set: {
+          geometry: route.geometry,
+          distanceMeters: route.distanceMeters ?? null,
+          durationMinutes: route.durationMinutes ?? null,
+          source: route.source,
+          provider: route.provider,
+          resolvedAt: route.resolvedAt,
+          updatedAt: new Date(),
+        },
+      })
+      .returning({
+        id: tourRoutes.id,
+        tourId: tourRoutes.tourId,
+        geometry: tourRoutes.geometry,
+        distanceMeters: tourRoutes.distanceMeters,
+        durationMinutes: tourRoutes.durationMinutes,
+        source: tourRoutes.source,
+        provider: tourRoutes.provider,
+        resolvedAt: tourRoutes.resolvedAt,
+        createdAt: tourRoutes.createdAt,
+        updatedAt: tourRoutes.updatedAt,
+      });
+
+    return storedRoute ?? null;
+  }
+
+  async recordRouteRebuildAuditLog(
+    tourId: string,
+    actorUserId: string,
+    details: {
+      source: string;
+      provider: string;
+      distanceMeters: number | null;
+      durationMinutes: number | null;
+      resolvedAt: string;
+    },
+  ) {
+    await this.db.insert(auditLogs).values({
+      userId: actorUserId,
+      action: 'tour_route_rebuilt',
+      resourceType: 'tour_routes',
+      resourceId: tourId,
+      oldValues: null,
+      newValues: {
+        ...details,
+      },
+    });
   }
 
   async startTour(tourId: string, actorUserId: string) {
@@ -163,7 +291,11 @@ export class ToursRepository {
       if (tour.status !== 'in_progress') {
         [updatedTour] = await tx
           .update(tours)
-          .set({ status: 'in_progress', updatedAt: new Date() })
+          .set({
+            status: 'in_progress',
+            startedAt: tour.startedAt ?? new Date(),
+            updatedAt: new Date(),
+          })
           .where(eq(tours.id, tourId))
           .returning();
       }
@@ -308,7 +440,7 @@ export class ToursRepository {
       } else {
         await tx
           .update(tours)
-          .set({ status: 'completed', updatedAt: new Date() })
+          .set({ status: 'completed', completedAt: new Date(), updatedAt: new Date() })
           .where(eq(tours.id, tourId));
       }
 
@@ -389,9 +521,60 @@ export class ToursRepository {
         },
       });
 
+      const [createdAlert] = await tx
+        .insert(alertEvents)
+        .values({
+          ruleId: null,
+          containerId: null,
+          zoneId: tour.zoneId,
+          eventType: 'anomaly_reported',
+          severity: createdReport.severity,
+          triggeredAt: createdReport.reportedAt,
+          currentStatus: 'open',
+          acknowledgedByUserId: null,
+          payloadSnapshot: {
+            anomalyReportId: createdReport.id,
+            anomalyTypeCode: anomalyType.code,
+            tourId,
+            tourStopId: createdReport.tourStopId,
+          },
+        })
+        .returning();
+
+      const normalizedSeverity = this.normalizeStatus(createdReport.severity);
+      if (normalizedSeverity === 'high' || normalizedSeverity === 'critical') {
+        const [createdNotification] = await tx
+          .insert(notifications)
+          .values({
+            eventType: 'anomaly_reported',
+            entityType: 'alert_event',
+            entityId: createdAlert?.id ?? createdReport.id,
+            audienceScope: 'role:manager',
+            title: `Anomaly reported on ${tour.name}`,
+            body: createdReport.comments ?? anomalyType.label,
+            preferredChannels: ['email'],
+            scheduledAt: new Date(),
+            status: 'queued',
+            createdAt: new Date(),
+          })
+          .returning();
+
+        if (createdNotification) {
+          await tx.insert(notificationDeliveries).values({
+            notificationId: createdNotification.id,
+            channel: 'email',
+            recipientAddress: 'role:manager',
+            deliveryStatus: 'pending',
+            attemptCount: 0,
+            createdAt: new Date(),
+          });
+        }
+      }
+
       return {
         ...createdReport,
         managerAlertTriggered: true,
+        alertEventId: createdAlert?.id ?? null,
       };
     });
   }

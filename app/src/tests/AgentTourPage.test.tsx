@@ -99,6 +99,7 @@ describe("AgentTourPage", () => {
           estimatedDurationMinutes: 8,
           isOverdue: false,
         },
+        routeGeometry: null,
         stops: [
           {
             id: "stop-1",
@@ -124,7 +125,7 @@ describe("AgentTourPage", () => {
     const user = userEvent.setup();
     renderWithProviders(<AgentTourPage />);
 
-    expect(screen.getByTitle(/OpenStreetMap tour overview/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Leaflet route map with road-snapped geometry/i)).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Volume \(liters\)/i), "145");
     expect(screen.queryByLabelText(/QR code/i)).not.toBeInTheDocument();
     await user.click(

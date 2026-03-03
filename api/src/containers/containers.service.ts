@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 
 import { ContainersRepository } from './containers.repository.js';
 import type { CreateContainerDto } from './dto/create-container.dto.js';
+import type { RecordContainerMeasurementDto } from './dto/record-container-measurement.dto.js';
 import type { UpdateContainerDto } from './dto/update-container.dto.js';
+import type { UpsertContainerSensorDto } from './dto/upsert-container-sensor.dto.js';
 
 type ContainerListFilters = {
   search?: string;
@@ -26,5 +28,21 @@ export class ContainersService {
 
   async update(id: string, dto: UpdateContainerDto) {
     return this.repository.update(id, dto);
+  }
+
+  async listTypes() {
+    return this.repository.listTypes();
+  }
+
+  async getTelemetry(containerId: string, limit: number) {
+    return this.repository.getTelemetry(containerId, limit);
+  }
+
+  async upsertSensor(containerId: string, dto: UpsertContainerSensorDto) {
+    return this.repository.upsertSensor(containerId, dto);
+  }
+
+  async recordMeasurement(containerId: string, dto: RecordContainerMeasurementDto) {
+    return this.repository.recordMeasurement(containerId, dto);
   }
 }

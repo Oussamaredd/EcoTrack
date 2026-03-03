@@ -51,6 +51,27 @@ export const useCreatePlannedTour = () => {
   });
 };
 
+export const useRebuildTourRoute = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (tourId: string) => apiClient.post(`/api/tours/${tourId}/route/rebuild`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agent-tour'] });
+      queryClient.invalidateQueries({ queryKey: ['planning-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['manager-tours'] });
+    },
+  });
+};
+
+export const useManagerToursList = (enabled = true) =>
+  useQuery({
+    queryKey: ['manager-tours'],
+    queryFn: async () => apiClient.get('/api/tours?page=1&pageSize=50'),
+    enabled,
+    staleTime: 15_000,
+  });
+
 export const usePlanningDashboard = (enabled = true) =>
   useQuery({
     queryKey: ['planning-dashboard'],

@@ -43,7 +43,11 @@ GET /auth/google/callback
 
 ```text
 GET /containers
+GET /containers/types
 POST /containers
+GET /containers/:id/telemetry
+POST /containers/:id/sensors
+POST /containers/:id/measurements
 PUT /containers/:id
 
 GET /zones
@@ -74,6 +78,7 @@ POST /tours
 GET /tours/agent/me
 POST /tours/:tourId/start
 POST /tours/:tourId/stops/:stopId/validate
+POST /tours/:tourId/route/rebuild
 
 GET /tours/anomaly-types
 POST /tours/:tourId/anomalies
@@ -81,10 +86,18 @@ GET /tours/:tourId/activity
 ```
 
 Agent tour execution notes:
-- `GET /api/tours/agent/me` returns the current actionable non-terminal tour for the authenticated agent, plus ordered `stops`, itinerary coordinates, and a `routeSummary` block.
+- `GET /api/tours/agent/me` returns the current actionable non-terminal tour for the authenticated agent, plus ordered `stops`, itinerary coordinates, a `routeSummary` block, and persisted `routeGeometry` when at least two valid stop coordinates are available.
 - `POST /api/tours/:tourId/start` is safe to repeat while the tour is already `in_progress`; completed tours are rejected.
 - `POST /api/tours/:tourId/stops/:stopId/validate` accepts only the active stop for new validations. Repeating the same completed-stop validation returns the latest route state without creating a duplicate collection event.
 - The current web workflow uses manual container confirmation plus optional browser geolocation. The optional `qrCode` field remains available for future mobile clients, but it is not required for the platform UI.
+- Route geometry is now stored in the database per tour (`tour_routes`) and returned as a GeoJSON `LineString`.
+- The API persists road-snapped route geometry against the configured routing service (`ROUTING_API_BASE_URL`) during tour creation/update flows; when routing is unavailable, it stores a straight stop-to-stop fallback `LineString`.
+- If an actionable tour is missing persisted route data, the API backfills it on the next `GET /api/tours/agent/me`.
+- If stored route geometry is present but no longer matches the current stop endpoints, `GET /api/tours/agent/me` automatically rebuilds and overwrites the stale route before returning the response.
+- Seed-generated fallback routes are also refreshed on `GET /api/tours/agent/me` so the active agent view can upgrade from demo geometry to a live road route as soon as routing is available.
+- `POST /api/tours/:tourId/route/rebuild` lets manager/admin users force a fresh persisted route rebuild for a tour without editing the stops. It overwrites the current `tour_routes` row and records an audit log entry.
+- The web client caches the last successful tour payload in browser storage and reuses cached map tiles through a service worker when supported.
+- The web client intentionally ignores cached `seed` fallback routes so the agent page does not keep booting from demo geometry after live routing becomes available.
 - `POST /api/tours/:tourId/anomalies` accepts `severity` values `low`, `medium`, `high`, or `critical`.
 - `photoUrl` in anomaly payloads must be a valid `http`/`https` URL when provided.
 
@@ -96,6 +109,9 @@ GET /planning/agents
 POST /planning/optimize-tour
 POST /planning/create-tour
 GET /planning/dashboard
+GET /planning/alerts
+POST /planning/alerts/:id/acknowledge
+GET /planning/notifications
 POST /planning/ws-session
 POST /planning/stream/session
 POST /planning/emergency-collection
@@ -118,9 +134,15 @@ Report generation supports:
 - `POST /planning/reports/:reportId/regenerate` recalculates metrics and regenerates file content from the source report period/KPIs.
 
 GPS fields (`latitude`, `longitude`) in citizen reporting, container setup, and tour stop validation are validated as latitude/longitude coordinates.
+`GET /api/containers/types` returns the active `container_types` catalog from the `core` schema.
+`GET /api/containers/:id/telemetry` returns sensor inventory, the latest measurement, and recent `iot.measurements` history for that container.
+`POST /api/containers/:id/sensors` upserts a `sensor_devices` record by `deviceUid`.
+`POST /api/containers/:id/measurements` persists a new measurement, refreshes sensor heartbeat data, and updates the container's operational fill state.
 `manualContainerIds` in `POST /planning/optimize-tour` must be an array of UUID strings.
 `POST /planning/optimize-tour` excludes containers already assigned to non-terminal tours in the same zone within `+/- 120 minutes` of `scheduledFor`; explicitly supplied `manualContainerIds` still override that schedule deferral.
 `orderedContainerIds` in `POST /planning/create-tour` must all belong to the selected `zoneId`.
+`GET /api/planning/alerts` exposes persisted `alert_events`, and `POST /api/planning/alerts/:id/acknowledge` marks an alert as acknowledged.
+`GET /api/planning/notifications` returns recent persisted notifications with their delivery attempts.
 
 ### Analytics and Gamification
 
@@ -172,6 +194,8 @@ DELETE /admin/roles/:id
 
 GET /admin/settings
 PUT /admin/settings
+GET /admin/settings/alert-rules
+PUT /admin/settings/alert-rules
 POST /admin/settings/notifications/test
 
 GET /admin/audit-logs

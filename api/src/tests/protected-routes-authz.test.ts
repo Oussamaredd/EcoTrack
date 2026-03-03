@@ -163,9 +163,25 @@ describe('Protected API route authorization', () => {
     );
   });
 
-  it('allows authenticated user with read permission to access protected read endpoints', async () => {
+  it('returns 403 for dashboard when user lacks analytics permission', async () => {
     usersServiceMock.getRolesForUser.mockResolvedValue([
       { id: 'role-agent', name: 'agent', permissions: ['tickets.read'] },
+    ]);
+
+    await request(app.getHttpServer())
+      .get('/api/dashboard')
+      .set('Cookie', authCookie)
+      .expect(403);
+  });
+
+  it('allows authenticated user with analytics permission to access protected read endpoints', async () => {
+    usersServiceMock.ensureUserForAuth.mockResolvedValue({ ...baseDbUser, role: 'manager' });
+    usersServiceMock.getRolesForUser.mockResolvedValue([
+      {
+        id: 'role-manager',
+        name: 'manager',
+        permissions: ['tickets.read', 'ecotrack.analytics.read'],
+      },
     ]);
 
     await request(app.getHttpServer()).get('/api/tickets').set('Cookie', authCookie).expect(200);

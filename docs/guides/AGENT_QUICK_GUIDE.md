@@ -10,11 +10,13 @@ Execute assigned collection tours, validate stops, and report anomalies.
 
 ## Typical flow
 
-1. Open `Daily Agent Tour`, review the OpenStreetMap route overview, and confirm the current stop + ETA.
+1. Open `Daily Agent Tour`, review the Leaflet route map, and confirm the current stop + ETA.
+   The route status badge tells you whether the page is using a stored road route or a stored fallback route.
 2. Click `Start Tour` once the route is ready; repeated starts do not restart completed tours.
 3. Validate only the active stop with collected volume, manual container confirmation, and optional captured device location.
 4. Submit anomalies with severity and optional photo URL when blocked/damaged/unsafe conditions are observed.
-5. Review the in-page activity timeline for start, validation, and anomaly confirmation.
+5. If connectivity drops, the page can fall back to the last cached tour payload (including persisted API route geometry) and previously viewed map tiles.
+6. Review the in-page activity timeline for start, validation, and anomaly confirmation.
 
 ## Related APIs
 

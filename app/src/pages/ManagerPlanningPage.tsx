@@ -3,6 +3,7 @@ import {
   useCreatePlannedTour,
   useOptimizeTourPlan,
   usePlanningAgents,
+  useRebuildTourRoute,
   usePlanningZones,
 } from "../hooks/usePlanning";
 import "../styles/OperationsPages.css";
@@ -49,6 +50,7 @@ export default function ManagerPlanningPage() {
   const [fillThresholdPercent, setFillThresholdPercent] = useState(70);
   const [assignedAgentId, setAssignedAgentId] = useState("");
   const [orderedRoute, setOrderedRoute] = useState<RoutePoint[]>([]);
+  const [lastCreatedTourId, setLastCreatedTourId] = useState<string | null>(null);
   const [planCreated, setPlanCreated] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [statusTone, setStatusTone] = useState<"success" | "error" | "info">(
@@ -59,6 +61,7 @@ export default function ManagerPlanningPage() {
   const agentsQuery = usePlanningAgents();
   const optimizeMutation = useOptimizeTourPlan();
   const createMutation = useCreatePlannedTour();
+  const rebuildRouteMutation = useRebuildTourRoute();
 
   const zones = ((zonesQuery.data as { zones?: Zone[] } | undefined)?.zones ?? []);
   const agents = ((agentsQuery.data as { agents?: Agent[] } | undefined)?.agents ?? []);
@@ -108,6 +111,7 @@ export default function ManagerPlanningPage() {
 
     clearStatus();
     setPlanCreated(false);
+    setLastCreatedTourId(null);
 
     try {
       const response = (await optimizeMutation.mutateAsync({
@@ -188,15 +192,16 @@ export default function ManagerPlanningPage() {
     clearStatus();
 
     try {
-      await createMutation.mutateAsync({
+      const createdTour = (await createMutation.mutateAsync({
         name: name.trim(),
         zoneId,
         scheduledFor: scheduledForIsoString,
         assignedAgentId: assignedAgentId || undefined,
         orderedContainerIds: orderedRoute.map((item) => item.id),
-      });
+      })) as { id?: string };
 
       setPlanCreated(true);
+      setLastCreatedTourId(typeof createdTour?.id === "string" ? createdTour.id : null);
       setStatusTone("success");
       setStatusMessage(
         assignedAgentId
@@ -209,6 +214,29 @@ export default function ManagerPlanningPage() {
       setStatusMessage(
         getErrorMessage(error, "Failed to create planned tour."),
       );
+    }
+  };
+
+  const rebuildStoredRoute = async () => {
+    if (!lastCreatedTourId) {
+      setStatusTone("error");
+      setStatusMessage("Create a tour first before rebuilding its stored route.");
+      return;
+    }
+
+    clearStatus();
+
+    try {
+      const response = (await rebuildRouteMutation.mutateAsync(lastCreatedTourId)) as {
+        routeGeometry?: { source?: string };
+      };
+      const routeSource = response.routeGeometry?.source === "live" ? "road route" : "fallback route";
+
+      setStatusTone("success");
+      setStatusMessage(`Stored route rebuilt successfully. Latest persisted result is a ${routeSource}.`);
+    } catch (error) {
+      setStatusTone("error");
+      setStatusMessage(getErrorMessage(error, "Failed to rebuild the stored route."));
     }
   };
 
@@ -374,9 +402,25 @@ export default function ManagerPlanningPage() {
               ? "Creating..."
               : planCreated
                 ? "Tour Created"
-                : "Create Planned Tour"}
+              : "Create Planned Tour"}
+          </button>
+
+          <button
+            type="button"
+            className="ops-btn ops-btn-outline"
+            onClick={rebuildStoredRoute}
+            disabled={!lastCreatedTourId || rebuildRouteMutation.isPending}
+          >
+            {rebuildRouteMutation.isPending ? "Rebuilding..." : "Rebuild Stored Route"}
           </button>
         </div>
+
+        {lastCreatedTourId ? (
+          <p className="ops-subtle">
+            Last created tour: {lastCreatedTourId}. Use the rebuild action to refresh the persisted route
+            without editing the stops.
+          </p>
+        ) : null}
       </article>
 
       <article className="ops-card">
