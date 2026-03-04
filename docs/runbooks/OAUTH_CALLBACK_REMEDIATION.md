@@ -5,6 +5,11 @@ Google OAuth login initiation works, but callback completion fails in local/dev 
 
 This plan is focused on diagnosing and fixing callback routing/config mismatch without business-logic changes.
 
+Current contract note:
+- Host dev public callback URI: `http://localhost:5173/api/auth/google/callback`
+- Docker dev public callback URI: `http://localhost:3000/api/auth/google/callback`
+- Direct API callback route on `http://localhost:3001/api/auth/google/callback` remains available for diagnostics, but it is no longer the canonical browser-facing callback origin.
+
 ## Confirmed Root Cause (Read-Only Diagnosis)
 - API runtime is configured for port `3001`:
   - `.env:5` -> `API_PORT=3001`
@@ -12,16 +17,16 @@ This plan is focused on diagnosing and fixing callback routing/config mismatch w
 - Global API prefix is `/api`:
   - `api/src/main.ts:9` -> `app.setGlobalPrefix('api')`.
 - OAuth callback route is `/api/auth/google/callback`:
-  - `api/src/auth/auth.controller.ts:44` -> `@Get('google/callback')` under `@Controller('auth')`.
+  - `api/src/modules/auth/auth.controller.ts:44` -> `@Get('google/callback')` under `@Controller('auth')`.
 - Strategy uses explicit callback env value when present:
-  - `api/src/auth/google.strategy.ts:26` -> `callbackURL: getGoogleCallbackUrl()`.
-  - `api/src/auth/auth.utils.ts:22-33` -> `GOOGLE_CALLBACK_URL` takes precedence.
+  - `api/src/modules/auth/google.strategy.ts:26` -> `callbackURL: getGoogleCallbackUrl()`.
+  - `api/src/modules/auth/auth.utils.ts:22-33` -> `GOOGLE_CALLBACK_URL` takes precedence.
 - Historical misconfigured values (resolved in current files) pointed to legacy host/route:
   - `GOOGLE_CALLBACK_URL=http://localhost:<legacy-api-port>/auth/google/callback`
   - `PORT=<legacy-api-port>` alias in host env (deprecated and no longer read).
 
 ### Root-Cause Statement
-OAuth callback fails because runtime callback URL resolves to `http://localhost:<legacy-api-port>/auth/google/callback`, while the API actually serves callback at `http://localhost:3001/api/auth/google/callback`.
+OAuth callback fails because runtime callback URL resolves to `http://localhost:<legacy-api-port>/auth/google/callback`, while the active public edge callback must resolve to the frontend origin (`http://localhost:5173/api/auth/google/callback` in host dev or `http://localhost:3000/api/auth/google/callback` in Docker dev) and the API route itself remains mounted at `/api/auth/google/callback`.
 
 ## Hard Constraints (Non-Negotiable)
 - [x] No business logic changes beyond auth env/config resolution and validation.
@@ -31,7 +36,7 @@ OAuth callback fails because runtime callback URL resolves to `http://localhost:
 - [x] Keep host and Docker workflows consistent.
 
 ## Target End State
-- [x] Local host callback URI is canonical and reachable (`http://localhost:3001/api/auth/google/callback` unless explicitly reconfigured).
+- [x] Local host callback URI is canonical and reachable through the frontend edge (`http://localhost:5173/api/auth/google/callback` unless explicitly reconfigured).
 - [x] Docker callback URI is canonical and reachable for docker workflow.
 - [ ] Google OAuth authorized redirect URI list matches runtime callback exactly.
 - [x] No ambiguous legacy callback references remain in active runtime env sources.
@@ -69,7 +74,8 @@ Observed evidence:
 
 Decision:
 - Chosen strategy: **B** (derive fallback from canonical API base/path when explicit value is absent), while allowing explicit `GOOGLE_CALLBACK_URL` overrides.
-- Canonical host and Docker callback URI: `http://localhost:3001/api/auth/google/callback`.
+- Canonical host callback URI: `http://localhost:5173/api/auth/google/callback`.
+- Canonical Docker callback URI: `http://localhost:3000/api/auth/google/callback`.
 - Legacy treatment:
   - `PORT=<legacy-api-port>` is deprecated and ignored by runtime/tooling.
   - Legacy callback path `/auth/google/callback` is invalid for this API and will be removed from active env sources/docs.
@@ -92,7 +98,7 @@ rg -n "GOOGLE_CALLBACK_URL|API_PORT|PORT=" .env .env.example api/.env api/.env.e
 ## Phase 4: Fail-Fast Validation Guardrails
 - [x] Goal: Prevent silent OAuth misconfiguration regressions.
 - [x] Scope (files expected):
-  - `api/src/auth/auth.utils.ts`
+  - `api/src/modules/auth/auth.utils.ts`
   - `api/src/config/validation.ts`
   - `infrastructure/scripts/validate-env.mjs`
 - [x] Step: Validate callback URL format and expected path contract.
@@ -150,12 +156,12 @@ npm run infra:up
 - [ ] Done-when: OAuth callback succeeds without manual URL hacks.
 
 Execution notes:
-- Host runtime probe confirms redirect URI now resolves to `http://localhost:3001/api/auth/google/callback`.
+- Host runtime probe confirms redirect URI now resolves to `http://localhost:5173/api/auth/google/callback`.
 - Recheck on February 11, 2026: while Docker services were healthy, runtime still emitted legacy `redirect_uri=http://localhost:<legacy-api-port>/auth/google/callback`.
 - Root cause for persisted issue: stale Docker runtime/image state (services restarted without a clean recreate using current code/env).
 - Applied operational fix: `npm run infra:down` then `npm run infra:up` (with rebuild/recreate).
 - Post-fix probe:
-  - `curl -D - http://localhost:3001/api/auth/google` now returns `redirect_uri=http://localhost:3001/api/auth/google/callback`.
+  - `curl -D - http://localhost:3001/api/auth/google` now returns `redirect_uri=http://localhost:5173/api/auth/google/callback`.
   - `http://localhost:<legacy-api-port>/auth/google/callback` remains unreachable (expected for legacy path).
 - Browser-interactive OAuth callback/cookie verification still requires manual run against the Google auth screen.
 
@@ -182,3 +188,4 @@ curl -i http://localhost:3001/api/health/database
 - [x] Env validation rejects misaligned callback/port/path configurations.
 - [x] API tests cover callback URL resolution.
 - [x] Docs provide one unambiguous OAuth setup path.
+

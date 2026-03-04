@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AdminRolesRepository } from '../admin/admin.roles.repository.js';
+import { AdminRolesRepository } from '../modules/admin/admin.roles.repository.js';
 
 describe('AdminRolesRepository permission validation', () => {
   const createRepository = () => {
@@ -70,3 +70,4 @@ describe('AdminRolesRepository permission validation', () => {
     expect(dbMock.update).not.toHaveBeenCalled();
   });
 });
+

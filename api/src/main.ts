@@ -69,6 +69,8 @@ async function bootstrap() {
   });
 
   const expressApp = app.getHttpAdapter().getInstance();
+  // Trust the immediate frontend edge proxy so client IP/proto metadata stays accurate.
+  expressApp.set('trust proxy', 1);
   expressApp.get('/health', (_request: Request, response: Response) => {
     response.status(200).json({
       status: 'ok',

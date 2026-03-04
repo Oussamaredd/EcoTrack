@@ -12,24 +12,24 @@ import type { Request } from 'express';
 import { LoggerModule } from 'nestjs-pino';
 import type { Options as PinoHttpOptions } from 'pino-http';
 
-import { AdminModule } from './admin/admin.module.js';
-import { AnalyticsModule } from './analytics/analytics.module.js';
-import { AuthModule } from './auth/auth.module.js';
-import { CitizenModule } from './citizen/citizen.module.js';
-import { CitizenReportsModule } from './citizen-reports/citizen-reports.module.js';
 import { getRequestIdFromRequest } from './common/request-id.js';
 import configuration from './config/configuration.js';
 import { validateEnv } from './config/validation.js';
-import { ContainersModule } from './containers/containers.module.js';
-import { DashboardModule } from './dashboard/dashboard.module.js';
 import { DatabaseModule } from './database/database.module.js';
-import { GamificationModule } from './gamification/gamification.module.js';
-import { HealthModule } from './health/health.module.js';
-import { MonitoringModule } from './monitoring/monitoring.module.js';
-import { PlanningModule } from './planning/planning.module.js';
-import { TicketsModule } from './tickets/tickets.module.js';
-import { ToursModule } from './tours/tours.module.js';
-import { ZonesModule } from './zones/zones.module.js';
+import { AdminModule } from './modules/admin/admin.module.js';
+import { AnalyticsModule } from './modules/analytics/analytics.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
+import { CitizenModule } from './modules/citizen/citizen.module.js';
+import { ToursModule } from './modules/collections/tours.module.js';
+import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { GamificationModule } from './modules/gamification/gamification.module.js';
+import { HealthModule } from './modules/health/health.module.js';
+import { ContainersModule } from './modules/iot/containers.module.js';
+import { MonitoringModule } from './modules/monitoring/monitoring.module.js';
+import { CitizenReportsModule } from './modules/reports/citizen-reports.module.js';
+import { PlanningModule } from './modules/routes/planning.module.js';
+import { TicketsModule } from './modules/tickets/tickets.module.js';
+import { ZonesModule } from './modules/zones/zones.module.js';
 
 const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 120;
@@ -275,3 +275,4 @@ const extractUserId = (request: Request): string | undefined => {
   ],
 })
 export class AppModule {}
+

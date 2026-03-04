@@ -48,8 +48,8 @@
     "@types/react-dom": "^19.2.3",
     "@types/testing-library__jest-dom": "^5.14.9",
     "@vitejs/plugin-react": "^4.3.1",
-    "@vitest/coverage-v8": "^4.0.16",
-    "@vitest/ui": "^4.0.10",
+    "@vitest/coverage-v8": "4.0.17",
+    "@vitest/ui": "4.0.17",
     "autoprefixer": "^10.4.23",
     "c8": "^9.1.0",
     "eslint": "^9.0.0",
@@ -61,6 +61,6 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.3",
     "vite": "^6.1.8",
-    "vitest": "^4.0.10"
+    "vitest": "4.0.17"
   }
 }

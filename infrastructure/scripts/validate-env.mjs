@@ -32,6 +32,7 @@ const WORKFLOW_RULES = {
     requiredKeys: [
       'NODE_ENV',
       'API_PORT',
+      'API_BASE_URL',
       'DATABASE_URL',
       'SESSION_SECRET',
       'JWT_SECRET',
@@ -46,6 +47,7 @@ const WORKFLOW_RULES = {
     requiredKeys: [
       'NODE_ENV',
       'API_PORT',
+      'API_BASE_URL',
       'DATABASE_URL',
       'POSTGRES_USER',
       'POSTGRES_PASSWORD',
@@ -65,6 +67,7 @@ const WORKFLOW_RULES = {
     requiredKeys: [
       'NODE_ENV',
       'API_PORT',
+      'API_BASE_URL',
       'DATABASE_URL',
       'CORS_ORIGINS',
       'APP_URL',
@@ -80,6 +83,7 @@ const WORKFLOW_RULES = {
     requiredKeys: [
       'NODE_ENV',
       'API_PORT',
+      'API_BASE_URL',
       'DATABASE_URL',
       'CORS_ORIGINS',
       'APP_URL',
@@ -97,6 +101,7 @@ const WORKFLOW_RULES = {
     requiredKeys: [
       'NODE_ENV',
       'API_PORT',
+      'API_BASE_URL',
       'DATABASE_URL',
       'CORS_ORIGINS',
       'APP_URL',
@@ -200,6 +205,37 @@ function checkDatabaseNamePolicy(entries, sourceLabel, errors) {
 function normalizePathname(pathname) {
   const trimmed = pathname.replace(/\/+$/, '');
   return trimmed.length > 0 ? trimmed : '/';
+}
+
+function normalizeApiBasePath(pathname, sourceLabel, key, errors) {
+  const normalizedPath = normalizePathname(pathname);
+  if (normalizedPath !== '/' && normalizedPath !== '/api') {
+    errors.push(`${sourceLabel}: ${key} path must be '/' or '/api' (received '${normalizedPath}').`);
+    return null;
+  }
+
+  return normalizedPath;
+}
+
+function normalizeApiBaseUrl(rawValue, sourceLabel, key, errors) {
+  const parsed = parseNormalizedUrl(rawValue, sourceLabel, key, errors);
+  if (!parsed) {
+    return null;
+  }
+
+  const normalizedPath = normalizeApiBasePath(parsed.pathname, sourceLabel, key, errors);
+  if (!normalizedPath) {
+    return null;
+  }
+
+  return normalizedPath === '/api' ? `${parsed.origin}/api` : parsed.origin;
+}
+
+function buildExpectedGoogleCallbackUrl(apiBaseUrl) {
+  const normalized = apiBaseUrl.replace(/\/+$/, '');
+  return normalized.endsWith('/api')
+    ? `${normalized}/auth/google/callback`
+    : `${normalized}${OAUTH_CALLBACK_PATH}`;
 }
 
 function isDeployWorkflow(workflow) {
@@ -344,7 +380,7 @@ function checkFrontendRoutePolicy(entries, sourceLabel, errors) {
   }
 }
 
-function checkGoogleCallbackPolicy(entries, sourceLabel, errors) {
+function checkGoogleCallbackPolicy(entries, sourceLabel, errors, normalizedApiBaseUrl = null) {
   if (!entries.has('GOOGLE_CALLBACK_URL')) {
     return;
   }
@@ -368,7 +404,14 @@ function checkGoogleCallbackPolicy(entries, sourceLabel, errors) {
     );
   }
 
-  if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+  if (normalizedApiBaseUrl) {
+    const expectedCallbackUrl = buildExpectedGoogleCallbackUrl(normalizedApiBaseUrl);
+    if (callbackUrl.replace(/\/+$/, '') !== expectedCallbackUrl) {
+      errors.push(
+        `${sourceLabel}: GOOGLE_CALLBACK_URL must match the callback derived from API_BASE_URL (${expectedCallbackUrl}).`,
+      );
+    }
+  } else if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
     const expectedPortRaw = entries.get('API_PORT');
     const expectedPort = Number(String(expectedPortRaw ?? '').trim());
 
@@ -386,6 +429,14 @@ function checkGoogleCallbackPolicy(entries, sourceLabel, errors) {
       }
     }
   }
+}
+
+function checkApiBasePolicy(entries, sourceLabel, errors) {
+  if (!entries.has('API_BASE_URL')) {
+    return null;
+  }
+
+  return normalizeApiBaseUrl(entries.get('API_BASE_URL'), sourceLabel, 'API_BASE_URL', errors);
 }
 
 function parseNormalizedUrl(rawValue, sourceLabel, key, errors) {
@@ -437,7 +488,31 @@ function checkFrontendApiBasePolicy(entries, sourceLabel, errors) {
     return;
   }
 
-  parseNormalizedUrl(entries.get('VITE_API_BASE_URL'), sourceLabel, 'VITE_API_BASE_URL', errors);
+  normalizeApiBaseUrl(entries.get('VITE_API_BASE_URL'), sourceLabel, 'VITE_API_BASE_URL', errors);
+}
+
+function checkWorkflowAlignmentPolicy(entries, workflow, errors) {
+  const rawApiBaseUrl = String(entries.get('API_BASE_URL') ?? '').trim();
+  const normalizedApiBaseUrl = rawApiBaseUrl
+    ? rawApiBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '')
+    : null;
+
+  if (!normalizedApiBaseUrl) {
+    return;
+  }
+
+  if (workflow === 'host-dev' && entries.has('VITE_API_BASE_URL')) {
+    const rawFrontendApiBase = String(entries.get('VITE_API_BASE_URL') ?? '').trim();
+    const normalizedFrontendApiBase = rawFrontendApiBase
+      ? rawFrontendApiBase.replace(/\/+$/, '').replace(/\/api$/, '')
+      : null;
+
+    if (normalizedFrontendApiBase && normalizedFrontendApiBase !== normalizedApiBaseUrl) {
+      errors.push(
+        `${workflow}: VITE_API_BASE_URL must resolve to the same public API origin as API_BASE_URL (${normalizedApiBaseUrl}).`,
+      );
+    }
+  }
 }
 
 function checkDockerMigrationPolicy(entries, sourceLabel, warnings, errors) {
@@ -552,11 +627,12 @@ function main() {
 
     checkDeprecatedKeyPolicy(keys, file, errors);
     checkApiPortPolicy(entries, file, errors);
+    const normalizedApiBaseUrl = checkApiBasePolicy(entries, file, errors);
     checkFrontendApiBasePolicy(entries, file, errors);
     checkDatabaseNamePolicy(entries, file, errors);
     checkFrontendRoutePolicy(entries, file, errors);
     checkCorsOriginsPolicy(entries, file, workflow, errors);
-    checkGoogleCallbackPolicy(entries, file, errors);
+    checkGoogleCallbackPolicy(entries, file, errors, normalizedApiBaseUrl);
 
     if (workflow === 'docker-dev') {
       checkDockerMigrationPolicy(entries, file, warnings, errors);
@@ -569,6 +645,8 @@ function main() {
   if (missing.length > 0) {
     errors.push(`Missing required keys for ${workflow}: ${missing.join(', ')}.`);
   }
+
+  checkWorkflowAlignmentPolicy(combined, workflow, errors);
 
   warnings.forEach((warning) => console.warn(`[validate-env] WARN ${warning}`));
 

@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { PATH_METADATA } from '@nestjs/common/constants';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { AuthController } from '../auth/auth.controller.js';
-import { getGoogleCallbackUrl } from '../auth/auth.utils.js';
 import { validateEnv } from '../config/validation.js';
+import { AuthController } from '../modules/auth/auth.controller.js';
+import { getGoogleCallbackUrl } from '../modules/auth/auth.utils.js';
 
 const originalEnv = { ...process.env };
 
@@ -25,21 +25,21 @@ afterEach(() => {
 
 describe('OAuth callback config', () => {
   it('uses explicit GOOGLE_CALLBACK_URL when valid', () => {
-    process.env.GOOGLE_CALLBACK_URL = 'http://localhost:3001/api/auth/google/callback';
+    process.env.GOOGLE_CALLBACK_URL = 'http://localhost:5173/api/auth/google/callback';
 
-    expect(getGoogleCallbackUrl()).toBe('http://localhost:3001/api/auth/google/callback');
+    expect(getGoogleCallbackUrl()).toBe('http://localhost:5173/api/auth/google/callback');
   });
 
   it('rejects explicit callback URL with non-canonical path', () => {
-    process.env.GOOGLE_CALLBACK_URL = 'http://localhost:3001/auth/google/callback';
+    process.env.GOOGLE_CALLBACK_URL = 'http://localhost:5173/auth/google/callback';
 
     expect(() => getGoogleCallbackUrl()).toThrow(/Invalid GOOGLE_CALLBACK_URL path/i);
   });
 
   it('derives callback URL from API_BASE_URL when explicit callback is absent', () => {
-    process.env.API_BASE_URL = 'http://localhost:3001';
+    process.env.API_BASE_URL = 'http://localhost:5173';
 
-    expect(getGoogleCallbackUrl()).toBe('http://localhost:3001/api/auth/google/callback');
+    expect(getGoogleCallbackUrl()).toBe('http://localhost:5173/api/auth/google/callback');
   });
 
   it('derives callback URL from API_PORT and API_HOST fallback', () => {
@@ -63,6 +63,14 @@ describe('OAuth callback config', () => {
     const mainSource = fs.readFileSync(mainPath, 'utf8');
 
     expect(mainSource).toContain("app.setGlobalPrefix('api')");
+  });
+
+  it('bootstrap trusts the immediate frontend edge proxy', () => {
+    const testDir = path.dirname(fileURLToPath(import.meta.url));
+    const mainPath = path.resolve(testDir, '../main.ts');
+    const mainSource = fs.readFileSync(mainPath, 'utf8');
+
+    expect(mainSource).toContain("expressApp.set('trust proxy', 1)");
   });
 
   it('accepts canonical GOOGLE_CLIENT_ID format', () => {
@@ -132,4 +140,29 @@ describe('OAuth callback config', () => {
       }),
     ).not.toThrow();
   });
+
+  it('accepts localhost callback URL when it matches API_BASE_URL', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'development',
+        API_PORT: '3001',
+        API_BASE_URL: 'http://localhost:5173',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        GOOGLE_CALLBACK_URL: 'http://localhost:5173/api/auth/google/callback',
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects localhost callback URL when it does not match API_BASE_URL', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'development',
+        API_PORT: '3001',
+        API_BASE_URL: 'http://localhost:5173',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        GOOGLE_CALLBACK_URL: 'http://localhost:3001/api/auth/google/callback',
+      }),
+    ).toThrow(/API_BASE_URL/i);
+  });
 });
+

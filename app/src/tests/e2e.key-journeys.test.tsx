@@ -40,6 +40,21 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
 
   it('covers citizen report keyboard submission journey', async () => {
     const { useCreateCitizenReport } = await import('../hooks/useCitizen');
+    const getCurrentPosition = vi.fn((success: PositionCallback) =>
+      success({
+        coords: {
+          latitude: 36.8123,
+          longitude: 10.1932,
+        },
+      } as GeolocationPosition),
+    );
+
+    Object.defineProperty(window.navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition,
+      },
+    });
 
     const mutateAsync = vi.fn().mockResolvedValue({
       confirmationMessage: 'Report submitted and queued for dispatch.',
@@ -61,8 +76,8 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
 
     await user.selectOptions(screen.getByLabelText(/Container/i), 'container-1');
     await user.type(screen.getByLabelText(/Description/i), 'Container is full and spilling near sidewalk.');
-    await user.type(screen.getByLabelText(/Latitude/i), '36.8123');
-    await user.type(screen.getByLabelText(/Longitude/i), '10.1932');
+    await user.click(screen.getByRole('button', { name: /Use My Location/i }));
+    expect(await screen.findByText(/Location captured from your device\./i)).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Photo URL/i), 'https://example.com/container.jpg');
 
     await user.click(screen.getByRole('button', { name: /Submit Report/i }));
@@ -70,11 +85,11 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
     expect(mutateAsync).toHaveBeenCalledWith({
       containerId: 'container-1',
       description: 'Container is full and spilling near sidewalk.',
-      latitude: '36.8123',
-      longitude: '10.1932',
+      latitude: '36.812300',
+      longitude: '10.193200',
       photoUrl: 'https://example.com/container.jpg',
     });
-    expect(await screen.findByRole('status')).toHaveTextContent(/queued for dispatch/i);
+    expect(await screen.findByText(/queued for dispatch/i)).toBeInTheDocument();
     expect(container.querySelector('[class*="sm:grid-cols-2"]')).toBeTruthy();
   }, 15000);
 

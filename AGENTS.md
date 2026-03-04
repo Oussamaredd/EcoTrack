@@ -55,7 +55,7 @@ Use this file as the first source of truth for AI-agent behavior in `EcoTrack`. 
 | cross-layer/env/CI changes | `npm run validate-env:all`, `npm run lint`, `npm run typecheck`, `npm run test` |
 
 ## Database Change Protocol
-- If `database/src/schema.ts`, migrations, or seed logic changes, run all database matrix commands.
+- If `database/schema/index.ts`, migrations, or seed logic changes, run all database matrix commands.
 - Validate migration execution against the active `DATABASE_URL`.
 - If migration cannot run locally, report the blocker and skipped command.
 

@@ -1,18 +1,18 @@
-﻿import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PlanningService, type PlanningStreamEvent } from '../planning/planning.service.js';
+import { PlanningService, type PlanningStreamEvent } from '../modules/routes/planning.service.js';
 
 describe('PlanningService stream hardening', () => {
   const monitoringServiceMock = {
     setRealtimeDiagnostics: vi.fn(),
   };
-  const toursServiceMock = {
-    persistRouteForTour: vi.fn().mockResolvedValue(null),
+  const toursRouteCoordinatorMock = {
+    ensureRouteForTour: vi.fn().mockResolvedValue(undefined),
   };
 
   it('replays buffered events after Last-Event-ID', async () => {
-    toursServiceMock.persistRouteForTour.mockClear();
+    toursRouteCoordinatorMock.ensureRouteForTour.mockClear();
     const repositoryMock = {
       createPlannedTour: vi.fn().mockResolvedValue({
         id: 'tour-1',
@@ -34,7 +34,7 @@ describe('PlanningService stream hardening', () => {
       repositoryMock as any,
       authServiceMock as any,
       monitoringServiceMock as any,
-      toursServiceMock as any,
+      toursRouteCoordinatorMock as any,
     );
     const capturedEvents: PlanningStreamEvent[] = [];
     service.subscribeRealtimeEvents((event) => {
@@ -55,7 +55,7 @@ describe('PlanningService stream hardening', () => {
     const replayed = service.getReplayEventsAfter(capturedEvents[0]?.id ?? '');
     expect(replayed.length).toBe(capturedEvents.length - 1);
     expect(service.getReplayEventsAfter('missing-id')).toEqual([]);
-    expect(toursServiceMock.persistRouteForTour).toHaveBeenCalledWith('tour-1');
+    expect(toursRouteCoordinatorMock.ensureRouteForTour).toHaveBeenCalledWith('tour-1');
   });
 
   it('issues stream session only for manager/admin role users', () => {
@@ -77,7 +77,7 @@ describe('PlanningService stream hardening', () => {
       repositoryMock as any,
       authServiceMock as any,
       monitoringServiceMock as any,
-      toursServiceMock as any,
+      toursRouteCoordinatorMock as any,
     );
 
     expect(
@@ -158,7 +158,7 @@ describe('PlanningService stream hardening', () => {
       {} as any,
       {} as any,
       monitoringServiceMock as any,
-      toursServiceMock as any,
+      toursRouteCoordinatorMock as any,
     );
 
     service.registerSseConnection();
@@ -186,5 +186,48 @@ describe('PlanningService stream hardening', () => {
       }),
     );
   });
+
+  it('logs and preserves the mutation result when dashboard snapshot publication fails', async () => {
+    const repositoryMock = {
+      createPlannedTour: vi.fn().mockResolvedValue({
+        id: 'tour-2',
+        status: 'scheduled',
+        assignedAgentId: null,
+        zoneId: 'zone-1',
+      }),
+      getManagerDashboard: vi.fn().mockRejectedValue(new Error('snapshot unavailable')),
+    };
+
+    const service = new PlanningService(
+      repositoryMock as any,
+      {} as any,
+      monitoringServiceMock as any,
+      toursRouteCoordinatorMock as any,
+    );
+    const loggerErrorSpy = vi
+      .spyOn((service as any).logger, 'error')
+      .mockImplementation(() => undefined);
+
+    const result = await service.createPlannedTour(
+      {
+        name: 'Afternoon Route',
+        zoneId: 'zone-1',
+        scheduledFor: new Date().toISOString(),
+        orderedContainerIds: [],
+      },
+      'user-2',
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'tour-2',
+      }),
+    );
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'Failed to publish planning dashboard snapshot after creating planned tour: snapshot unavailable',
+      expect.stringContaining('Error: snapshot unavailable'),
+    );
+  });
 });
+
 

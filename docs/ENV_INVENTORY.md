@@ -39,6 +39,7 @@ Visibility legend:
 | Key | Owner | Visibility | Workflows | Status |
 | --- | --- | --- | --- | --- |
 | API_PORT | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| API_BASE_URL | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | API_URL | api | private | host-dev, deploy-dev, deploy-staging, deploy-prod | removed runtime alias (use `API_BASE_URL` when explicit API base is needed) |
 | APP_URL | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | BCRYPT_ROUNDS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |

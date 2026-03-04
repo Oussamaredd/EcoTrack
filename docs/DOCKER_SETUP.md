@@ -29,6 +29,8 @@ npm run infra:down
 npm run infra:health
 ```
 
+`npm run infra:health` exits non-zero if Docker is unreachable or any core service is unhealthy.
+
 ## Expected Core State
 
 - `ticket_db`: healthy

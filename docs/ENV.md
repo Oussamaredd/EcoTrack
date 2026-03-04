@@ -23,8 +23,9 @@ Database package runtime note:
 
 - `DATABASE_URL` for database connectivity
 - `API_PORT` for API listen port
+- `API_BASE_URL` for backend-generated public API URLs (for example OAuth callback URLs at the frontend edge)
 - `ROUTING_API_BASE_URL` for backend road-routing service lookups
-- `VITE_API_BASE_URL` for frontend API base URL
+- `VITE_API_BASE_URL` for the browser-facing API base URL (normally the frontend origin in proxied runtimes)
 - `VITE_MAP_TILE_URL_TEMPLATE` for the frontend Leaflet tile source template
 - `VITE_MAP_TILE_ATTRIBUTION` for the frontend map attribution label
 
@@ -34,7 +35,7 @@ Agent tour mapping note:
 - `JWT_ACCESS_SECRET` for local access-token signing (Bearer JWT)
 - `JWT_ACCESS_EXPIRES_IN` for local access-token TTL (for example `15m`)
 - `GOOGLE_CLIENT_ID` must be a Google OAuth Web client ID (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
-- `GOOGLE_CALLBACK_URL` for OAuth redirect callback (required in deploy templates; canonical path is fixed)
+- `GOOGLE_CALLBACK_URL` for OAuth redirect callback (required in deploy templates; canonical path is fixed and should match `API_BASE_URL + /api/auth/google/callback`)
 
 ## Optional API Hardening Keys
 
@@ -65,11 +66,11 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
 - Fast liveness probe: `GET /health` (returns HTTP `200` when the API process is listening)
 - API liveness alias: `GET /api/health` and `GET /api/health/live`
 - Readiness probe (load-balancer/container ready-state): `GET /api/health/ready`
-  - returns HTTP `200` when dependencies are ready
-  - returns HTTP `503` when readiness dependencies fail
+  - returns HTTP `200` when critical ticketing and planning schema dependencies are ready
+  - returns HTTP `503` when readiness dependencies fail or a required schema surface is not queryable
 - Diagnostics alias: `GET /api/health/database`
-- Frontend sign-in readiness checks should target `VITE_API_BASE_URL + /health`
-- Local `npm run dev` waits on `http://localhost:3001/health` before launching the app dev server, then continues startup even if the wait probe times out
+- Frontend sign-in readiness checks should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
+- Local `npm run dev` waits on `http://localhost:3001/api/health/ready` before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status
 
 ## Auth Exchange Flow
 
@@ -107,14 +108,17 @@ Removed runtime aliases (no longer read by API runtime):
 
 - `app/.env.local`, `app/.env.example`, and mode env files must include only `VITE_*` keys.
 - API/database/infrastructure secrets must never appear in app env files.
+- In host and Docker browser-facing runtimes, `VITE_API_BASE_URL` should target the frontend origin so the edge layer owns `/api` and `/health` routing.
 - `APP_URL`/`CLIENT_ORIGIN` values, when used, must target the frontend origin root (for example `https://app.example.com`), not removed legacy paths such as `/auth` or `/dashboard`.
 
 ## OAuth Callback Contract
 
-- Canonical callback URI (local and Docker dev): `http://localhost:3001/api/auth/google/callback`
+- Canonical host-dev callback URI: `http://localhost:5173/api/auth/google/callback`
+- Canonical docker-dev callback URI: `http://localhost:3000/api/auth/google/callback`
 - Callback path is fixed: `/api/auth/google/callback`
+- When `API_BASE_URL` is set, `GOOGLE_CALLBACK_URL` should match the callback derived from that public API base exactly.
 - `GOOGLE_CLIENT_ID` must use Google Web OAuth client format (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
-- When `GOOGLE_CALLBACK_URL` is set for localhost, its port must match `API_PORT`
+- When `API_BASE_URL` is not set and `GOOGLE_CALLBACK_URL` points at localhost, its port must match `API_PORT`
 - Google Console authorized redirect URI must exactly match runtime callback URI
 
 ## Database Naming

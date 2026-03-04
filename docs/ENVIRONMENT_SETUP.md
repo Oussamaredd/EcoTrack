@@ -59,15 +59,18 @@ Templates to keep in source control:
 
 - `DATABASE_URL`
 - `API_PORT`
+- `API_BASE_URL`
 - `VITE_API_BASE_URL`
 
 ## OAuth Callback Requirements
 
-- Canonical callback URI for local and Docker dev:
-  - `http://localhost:3001/api/auth/google/callback`
+- Canonical callback URI for host dev:
+  - `http://localhost:5173/api/auth/google/callback`
+- Canonical callback URI for Docker dev:
+  - `http://localhost:3000/api/auth/google/callback`
 - `GOOGLE_CLIENT_ID` must be a Google OAuth Web client ID in this format:
   - `<numeric-project-id>-<client>.apps.googleusercontent.com`
-- Set `GOOGLE_CALLBACK_URL` to the canonical callback URI in runtime env files.
+- Set `API_BASE_URL` and `GOOGLE_CALLBACK_URL` to the same public edge origin in runtime env files.
 - Google Cloud Console Authorized redirect URI must match exactly:
   - scheme + host + port + path
   - expected path: `/api/auth/google/callback`

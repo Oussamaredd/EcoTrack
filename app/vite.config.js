@@ -33,6 +33,21 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       open: true,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          xfwd: true,
+        },
+        '/health': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+          secure: false,
+          xfwd: true,
+        },
+      },
     },
     test: {
       globals: true,

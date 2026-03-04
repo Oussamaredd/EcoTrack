@@ -1,8 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PlanningRepository } from '../planning/planning.repository.js';
-import * as reportDeliveryUtils from '../planning/report-delivery.utils.js';
+import { PlanningRepository } from '../modules/routes/planning.repository.js';
+import * as reportDeliveryUtils from '../modules/routes/report-delivery.utils.js';
 
 describe('PlanningRepository invariants', () => {
   it('defers containers already reserved on nearby tours for the selected schedule', async () => {
@@ -401,4 +401,125 @@ describe('PlanningRepository invariants', () => {
       }),
     ]);
   });
+
+  it('builds the manager dashboard summary without raw SQL date predicates', async () => {
+    const countSelection = (value: number) => ({
+      from: vi.fn().mockResolvedValue([{ value }]),
+    });
+    const whereSelection = <T>(rows: T) => ({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(rows),
+      }),
+    });
+
+    const dbMock = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(countSelection(12))
+        .mockReturnValueOnce(countSelection(4))
+        .mockReturnValueOnce(countSelection(3))
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            leftJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                orderBy: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue([
+                    {
+                      id: 'container-1',
+                      code: 'CTR-001',
+                      label: 'North Hub',
+                      fillLevelPercent: 92,
+                      status: 'attention_required',
+                      latitude: '36.8100',
+                      longitude: '10.1900',
+                      zoneName: 'North',
+                    },
+                  ]),
+                }),
+              }),
+            }),
+          }),
+        })
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              groupBy: vi.fn().mockResolvedValue([
+                { severity: 'critical', total: 3 },
+                { severity: 'warning', total: 1 },
+              ]),
+            }),
+          }),
+        })
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            leftJoin: vi
+              .fn()
+              .mockReturnValueOnce({
+                leftJoin: vi.fn().mockReturnValue({
+                  where: vi.fn().mockReturnValue({
+                    orderBy: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockResolvedValue([
+                        {
+                          id: 'alert-1',
+                          eventType: 'sensor_offline',
+                          severity: 'critical',
+                          currentStatus: 'open',
+                          triggeredAt: new Date('2026-03-03T12:00:00.000Z'),
+                          containerId: 'container-1',
+                          containerCode: 'CTR-001',
+                          zoneName: 'North',
+                        },
+                      ]),
+                    }),
+                  }),
+                }),
+              }),
+          }),
+        })
+        .mockReturnValueOnce(whereSelection([{ value: 7 }]))
+        .mockReturnValueOnce(whereSelection([{ value: 2 }]))
+        .mockReturnValueOnce({
+          from: vi.fn().mockResolvedValue([{ value: '2026-03-03 11:45:00+00' }]),
+        }),
+    };
+
+    const repository = new PlanningRepository(dbMock as any);
+    const result = await repository.getManagerDashboard();
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ecoKpis: {
+          containers: 12,
+          zones: 4,
+          tours: 3,
+        },
+        criticalContainers: [
+          expect.objectContaining({
+            id: 'container-1',
+            fillLevelPercent: 92,
+          }),
+        ],
+        activeAlerts: expect.objectContaining({
+          totalOpen: 4,
+          bySeverity: {
+            critical: 3,
+            warning: 1,
+          },
+          latest: [
+            expect.objectContaining({
+              id: 'alert-1',
+              severity: 'critical',
+            }),
+          ],
+        }),
+        telemetryHealth: {
+          reportingContainers: 7,
+          staleSensors: 2,
+          lastMeasurementAt: '2026-03-03T11:45:00.000Z',
+        },
+      }),
+    );
+    expect(dbMock.select).toHaveBeenCalledTimes(9);
+  });
 });
+

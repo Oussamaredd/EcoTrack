@@ -181,11 +181,11 @@ Notes:
 
 ## Backend Architecture Placement
 
-- Controller: `api/src/planning/planning.controller.ts` (new stream route).
-- Service: `api/src/planning/planning.service.ts` (stream orchestration and event fan-out).
+- Controller: `api/src/modules/routes/planning.controller.ts` (new stream route).
+- Service: `api/src/modules/routes/planning.service.ts` (stream orchestration and event fan-out).
 - Repository stays read/query only; no stream logic in controller-only code paths.
 
-If internal event bus utility is introduced, place it under `api/src/planning/` and keep contracts explicit.
+If internal event bus utility is introduced, place it under `api/src/modules/routes/` and keep contracts explicit.
 
 ## Reliability Rules
 

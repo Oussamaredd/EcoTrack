@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AdminAuditController } from '../admin/admin.audit.controller.js';
-import { AdminRolesController } from '../admin/admin.roles.controller.js';
-import { AdminSettingsController } from '../admin/admin.settings.controller.js';
-import { AdminUsersController } from '../admin/admin.users.controller.js';
+import { AdminAuditController } from '../modules/admin/admin.audit.controller.js';
+import { AdminRolesController } from '../modules/admin/admin.roles.controller.js';
+import { AdminSettingsController } from '../modules/admin/admin.settings.controller.js';
+import { AdminUsersController } from '../modules/admin/admin.users.controller.js';
 
 describe('Admin operations controller contract', () => {
   const adminUserId = '7888bec2-f4ee-4440-b16f-b35d66607366';
@@ -241,3 +241,4 @@ describe('Admin operations controller contract', () => {
     expect((call.dateTo as Date).getSeconds()).toBe(59);
   });
 });
+

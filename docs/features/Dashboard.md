@@ -66,7 +66,7 @@ WebSocket transport is now enabled via `usePlanningRealtimeSocket()` (`app/src/h
 ## Relevant Files
 - `app/src/pages/Dashboard.tsx`
 - `app/src/App.css`
-- `api/src/dashboard/dashboard.repository.ts`
+- `api/src/modules/dashboard/dashboard.repository.ts`
 - `app/src/tests/Dashboard.test.tsx`
 - `app/src/tests/useDashboard.test.tsx`
 

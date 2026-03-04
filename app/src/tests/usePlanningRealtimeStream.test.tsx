@@ -10,7 +10,7 @@ vi.mock('../services/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/api')>();
   return {
     ...actual,
-    API_BASE: 'http://localhost:3001',
+    API_BASE: 'http://localhost:5173',
   };
 });
 
@@ -99,7 +99,7 @@ describe('usePlanningRealtimeStream', () => {
     expect(stream.url).not.toContain('access_token=token-123');
     expect(stream.withCredentials).toBe(true);
     expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:3001/api/planning/stream/session',
+      'http://localhost:5173/api/planning/stream/session',
       expect.objectContaining({
         method: 'POST',
         credentials: 'include',

@@ -3,8 +3,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { MonitoringModule } from '../monitoring/monitoring.module.js';
-import { MonitoringService } from '../monitoring/monitoring.service.js';
+import { MonitoringModule } from '../modules/monitoring/monitoring.module.js';
+import { MonitoringService } from '../modules/monitoring/monitoring.service.js';
 
 describe('Monitoring endpoints', () => {
   let app: INestApplication;
@@ -100,3 +100,4 @@ describe('Monitoring endpoints', () => {
     );
   });
 });
+

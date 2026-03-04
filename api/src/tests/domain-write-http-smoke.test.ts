@@ -4,20 +4,20 @@ import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthService } from '../auth/auth.service.js';
-import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../auth/permissions.guard.js';
-import { CitizenReportsController } from '../citizen-reports/citizen-reports.controller.js';
-import { CitizenReportsService } from '../citizen-reports/citizen-reports.service.js';
-import { ContainersController } from '../containers/containers.controller.js';
-import { ContainersService } from '../containers/containers.service.js';
-import { GamificationController } from '../gamification/gamification.controller.js';
-import { GamificationService } from '../gamification/gamification.service.js';
-import { ToursController } from '../tours/tours.controller.js';
-import { ToursService } from '../tours/tours.service.js';
-import { UsersService } from '../users/users.service.js';
-import { ZonesController } from '../zones/zones.controller.js';
-import { ZonesService } from '../zones/zones.service.js';
+import { AuthService } from '../modules/auth/auth.service.js';
+import { AuthenticatedUserGuard } from '../modules/auth/authenticated-user.guard.js';
+import { PermissionsGuard } from '../modules/auth/permissions.guard.js';
+import { ToursController } from '../modules/collections/tours.controller.js';
+import { ToursService } from '../modules/collections/tours.service.js';
+import { GamificationController } from '../modules/gamification/gamification.controller.js';
+import { GamificationService } from '../modules/gamification/gamification.service.js';
+import { ContainersController } from '../modules/iot/containers.controller.js';
+import { ContainersService } from '../modules/iot/containers.service.js';
+import { CitizenReportsController } from '../modules/reports/citizen-reports.controller.js';
+import { CitizenReportsService } from '../modules/reports/citizen-reports.service.js';
+import { UsersService } from '../modules/users/users.service.js';
+import { ZonesController } from '../modules/zones/zones.controller.js';
+import { ZonesService } from '../modules/zones/zones.service.js';
 
 describe('Domain write endpoint smoke', () => {
   const zoneId = '5b4ac9a8-2eb4-42eb-aa0e-b4afcf689d6f';
@@ -185,16 +185,17 @@ describe('Domain write endpoint smoke', () => {
     );
   });
 
-  it('handles citizen reports and gamification profile upsert routes', async () => {
+  it('handles citizen report listing and gamification profile upsert routes', async () => {
     await request(app.getHttpServer())
-      .post('/api/citizen-reports')
-      .send({
-        containerId,
-        description: 'Overflow near entrance',
-        status: 'submitted',
-      })
-      .expect(201);
-    expect(reportsServiceMock.create).toHaveBeenCalledTimes(1);
+      .get('/api/citizen-reports')
+      .query({ q: ' overflow ', status: ' submitted ', page: '1', pageSize: '20' })
+      .expect(200);
+    expect(reportsServiceMock.list).toHaveBeenCalledWith({
+      search: 'overflow',
+      status: 'submitted',
+      limit: 20,
+      offset: 0,
+    });
 
     await request(app.getHttpServer())
       .post('/api/gamification/profiles')
@@ -246,3 +247,4 @@ describe('Domain write endpoint smoke', () => {
     );
   });
 });
+

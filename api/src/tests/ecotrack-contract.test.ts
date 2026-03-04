@@ -3,16 +3,16 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AnalyticsController } from '../analytics/analytics.controller.js';
-import { AnalyticsService } from '../analytics/analytics.service.js';
-import { CitizenReportsController } from '../citizen-reports/citizen-reports.controller.js';
-import { CitizenReportsService } from '../citizen-reports/citizen-reports.service.js';
-import { ContainersController } from '../containers/containers.controller.js';
-import { ContainersService } from '../containers/containers.service.js';
-import { GamificationController } from '../gamification/gamification.controller.js';
-import { GamificationService } from '../gamification/gamification.service.js';
-import { ZonesController } from '../zones/zones.controller.js';
-import { ZonesService } from '../zones/zones.service.js';
+import { AnalyticsController } from '../modules/analytics/analytics.controller.js';
+import { AnalyticsService } from '../modules/analytics/analytics.service.js';
+import { GamificationController } from '../modules/gamification/gamification.controller.js';
+import { GamificationService } from '../modules/gamification/gamification.service.js';
+import { ContainersController } from '../modules/iot/containers.controller.js';
+import { ContainersService } from '../modules/iot/containers.service.js';
+import { CitizenReportsController } from '../modules/reports/citizen-reports.controller.js';
+import { CitizenReportsService } from '../modules/reports/citizen-reports.service.js';
+import { ZonesController } from '../modules/zones/zones.controller.js';
+import { ZonesService } from '../modules/zones/zones.service.js';
 
 describe('EcoTrack contract endpoints', () => {
   let app: INestApplication;
@@ -149,3 +149,4 @@ describe('EcoTrack contract endpoints', () => {
     });
   });
 });
+

@@ -23,9 +23,9 @@
           "POST /api/citizen/reports"
         ],
         "implementationFiles": [
-          "api/src/citizen/citizen.controller.ts",
-          "api/src/citizen/citizen.service.ts",
-          "api/src/citizen/citizen.repository.ts",
+          "api/src/modules/citizen/citizen.controller.ts",
+          "api/src/modules/citizen/citizen.service.ts",
+          "api/src/modules/citizen/citizen.repository.ts",
           "app/src/pages/CitizenReportPage.tsx"
         ]
       },
@@ -58,9 +58,9 @@
           "GET /api/citizen/history"
         ],
         "implementationFiles": [
-          "api/src/citizen/citizen.controller.ts",
-          "api/src/citizen/citizen.service.ts",
-          "api/src/citizen/citizen.repository.ts",
+          "api/src/modules/citizen/citizen.controller.ts",
+          "api/src/modules/citizen/citizen.service.ts",
+          "api/src/modules/citizen/citizen.repository.ts",
           "app/src/pages/CitizenProfilePage.tsx"
         ]
       },
@@ -97,9 +97,9 @@
           "POST /api/citizen/challenges/:challengeId/progress"
         ],
         "implementationFiles": [
-          "api/src/citizen/citizen.controller.ts",
-          "api/src/citizen/citizen.service.ts",
-          "api/src/citizen/citizen.repository.ts",
+          "api/src/modules/citizen/citizen.controller.ts",
+          "api/src/modules/citizen/citizen.service.ts",
+          "api/src/modules/citizen/citizen.repository.ts",
           "app/src/pages/CitizenChallengesPage.tsx"
         ]
       },
@@ -135,9 +135,9 @@
           "POST /api/tours/:tourId/start"
         ],
         "implementationFiles": [
-          "api/src/tours/tours.controller.ts",
-          "api/src/tours/tours.service.ts",
-          "api/src/tours/tours.repository.ts",
+          "api/src/modules/collections/tours.controller.ts",
+          "api/src/modules/collections/tours.service.ts",
+          "api/src/modules/collections/tours.repository.ts",
           "app/src/pages/AgentTourPage.tsx"
         ]
       },
@@ -172,9 +172,9 @@
           "POST /api/tours/:tourId/stops/:stopId/validate"
         ],
         "implementationFiles": [
-          "api/src/tours/tours.controller.ts",
-          "api/src/tours/tours.service.ts",
-          "api/src/tours/tours.repository.ts",
+          "api/src/modules/collections/tours.controller.ts",
+          "api/src/modules/collections/tours.service.ts",
+          "api/src/modules/collections/tours.repository.ts",
           "app/src/pages/AgentTourPage.tsx"
         ]
       },
@@ -209,9 +209,9 @@
           "POST /api/tours/:tourId/anomalies"
         ],
         "implementationFiles": [
-          "api/src/tours/tours.controller.ts",
-          "api/src/tours/tours.service.ts",
-          "api/src/tours/tours.repository.ts",
+          "api/src/modules/collections/tours.controller.ts",
+          "api/src/modules/collections/tours.service.ts",
+          "api/src/modules/collections/tours.repository.ts",
           "app/src/pages/AgentTourPage.tsx"
         ]
       },
@@ -249,9 +249,9 @@
           "POST /api/planning/create-tour"
         ],
         "implementationFiles": [
-          "api/src/planning/planning.controller.ts",
-          "api/src/planning/planning.service.ts",
-          "api/src/planning/planning.repository.ts",
+          "api/src/modules/routes/planning.controller.ts",
+          "api/src/modules/routes/planning.service.ts",
+          "api/src/modules/routes/planning.repository.ts",
           "app/src/pages/ManagerPlanningPage.tsx"
         ]
       },
@@ -293,9 +293,9 @@
           "POST /api/planning/ws/session"
         ],
         "implementationFiles": [
-          "api/src/planning/planning.controller.ts",
-          "api/src/planning/planning.gateway.ts",
-          "api/src/planning/planning.service.ts",
+          "api/src/modules/routes/planning.controller.ts",
+          "api/src/modules/routes/planning.gateway.ts",
+          "api/src/modules/routes/planning.service.ts",
           "app/src/hooks/usePlanningRealtimeSocket.tsx",
           "app/src/hooks/usePlanningRealtimeStream.tsx",
           "app/src/pages/Dashboard.tsx"
@@ -340,10 +340,10 @@
           "POST /api/planning/reports/:id/regenerate"
         ],
         "implementationFiles": [
-          "api/src/planning/planning.controller.ts",
-          "api/src/planning/planning.service.ts",
-          "api/src/planning/planning.repository.ts",
-          "api/src/planning/report-artifact.utils.ts",
+          "api/src/modules/routes/planning.controller.ts",
+          "api/src/modules/routes/planning.service.ts",
+          "api/src/modules/routes/planning.repository.ts",
+          "api/src/modules/routes/report-artifact.utils.ts",
           "app/src/pages/ManagerReportsPage.tsx"
         ]
       },
@@ -382,8 +382,8 @@
           "POST /api/admin/roles"
         ],
         "implementationFiles": [
-          "api/src/admin/admin.users.controller.ts",
-          "api/src/admin/admin.roles.controller.ts",
+          "api/src/modules/admin/admin.users.controller.ts",
+          "api/src/modules/admin/admin.roles.controller.ts",
           "app/src/pages/AdminDashboard.tsx",
           "app/src/components/admin/UserCreateModal.tsx"
         ]
@@ -422,8 +422,8 @@
           "GET /api/admin/audit-logs"
         ],
         "implementationFiles": [
-          "api/src/admin/admin.settings.controller.ts",
-          "api/src/admin/admin.audit.controller.ts",
+          "api/src/modules/admin/admin.settings.controller.ts",
+          "api/src/modules/admin/admin.audit.controller.ts",
           "app/src/components/admin/AuditLogs.tsx"
         ]
       },

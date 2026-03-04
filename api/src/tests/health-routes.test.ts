@@ -4,8 +4,8 @@ import type { Request, Response } from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { HealthController } from '../health/health.controller.js';
-import { HealthService } from '../health/health.service.js';
+import { HealthController } from '../modules/health/health.controller.js';
+import { HealthService } from '../modules/health/health.service.js';
 
 describe('Health route smoke checks', () => {
   let app: INestApplication;
@@ -83,3 +83,4 @@ describe('Health route smoke checks', () => {
     expect(response.body.database.status).toBe('error');
   });
 });
+

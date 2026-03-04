@@ -1,11 +1,28 @@
 // API client with centralized configuration and error handling
 import { clearAccessToken, withAuthHeader } from './authToken';
 
-const rawApiBase =
+const FALLBACK_API_BASE = 'http://localhost:3001';
+
+const resolveDefaultApiBase = () => {
+  if (typeof window !== 'undefined' && typeof window.location?.origin === 'string') {
+    const origin = window.location.origin.trim();
+    if (origin.length > 0) {
+      return origin;
+    }
+  }
+
+  return FALLBACK_API_BASE;
+};
+
+const configuredApiBase =
   import.meta.env.VITE_API_BASE_URL ??
   // Temporary alias support during migration to VITE_API_BASE_URL.
-  import.meta.env.VITE_API_URL ??
-  'http://localhost:3001';
+  import.meta.env.VITE_API_URL;
+
+const rawApiBase =
+  typeof configuredApiBase === 'string' && configuredApiBase.trim().length > 0
+    ? configuredApiBase
+    : resolveDefaultApiBase();
 
 const trimmedApiBase = rawApiBase.replace(/\/+$/, '');
 export const API_BASE = trimmedApiBase.endsWith('/api')

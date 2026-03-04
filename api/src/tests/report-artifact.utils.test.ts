@@ -6,7 +6,7 @@ import {
   normalizeReportFormat,
   resolveReportDownloadMeta,
   type ReportPayload,
-} from '../planning/report-artifact.utils.js';
+} from '../modules/routes/report-artifact.utils.js';
 
 const payload: ReportPayload = {
   periodStart: '2026-02-01T00:00:00.000Z',
@@ -63,3 +63,4 @@ describe('report artifact utils', () => {
     });
   });
 });
+

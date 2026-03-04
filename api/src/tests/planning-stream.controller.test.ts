@@ -1,7 +1,7 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
-import { PlanningController } from '../planning/planning.controller.js';
+import { PlanningController } from '../modules/routes/planning.controller.js';
 
 describe('Planning stream controller', () => {
   const write = vi.fn();
@@ -216,3 +216,4 @@ describe('Planning stream controller', () => {
     expect(planningServiceMock.issueWebSocketSession).toHaveBeenCalled();
   });
 });
+

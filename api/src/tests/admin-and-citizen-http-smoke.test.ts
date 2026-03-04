@@ -4,15 +4,16 @@ import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AdminAuditController } from '../admin/admin.audit.controller.js';
-import { AdminAuditService } from '../admin/admin.audit.service.js';
-import { AdminGuard } from '../admin/admin.guard.js';
-import { AdminUsersController } from '../admin/admin.users.controller.js';
-import { AuthService } from '../auth/auth.service.js';
-import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { CitizenController } from '../citizen/citizen.controller.js';
-import { CitizenService } from '../citizen/citizen.service.js';
-import { UsersService } from '../users/users.service.js';
+import { AdminAuditController } from '../modules/admin/admin.audit.controller.js';
+import { AdminAuditService } from '../modules/admin/admin.audit.service.js';
+import { AdminGuard } from '../modules/admin/admin.guard.js';
+import { AdminUsersController } from '../modules/admin/admin.users.controller.js';
+import { AuthService } from '../modules/auth/auth.service.js';
+import { AuthenticatedUserGuard } from '../modules/auth/authenticated-user.guard.js';
+import { CitizenController } from '../modules/citizen/citizen.controller.js';
+import { CitizenService } from '../modules/citizen/citizen.service.js';
+import { USERS_ADMIN_PORT } from '../modules/users/users.contract.js';
+import { UsersService } from '../modules/users/users.service.js';
 
 describe('Admin and citizen endpoint smoke', () => {
   const adminUserId = '7888bec2-f4ee-4440-b16f-b35d66607366';
@@ -60,6 +61,7 @@ describe('Admin and citizen endpoint smoke', () => {
         CitizenController,
       ],
       providers: [
+        { provide: USERS_ADMIN_PORT, useValue: usersServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
         { provide: AdminAuditService, useValue: auditServiceMock },
         { provide: CitizenService, useValue: citizenServiceMock },
@@ -219,3 +221,4 @@ describe('Admin and citizen endpoint smoke', () => {
     );
   });
 });
+

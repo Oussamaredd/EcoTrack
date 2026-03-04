@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
-import { PlanningGateway } from '../planning/planning.gateway.js';
+import { PlanningGateway } from '../modules/routes/planning.gateway.js';
 
 describe('PlanningGateway', () => {
   const planningServiceMock = {
@@ -15,12 +15,7 @@ describe('PlanningGateway', () => {
   };
 
   const authServiceMock = {
-    getAuthUserFromPlanningWebSocketSessionToken: vi.fn(),
-  };
-
-  const usersServiceMock = {
-    ensureUserForAuth: vi.fn(),
-    getRolesForUser: vi.fn(),
+    resolveActiveUserFromPlanningWebSocketSessionToken: vi.fn(),
   };
 
   const serverEmit = vi.fn();
@@ -43,19 +38,15 @@ describe('PlanningGateway', () => {
     });
     planningServiceMock.hasRealtimeRoleAccess.mockReturnValue(true);
 
-    authServiceMock.getAuthUserFromPlanningWebSocketSessionToken.mockReturnValue({
+    authServiceMock.resolveActiveUserFromPlanningWebSocketSessionToken.mockResolvedValue({
       id: 'user-1',
-      provider: 'local',
       email: null,
-      name: null,
-      avatarUrl: null,
-    });
-    usersServiceMock.ensureUserForAuth.mockResolvedValue({
-      id: 'user-1',
+      displayName: 'Manager',
       role: 'manager',
+      roles: [{ id: 'r1', name: 'manager' }],
+      permissions: [],
       isActive: true,
     });
-    usersServiceMock.getRolesForUser.mockResolvedValue([{ id: 'r1', name: 'manager' }]);
   });
 
   afterEach(() => {
@@ -63,11 +54,7 @@ describe('PlanningGateway', () => {
   });
 
   it('subscribes to planning events and emits keepalive/snapshots', async () => {
-    const gateway = new PlanningGateway(
-      planningServiceMock as any,
-      authServiceMock as any,
-      usersServiceMock as any,
-    );
+    const gateway = new PlanningGateway(planningServiceMock as any, authServiceMock as any);
     (gateway as any).server = { emit: serverEmit };
 
     gateway.onModuleInit();
@@ -93,13 +80,9 @@ describe('PlanningGateway', () => {
   });
 
   it('disconnects socket when auth token is invalid', async () => {
-    authServiceMock.getAuthUserFromPlanningWebSocketSessionToken.mockReturnValue(null);
+    authServiceMock.resolveActiveUserFromPlanningWebSocketSessionToken.mockResolvedValue(null);
 
-    const gateway = new PlanningGateway(
-      planningServiceMock as any,
-      authServiceMock as any,
-      usersServiceMock as any,
-    );
+    const gateway = new PlanningGateway(planningServiceMock as any, authServiceMock as any);
 
     const disconnect = vi.fn();
     const client = {
@@ -116,11 +99,7 @@ describe('PlanningGateway', () => {
   });
 
   it('authorizes socket and sends initial snapshot', async () => {
-    const gateway = new PlanningGateway(
-      planningServiceMock as any,
-      authServiceMock as any,
-      usersServiceMock as any,
-    );
+    const gateway = new PlanningGateway(planningServiceMock as any, authServiceMock as any);
 
     const emit = vi.fn();
     const client = {
@@ -139,4 +118,27 @@ describe('PlanningGateway', () => {
     gateway.handleDisconnect(client);
     expect(planningServiceMock.unregisterWebSocketConnection).toHaveBeenCalledTimes(1);
   });
+
+  it('logs the underlying snapshot error during interval refresh failures', async () => {
+    planningServiceMock.getRealtimeDashboardSnapshotEvent.mockRejectedValueOnce(
+      new Error('snapshot unavailable'),
+    );
+
+    const gateway = new PlanningGateway(planningServiceMock as any, authServiceMock as any);
+    const loggerWarnSpy = vi
+      .spyOn((gateway as any).logger, 'warn')
+      .mockImplementation(() => undefined);
+
+    gateway.onModuleInit();
+
+    vi.advanceTimersByTime(10_000);
+    await Promise.resolve();
+
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
+      'Failed to publish websocket dashboard snapshot: snapshot unavailable',
+    );
+
+    gateway.onModuleDestroy();
+  });
 });
+

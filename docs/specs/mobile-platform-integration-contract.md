@@ -39,6 +39,8 @@ Scope note:
   - container creation/update payloads
   - citizen report payloads
   - tour stop validation payloads
+- `photoUrl` is optional for citizen and anomaly submissions, and must be a valid `http`/`https` URL when present.
+- Citizen history responses may include snapshot-backed `containerCode` / `containerLabel` values so old reports stay readable after container lifecycle changes.
 - Report export format is explicit and normalized:
   - `pdf` for binary PDF
   - `csv` for Excel-compatible downloads

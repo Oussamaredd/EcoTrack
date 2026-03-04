@@ -1,16 +1,16 @@
-﻿import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthService } from '../auth/auth.service.js';
-import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../auth/permissions.guard.js';
-import { DashboardController } from '../dashboard/dashboard.controller.js';
-import { DashboardService } from '../dashboard/dashboard.service.js';
-import { TicketsController } from '../tickets/tickets.controller.js';
-import { TicketsService } from '../tickets/tickets.service.js';
-import { UsersService } from '../users/users.service.js';
+import { AuthService } from '../modules/auth/auth.service.js';
+import { AuthenticatedUserGuard } from '../modules/auth/authenticated-user.guard.js';
+import { PermissionsGuard } from '../modules/auth/permissions.guard.js';
+import { DashboardController } from '../modules/dashboard/dashboard.controller.js';
+import { DashboardService } from '../modules/dashboard/dashboard.service.js';
+import { TicketsController } from '../modules/tickets/tickets.controller.js';
+import { TicketsService } from '../modules/tickets/tickets.service.js';
+import { UsersService } from '../modules/users/users.service.js';
 
 describe('Protected API route authorization', () => {
   const authCookie = 'auth_token=valid';
@@ -31,7 +31,7 @@ describe('Protected API route authorization', () => {
   };
 
   const authServiceMock = {
-    getAuthUserFromRequest: vi.fn(),
+    resolveActiveUserFromRequest: vi.fn(),
   };
 
   const usersServiceMock = {
@@ -86,11 +86,46 @@ describe('Protected API route authorization', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    authServiceMock.getAuthUserFromRequest.mockImplementation(
-      (request?: { headers?: { cookie?: string } }) => (request?.headers?.cookie ? authUser : null),
-    );
     usersServiceMock.ensureUserForAuth.mockResolvedValue(baseDbUser);
     usersServiceMock.getRolesForUser.mockResolvedValue([]);
+    authServiceMock.resolveActiveUserFromRequest.mockImplementation(
+      async (request?: { headers?: { cookie?: string } }) => {
+        if (!request?.headers?.cookie) {
+          return null;
+        }
+
+        const dbUser = await usersServiceMock.ensureUserForAuth(authUser);
+        if (!dbUser) {
+          return null;
+        }
+
+        const roles = await usersServiceMock.getRolesForUser(dbUser.id);
+        const permissions = Array.from(
+          new Set(
+            roles.flatMap((role: { permissions?: unknown }) =>
+              Array.isArray(role.permissions)
+                ? role.permissions
+                    .filter((permission): permission is string => typeof permission === 'string')
+                    .map((permission) => permission.trim().toLowerCase())
+                : [],
+            ),
+          ),
+        );
+
+        return {
+          id: dbUser.id,
+          email: dbUser.email,
+          displayName: dbUser.displayName,
+          role: dbUser.role,
+          roles: roles.map((role: { id: string; name: string }) => ({
+            id: role.id,
+            name: role.name,
+          })),
+          permissions,
+          isActive: dbUser.isActive,
+        };
+      },
+    );
 
     ticketsServiceMock.findAll.mockResolvedValue({ tickets: [], total: 0 });
     ticketsServiceMock.create.mockResolvedValue({ id: 'ticket-1', title: 'New ticket' });
@@ -205,4 +240,5 @@ describe('Protected API route authorization', () => {
     expect(ticketsServiceMock.create).toHaveBeenCalledWith({ title: 'New ticket' });
   });
 });
+
 

@@ -45,14 +45,14 @@ Status scale:
 
 | Capability | Status | Evidence |
 | --- | --- | --- |
-| Auth flows (signup/login/reset/me) and token exchange | DONE | `api/src/auth/local-auth.controller.ts`, `api/src/auth/auth.controller.ts`, `app/src/pages/auth/LoginPage.tsx` |
+| Auth flows (signup/login/reset/me) and token exchange | DONE | `api/src/modules/auth/local-auth.controller.ts`, `api/src/modules/auth/auth.controller.ts`, `app/src/pages/auth/LoginPage.tsx` |
 | Protected routes and role-based app shell | DONE | `app/src/routes/AppRouter.tsx`, `app/src/routes/guards/RequireAuth.tsx` |
-| Support ticket workflows (CRUD + comments + activity) | DONE | `api/src/tickets/tickets.controller.ts`, `app/src/pages/TicketDetails.tsx`, `app/src/pages/AdvancedTicketList.tsx` |
-| Admin center (users/roles/tickets/settings/audit logs) | DONE | `app/src/pages/AdminDashboard.tsx`, `api/src/admin/admin.users.controller.ts`, `api/src/admin/admin.settings.controller.ts` |
-| Operational dashboard | PARTIAL | `app/src/pages/Dashboard.tsx`, `api/src/dashboard/dashboard.controller.ts` |
-| Health and metrics endpoints | PARTIAL | `api/src/health/health.controller.ts`, `api/src/monitoring/monitoring.controller.ts` |
+| Support ticket workflows (CRUD + comments + activity) | DONE | `api/src/modules/tickets/tickets.controller.ts`, `app/src/pages/TicketDetails.tsx`, `app/src/pages/AdvancedTicketList.tsx` |
+| Admin center (users/roles/tickets/settings/audit logs) | DONE | `app/src/pages/AdminDashboard.tsx`, `api/src/modules/admin/admin.users.controller.ts`, `api/src/modules/admin/admin.settings.controller.ts` |
+| Operational dashboard | PARTIAL | `app/src/pages/Dashboard.tsx`, `api/src/modules/dashboard/dashboard.controller.ts` |
+| Health and metrics endpoints | PARTIAL | `api/src/modules/health/health.controller.ts`, `api/src/modules/monitoring/monitoring.controller.ts` |
 | CI/CD + quality gates | DONE | `.github/workflows/CI.yml`, `.github/workflows/CD.yml` |
-| EcoTrack domain modules (containers, zones, tours, citizen reports, gamification) | DONE | `api/src/app.module.ts`, `app/src/routes/AppRouter.tsx`, `database/src/schema.ts` |
+| EcoTrack domain modules (containers, zones, tours, citizen reports, gamification) | DONE | `api/src/app.module.ts`, `app/src/routes/AppRouter.tsx`, `database/schema/index.ts` |
 
 ## 3) Target User Stories and Task Checklists
 
@@ -445,9 +445,9 @@ Reference spec: `docs/specs/websocket-realtime-step-plan.md`
 
 | Task ID | Sprint | Owner lane | Scope | Primary files | Depends on | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| WS-RT-001 | 11 | Agent-A | Add planning WebSocket gateway and authenticated session handshake | `api/src/planning/**`, `api/src/auth/**` | `UI-RT-002` | DONE |
-| WS-RT-002 | 11 | Agent-A | Bridge existing planning realtime events into gateway broadcasts | `api/src/planning/planning.service.ts`, `api/src/planning/**` | `WS-RT-001` | DONE |
+| WS-RT-001 | 11 | Agent-A | Add planning WebSocket gateway and authenticated session handshake | `api/src/modules/routes/**`, `api/src/modules/auth/**` | `UI-RT-002` | DONE |
+| WS-RT-002 | 11 | Agent-A | Bridge existing planning realtime events into gateway broadcasts | `api/src/modules/routes/planning.service.ts`, `api/src/modules/routes/**` | `WS-RT-001` | DONE |
 | WS-RT-003 | 11 | Agent-B | Add frontend WebSocket hook and transport priority (`WS -> SSE -> polling`) | `app/src/hooks/**`, `app/src/pages/Dashboard.tsx` | `WS-RT-001` | DONE |
-| WS-RT-004 | 11 | Agent-C | Add reconnect resilience and connection-state telemetry | `app/src/hooks/**`, `api/src/planning/**` | `WS-RT-003` | DONE |
+| WS-RT-004 | 11 | Agent-C | Add reconnect resilience and connection-state telemetry | `app/src/hooks/**`, `api/src/modules/routes/**` | `WS-RT-003` | DONE |
 | WS-QA-001 | 11 | Agent-QA | Add API/app tests for ws auth, broadcasts, and fallback behavior | `api/src/tests/**`, `app/src/tests/**` | `WS-RT-001..004` | DONE |
 | WS-DOC-001 | 11 | Agent-Docs | Update roadmap/features/runbooks for final transport stack | `docs/ROADMAP.md`, `docs/features/Dashboard.md`, `docs/specs/*.md` | `WS-RT-001..004`, `WS-QA-001` | DONE |

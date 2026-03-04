@@ -67,17 +67,17 @@ const controllerAndServiceRestrictedImports = {
 };
 
 const domainControllerAndServiceFiles = [
-  'src/admin/**/*.controller.ts',
-  'src/admin/**/*.service.ts',
-  'src/auth/**/*.controller.ts',
-  'src/auth/**/*.service.ts',
-  'src/dashboard/**/*.controller.ts',
-  'src/dashboard/**/*.service.ts',
-  'src/monitoring/**/*.controller.ts',
-  'src/monitoring/**/*.service.ts',
-  'src/tickets/**/*.controller.ts',
-  'src/tickets/**/*.service.ts',
-  'src/users/**/*.service.ts',
+  'src/modules/admin/**/*.controller.ts',
+  'src/modules/admin/**/*.service.ts',
+  'src/modules/auth/**/*.controller.ts',
+  'src/modules/auth/**/*.service.ts',
+  'src/modules/dashboard/**/*.controller.ts',
+  'src/modules/dashboard/**/*.service.ts',
+  'src/modules/monitoring/**/*.controller.ts',
+  'src/modules/monitoring/**/*.service.ts',
+  'src/modules/tickets/**/*.controller.ts',
+  'src/modules/tickets/**/*.service.ts',
+  'src/modules/users/**/*.service.ts',
 ];
 
 export default [
@@ -128,3 +128,4 @@ export default [
     },
   },
 ];
+

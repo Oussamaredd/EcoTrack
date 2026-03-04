@@ -27,11 +27,11 @@ export default defineConfig({
       reportsDirectory: './coverage',
       all: true,
       include: [
-        'src/auth/auth.controller.ts',
-        'src/auth/authenticated-user.guard.ts',
-        'src/auth/permissions.guard.ts',
-        'src/tickets/tickets.controller.ts',
-        'src/monitoring/monitoring.controller.ts',
+        'src/modules/auth/auth.controller.ts',
+        'src/modules/auth/authenticated-user.guard.ts',
+        'src/modules/auth/permissions.guard.ts',
+        'src/modules/tickets/tickets.controller.ts',
+        'src/modules/monitoring/monitoring.controller.ts',
         'src/common/http/pagination.ts',
         'src/common/request-id.ts',
       ],
@@ -45,3 +45,4 @@ export default defineConfig({
     },
   },
 });
+

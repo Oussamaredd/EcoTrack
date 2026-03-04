@@ -6,6 +6,7 @@ import LoginButton from '../../components/LoginButton';
 import { useApiReady } from '../../hooks/useApiReady';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
+import { API_BASE } from '../../services/api';
 import {
   clearPendingAuthRedirect,
   resolveRequestedAuthRedirect,
@@ -22,9 +23,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  const configuredApiBase =
-    import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
-  const { isApiReady } = useApiReady(configuredApiBase);
+  const { isApiReady } = useApiReady(API_BASE);
 
   const redirectTarget = useMemo(() => resolveRequestedAuthRedirect(location.search), [location.search]);
   const oauthError = useMemo(() => new URLSearchParams(location.search).get('error'), [location.search]);

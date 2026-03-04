@@ -15,7 +15,7 @@ vi.mock('../services/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../services/api')>();
   return {
     ...actual,
-    API_BASE: 'http://localhost:3001',
+    API_BASE: 'http://localhost:5173',
   };
 });
 
@@ -71,7 +71,7 @@ describe('usePlanningRealtimeSocket', () => {
     });
 
     expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:3001/api/planning/ws-session',
+      'http://localhost:5173/api/planning/ws-session',
       expect.objectContaining({ method: 'POST' }),
     );
 
@@ -156,12 +156,12 @@ describe('usePlanningRealtimeSocket', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      'http://localhost:3001/api/planning/ws-session',
+      'http://localhost:5173/api/planning/ws-session',
       expect.objectContaining({ method: 'POST' }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'http://localhost:3001/api/planning/ws/session',
+      'http://localhost:5173/api/planning/ws/session',
       expect.objectContaining({ method: 'POST' }),
     );
   });

@@ -24,8 +24,8 @@
 ## Relevant Files
 - `app/src/pages/TicketDetails.tsx`
 - `app/src/hooks/useTickets.tsx`
-- `api/src/tickets/tickets.controller.ts`
-- `api/src/tickets/tickets.repository.ts`
+- `api/src/modules/tickets/tickets.controller.ts`
+- `api/src/modules/tickets/tickets.repository.ts`
 
 ## Validation Commands
 ```bash

@@ -1,8 +1,8 @@
-﻿import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthController } from '../auth/auth.controller.js';
+import { AuthController } from '../modules/auth/auth.controller.js';
 
 describe('AuthController', () => {
   const authUser = {
@@ -24,6 +24,7 @@ describe('AuthController', () => {
 
   const authServiceMock = {
     getAuthUserFromRequest: vi.fn(),
+    enrichAuthUser: vi.fn(),
     getAuthCookieName: vi.fn(() => 'auth_token'),
     getAuthCookieOptions: vi.fn(() => ({
       httpOnly: true,
@@ -37,11 +38,6 @@ describe('AuthController', () => {
     ensureGoogleSignInAllowed: vi.fn(),
   };
 
-  const usersServiceMock = {
-    ensureUserForAuth: vi.fn(),
-    getRolesForUser: vi.fn(),
-  };
-
   const makeRequest = (cookie?: string) =>
     ({
       headers: { cookie },
@@ -51,10 +47,9 @@ describe('AuthController', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    controller = new AuthController(authServiceMock as any, usersServiceMock as any);
+    controller = new AuthController(authServiceMock as any);
     authServiceMock.getAuthUserFromRequest.mockReturnValue(null);
-    usersServiceMock.ensureUserForAuth.mockResolvedValue(dbUser);
-    usersServiceMock.getRolesForUser.mockResolvedValue([{ id: 'role-1', name: 'manager' }]);
+    authServiceMock.enrichAuthUser.mockResolvedValue(authUser);
   });
 
   it('getStatus returns unauthenticated when no cookie user exists', async () => {
@@ -63,6 +58,13 @@ describe('AuthController', () => {
 
   it('getStatus returns enriched authenticated user', async () => {
     authServiceMock.getAuthUserFromRequest.mockReturnValue(authUser);
+    authServiceMock.enrichAuthUser.mockResolvedValue({
+      ...authUser,
+      provider: dbUser.authProvider,
+      role: 'manager',
+      roles: [{ id: 'role-1', name: 'manager' }],
+      isActive: true,
+    });
 
     await expect(controller.getStatus(makeRequest('auth_token=valid'))).resolves.toEqual({
       authenticated: true,
@@ -77,15 +79,12 @@ describe('AuthController', () => {
 
   it('getStatus falls back to auth user when enrichment fails', async () => {
     authServiceMock.getAuthUserFromRequest.mockReturnValue(authUser);
-    usersServiceMock.ensureUserForAuth.mockRejectedValueOnce(new Error('db unavailable'));
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    authServiceMock.enrichAuthUser.mockResolvedValueOnce(authUser);
 
     await expect(controller.getStatus(makeRequest('auth_token=valid'))).resolves.toEqual({
       authenticated: true,
       user: authUser,
     });
-
-    errorSpy.mockRestore();
   });
 
   it('getCurrentUser throws UnauthorizedException when user is missing', async () => {
@@ -96,6 +95,13 @@ describe('AuthController', () => {
 
   it('getCurrentUser returns enriched user when present', async () => {
     authServiceMock.getAuthUserFromRequest.mockReturnValue(authUser);
+    authServiceMock.enrichAuthUser.mockResolvedValue({
+      ...authUser,
+      provider: dbUser.authProvider,
+      role: 'manager',
+      roles: [{ id: 'role-1', name: 'manager' }],
+      isActive: true,
+    });
 
     await expect(controller.getCurrentUser(makeRequest('auth_token=valid'))).resolves.toEqual({
       user: {
@@ -169,4 +175,5 @@ describe('AuthController', () => {
     expect(authServiceMock.exchangeCode).toHaveBeenCalledWith('exchange-code-1');
   });
 });
+
 
