@@ -31,7 +31,7 @@ openssl rand -base64 16
 
 ## Setup Instructions
 
-1. Copy environment templates:
+1. Copy environment templates (`api/.env` is optional service-scoped reference only; host runtime still uses root `/.env`):
 ```bash
 cp .env.example .env
 cp api/.env.example api/.env

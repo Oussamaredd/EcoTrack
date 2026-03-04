@@ -1,6 +1,7 @@
 # Environment Setup Guide
 
 This guide uses the canonical env architecture and strict frontend/backend separation.
+For the current runtime port and origin contract, use `docs/ENV.md` as the active source of truth.
 
 ## Workflow Mapping
 
@@ -25,7 +26,7 @@ cp .env.example .env
 cp app/.env.example app/.env.local
 ```
 
-Optional service-scoped local files:
+Optional service-scoped template (reference only; root `/.env` remains the host runtime source):
 
 ```bash
 cp api/.env.example api/.env
@@ -36,7 +37,14 @@ cp api/.env.example api/.env
 ```bash
 cp infrastructure/environments/.env.docker.example infrastructure/environments/.env.docker
 npm run infra:up
+npm run smoke-test
 ```
+
+## Port Contract
+
+- Host/native dev browser traffic enters through `http://localhost:5173`; the API process listens on `http://localhost:3001` for host-native diagnostics only.
+- Docker dev browser traffic enters through `http://localhost:3000`; the backend still listens on `API_PORT=3001`, but that port stays internal-only on the Docker network.
+- `API_PORT` is the backend listen port, while `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public frontend edge origin.
 
 ## Deployed Environments
 
@@ -84,6 +92,10 @@ Deprecated aliases:
 ## Validation Commands
 
 ```bash
+npm run validate-env:all
+npm run dev:doctor
+npm run infra:health
+npm run smoke-test
 npm run db:migrate --workspace=ecotrack-database
 npm run build
 npm run test

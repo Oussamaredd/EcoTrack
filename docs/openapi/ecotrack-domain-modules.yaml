@@ -4,7 +4,8 @@ info:
   version: 0.2.0
   description: Reference index for post-Sprint 0 EcoTrack domain endpoints.
 servers:
-  - url: http://localhost:3001/api
+  - url: /api
+    description: Browser-facing edge-relative API base
 paths:
   /citizen/reports:
     post:

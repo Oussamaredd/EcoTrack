@@ -44,9 +44,9 @@ cp app/.env.example app/.env.local
 npm run dev
 ```
 
-`npm run dev` now blocks frontend startup until `http://localhost:3001/api/health/ready` returns `200`, so schema drift and failed migrations stop the host-dev flow before Vite starts.
+`npm run dev` now blocks frontend startup until the host direct API readiness URL from the Port Contract returns `200`, so schema drift and failed migrations stop the host-dev flow before Vite starts.
 
-Optional service-scoped templates:
+Optional service-scoped template (reference only; root `/.env` remains the host runtime source):
 
 ```bash
 cp api/.env.example api/.env
