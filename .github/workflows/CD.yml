@@ -91,14 +91,14 @@ jobs:
       - name: Validate deploy frontend env
         run: |
           if [ -z "${VITE_API_BASE_URL}" ]; then
-            echo "Missing required repository variable: define VITE_API_BASE_URL, API_BASE_URL, or APP_URL."
-            echo "Set it in Settings > Secrets and variables > Actions > Variables."
-            exit 1
+            echo "No deploy API base variable is configured. Falling back to runtime same-origin resolution."
+            echo "VITE_API_BASE_URL=" >> "$GITHUB_ENV"
+            exit 0
           fi
 
           if [[ "${VITE_API_BASE_URL}" == http://localhost* || "${VITE_API_BASE_URL}" == https://localhost* ]]; then
-            echo "VITE_API_BASE_URL cannot target localhost for GitHub Pages deployments."
-            exit 1
+            echo "VITE_API_BASE_URL targets localhost. Clearing it so the deployed app uses runtime same-origin resolution."
+            echo "VITE_API_BASE_URL=" >> "$GITHUB_ENV"
           fi
 
       - name: Run frontend release checks

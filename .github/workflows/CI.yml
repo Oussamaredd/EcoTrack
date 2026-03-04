@@ -157,7 +157,8 @@ jobs:
         run: npm run db:migrate --workspace=ecotrack-database
 
       - name: Test backend against migrated DB (Vitest)
-        run: npm run test:coverage --workspace=ecotrack-api
+        working-directory: api
+        run: node ./scripts/run-vitest.mjs --configLoader runner --coverage --maxWorkers=1
 
       - name: Upload backend coverage
         uses: actions/upload-artifact@v4
