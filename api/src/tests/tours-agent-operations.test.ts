@@ -4,12 +4,12 @@ import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthService } from '../auth/auth.service.js';
-import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../auth/permissions.guard.js';
-import { ToursController } from '../tours/tours.controller.js';
-import { ToursService } from '../tours/tours.service.js';
-import { UsersService } from '../users/users.service.js';
+import { AuthService } from '../modules/auth/auth.service.js';
+import { AuthenticatedUserGuard } from '../modules/auth/authenticated-user.guard.js';
+import { PermissionsGuard } from '../modules/auth/permissions.guard.js';
+import { ToursController } from '../modules/collections/tours.controller.js';
+import { ToursService } from '../modules/collections/tours.service.js';
+import { UsersService } from '../modules/users/users.service.js';
 
 describe('Tours agent operations', () => {
   const tourId = '8a6309b8-638f-4951-8b06-2943503c6db4';
@@ -220,3 +220,4 @@ describe('Tours agent operations', () => {
     expect(mockToursService.rebuildRoute).not.toHaveBeenCalled();
   });
 });
+

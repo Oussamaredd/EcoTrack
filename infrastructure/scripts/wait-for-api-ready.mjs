@@ -1,4 +1,4 @@
-const DEFAULT_URL = 'http://localhost:3001/health';
+const DEFAULT_URL = 'http://localhost:3001/api/health/ready';
 const DEFAULT_INTERVAL_MS = 1200;
 const DEFAULT_TIMEOUT_MS = 90000;
 

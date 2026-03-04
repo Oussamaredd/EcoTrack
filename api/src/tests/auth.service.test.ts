@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthService } from '../auth/auth.service.js';
+import { AuthService } from '../modules/auth/auth.service.js';
 
 describe('AuthService', () => {
   const originalEnv = { ...process.env };
@@ -375,4 +375,5 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });
+
 

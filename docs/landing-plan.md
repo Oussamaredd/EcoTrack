@@ -23,8 +23,8 @@
   - `app/src/hooks/useAuth.tsx:22` checks `/api/auth/status`.
   - `app/src/components/LoginButton.tsx:16` links to `/api/auth/google`.
 - Backend callback contract (must remain unchanged):
-  - `api/src/auth/auth.controller.ts:44` handles `/auth/google/callback`.
-  - `api/src/auth/auth.utils.ts:90` redirects frontend with `?auth=true|false`.
+  - `api/src/modules/auth/auth.controller.ts:44` handles `/auth/google/callback`.
+  - `api/src/modules/auth/auth.utils.ts:90` redirects frontend with `?auth=true|false`.
 - Behavior confirmation:
   - `cd app; npx vitest src/tests/Routing.test.tsx -t "renders login screen when not authenticated" --run` confirms current unauthenticated first screen is `AUTHENTIFICATION PROCESS` (`app/src/tests/Routing.test.tsx:32`).
 

@@ -59,3 +59,4 @@ describe('resolveCorsOrigins', () => {
     expect(resolveCorsOrigins({ nodeEnv: 'test' })).toEqual(['http://localhost:5173']);
   });
 });
+

@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
 import { resolveCorsOrigins } from './cors-origins.js';
-
-const OAUTH_CALLBACK_PATH = '/api/auth/google/callback';
+import { buildOAuthCallbackUrlFromApiBase, OAUTH_CALLBACK_PATH, parsePublicApiBaseUrl } from './public-api-url.js';
 const GOOGLE_WEB_CLIENT_ID_PATTERN = /^\d+-[A-Za-z0-9._-]+\.apps\.googleusercontent\.com$/;
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().positive().max(65535).default(3001),
   API_HOST: z.string().optional(),
+  API_BASE_URL: z.string().url().optional(),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().optional(),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).optional(),
@@ -33,6 +33,10 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     throw new Error(`Invalid environment variables: ${result.error.message}`);
   }
 
+  if (result.data.API_BASE_URL) {
+    parsePublicApiBaseUrl(result.data.API_BASE_URL, 'API_BASE_URL');
+  }
+
   const callbackUrl = result.data.GOOGLE_CALLBACK_URL;
   if (callbackUrl) {
     const parsed = new URL(callbackUrl);
@@ -42,7 +46,14 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
       );
     }
 
-    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+    if (result.data.API_BASE_URL) {
+      const expectedCallbackUrl = buildOAuthCallbackUrlFromApiBase(result.data.API_BASE_URL, 'API_BASE_URL');
+      if (callbackUrl.replace(/\/+$/, '') !== expectedCallbackUrl) {
+        throw new Error(
+          `GOOGLE_CALLBACK_URL must match the callback derived from API_BASE_URL (${expectedCallbackUrl}).`,
+        );
+      }
+    } else if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
       const callbackPort = parsed.port
         ? Number(parsed.port)
         : parsed.protocol === 'https:'

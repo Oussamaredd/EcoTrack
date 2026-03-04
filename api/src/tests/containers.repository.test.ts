@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ContainersRepository } from '../containers/containers.repository.js';
+import { ContainersRepository } from '../modules/iot/containers.repository.js';
 
 const createJoinedLimitSelectionChain = (rows: unknown[]) => ({
   from: vi.fn().mockReturnValue({
@@ -108,3 +108,4 @@ describe('ContainersRepository', () => {
     );
   });
 });
+

@@ -6,7 +6,7 @@
   "scripts": {
     "docker:dev": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core up --build -d",
     "docker:down": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core down --remove-orphans",
-    "health": ".\\health-check.bat",
+    "health": ".\\scripts\\host-bash\\health-check.bat",
     "verify:docker": "powershell -ExecutionPolicy Bypass -File ./scripts/verify-docker.ps1",
     "migrate:up": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=false migrate",
     "migrate:up:seed": "docker compose --env-file ./environments/.env.docker -f docker-compose.yml --profile core run --build --rm -e ENABLE_SEED_DATA=true -e \"SEED_COMMAND=npm run db:seed --workspace=ecotrack-database\" migrate",

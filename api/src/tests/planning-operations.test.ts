@@ -4,12 +4,12 @@ import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthService } from '../auth/auth.service.js';
-import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../auth/permissions.guard.js';
-import { PlanningController } from '../planning/planning.controller.js';
-import { PlanningService } from '../planning/planning.service.js';
-import { UsersService } from '../users/users.service.js';
+import { AuthService } from '../modules/auth/auth.service.js';
+import { AuthenticatedUserGuard } from '../modules/auth/authenticated-user.guard.js';
+import { PermissionsGuard } from '../modules/auth/permissions.guard.js';
+import { PlanningController } from '../modules/routes/planning.controller.js';
+import { PlanningService } from '../modules/routes/planning.service.js';
+import { UsersService } from '../modules/users/users.service.js';
 
 describe('Planning operations', () => {
   const userId = 'ce320a88-fec0-4b2a-914a-242f8844f74f';
@@ -326,3 +326,4 @@ describe('Planning operations', () => {
     );
   });
 });
+

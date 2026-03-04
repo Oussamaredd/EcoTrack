@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { deliverReportByEmail, resolveReportOutboxDirectory } from '../planning/report-delivery.utils.js';
+import { deliverReportByEmail, resolveReportOutboxDirectory } from '../modules/routes/report-delivery.utils.js';
 
 describe('report delivery utils', () => {
   it('writes a MIME message with the report attachment into the development outbox', async () => {
@@ -38,3 +38,4 @@ describe('report delivery utils', () => {
     }
   });
 });
+

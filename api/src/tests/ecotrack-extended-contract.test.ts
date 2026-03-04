@@ -3,10 +3,10 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../auth/permissions.guard.js';
-import { TicketsController } from '../tickets/tickets.controller.js';
-import { TicketsService } from '../tickets/tickets.service.js';
+import { AuthenticatedUserGuard } from '../modules/auth/authenticated-user.guard.js';
+import { PermissionsGuard } from '../modules/auth/permissions.guard.js';
+import { TicketsController } from '../modules/tickets/tickets.controller.js';
+import { TicketsService } from '../modules/tickets/tickets.service.js';
 
 describe('Extended EcoTrack contract endpoints', () => {
   let app: INestApplication;
@@ -75,3 +75,4 @@ describe('Extended EcoTrack contract endpoints', () => {
   });
 
 });
+

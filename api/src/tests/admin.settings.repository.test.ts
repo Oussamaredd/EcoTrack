@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { AdminSettingsRepository } from '../admin/admin.settings.repository.js';
+import { AdminSettingsRepository } from '../modules/admin/admin.settings.repository.js';
 
 describe('AdminSettingsRepository', () => {
   it('persists notification rows when dispatching a test notification', async () => {
@@ -97,3 +97,4 @@ describe('AdminSettingsRepository', () => {
     );
   });
 });
+

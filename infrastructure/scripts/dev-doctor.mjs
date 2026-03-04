@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const REQUIRED_ROOT_KEYS = [
   'DATABASE_URL',
   'API_PORT',
+  'API_BASE_URL',
   'JWT_SECRET',
   'JWT_ACCESS_SECRET',
   'JWT_ACCESS_EXPIRES_IN',
@@ -21,6 +22,26 @@ const results = [];
 
 const addResult = (level, name, detail) => {
   results.push({ level, name, detail });
+};
+
+const normalizeApiBase = (value) => {
+  const trimmed = String(value ?? '').trim().replace(/\/+$/, '');
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;
+};
+
+const buildExpectedCallbackUrl = (apiBaseUrl) => {
+  const normalizedApiBase = String(apiBaseUrl ?? '').trim().replace(/\/+$/, '');
+  if (!normalizedApiBase) {
+    return null;
+  }
+
+  return normalizedApiBase.endsWith('/api')
+    ? `${normalizedApiBase}/auth/google/callback`
+    : `${normalizedApiBase}/api/auth/google/callback`;
 };
 
 const parseEnvFile = (filePath) => {
@@ -180,6 +201,37 @@ const run = async () => {
         ? 'JWT_ACCESS_SECRET matches JWT_SECRET'
         : 'JWT_ACCESS_SECRET differs from JWT_SECRET',
     );
+  }
+
+  if (rootEnv?.API_BASE_URL) {
+    const normalizedRootApiBase = normalizeApiBase(rootEnv.API_BASE_URL);
+    addResult(
+      normalizedRootApiBase ? 'PASS' : 'FAIL',
+      'API_BASE_URL',
+      normalizedRootApiBase ? `public API origin=${normalizedRootApiBase}` : 'invalid or empty',
+    );
+
+    const normalizedAppApiBase = normalizeApiBase(appEnv?.VITE_API_BASE_URL);
+    if (normalizedRootApiBase && normalizedAppApiBase) {
+      addResult(
+        normalizedRootApiBase === normalizedAppApiBase ? 'PASS' : 'WARN',
+        'Frontend/API public origin alignment',
+        normalizedRootApiBase === normalizedAppApiBase
+          ? `VITE_API_BASE_URL matches API_BASE_URL (${normalizedRootApiBase})`
+          : `VITE_API_BASE_URL=${normalizedAppApiBase} differs from API_BASE_URL=${normalizedRootApiBase}`,
+      );
+    }
+
+    const expectedCallbackUrl = buildExpectedCallbackUrl(rootEnv.API_BASE_URL);
+    if (expectedCallbackUrl && rootEnv.GOOGLE_CALLBACK_URL) {
+      addResult(
+        rootEnv.GOOGLE_CALLBACK_URL.trim() === expectedCallbackUrl ? 'PASS' : 'WARN',
+        'GOOGLE_CALLBACK_URL alignment',
+        rootEnv.GOOGLE_CALLBACK_URL.trim() === expectedCallbackUrl
+          ? `matches API_BASE_URL (${expectedCallbackUrl})`
+          : `expected ${expectedCallbackUrl}, found ${rootEnv.GOOGLE_CALLBACK_URL.trim()}`,
+      );
+    }
   }
 
   let parsedDatabaseUrl;

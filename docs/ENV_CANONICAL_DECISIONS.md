@@ -7,6 +7,7 @@ Status: Approved
 
 - Database connection: `DATABASE_URL`
 - API port: `API_PORT`
+- Public API base: `API_BASE_URL`
 - Frontend API base: `VITE_API_BASE_URL`
 
 Deprecated aliases (read-only compatibility window):

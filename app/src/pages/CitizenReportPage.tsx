@@ -15,11 +15,12 @@ type StatusTone = "success" | "error";
 export default function CitizenReportPage() {
   const [containerId, setContainerId] = useState("");
   const [description, setDescription] = useState("");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
+  const [reportedLocation, setReportedLocation] = useState({ latitude: "", longitude: "" });
   const [photoUrl, setPhotoUrl] = useState("");
   const [confirmationMessage, setConfirmationMessage] = useState("");
+  const [locationMessage, setLocationMessage] = useState("");
   const [statusTone, setStatusTone] = useState<StatusTone>("success");
+  const [locationTone, setLocationTone] = useState<StatusTone>("success");
 
   const containersQuery = useQuery({
     queryKey: ["containers-options"],
@@ -27,6 +28,7 @@ export default function CitizenReportPage() {
   });
 
   const createReportMutation = useCreateCitizenReport();
+  const supportsGeolocation = typeof window !== "undefined" && "geolocation" in navigator;
 
   const containerOptions = useMemo(() => {
     const rows = Array.isArray(
@@ -47,8 +49,8 @@ export default function CitizenReportPage() {
       const response = (await createReportMutation.mutateAsync({
         containerId,
         description,
-        latitude: latitude || undefined,
-        longitude: longitude || undefined,
+        latitude: reportedLocation.latitude || undefined,
+        longitude: reportedLocation.longitude || undefined,
         photoUrl: photoUrl || undefined,
       })) as { confirmationMessage?: string };
 
@@ -65,6 +67,45 @@ export default function CitizenReportPage() {
       setStatusTone("error");
       setConfirmationMessage(fallback);
     }
+  };
+
+  const updateReportedLocation = (field: "latitude" | "longitude", value: string) => {
+    if (locationMessage) {
+      setLocationMessage("");
+    }
+
+    setReportedLocation((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const captureDeviceLocation = () => {
+    if (!supportsGeolocation) {
+      setLocationTone("error");
+      setLocationMessage("Device geolocation is not available in this browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setReportedLocation({
+          latitude: position.coords.latitude.toFixed(6),
+          longitude: position.coords.longitude.toFixed(6),
+        });
+        setLocationTone("success");
+        setLocationMessage("Location captured from your device.");
+      },
+      () => {
+        setLocationTone("error");
+        setLocationMessage("We could not access your device location. Enter coordinates manually.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10_000,
+        maximumAge: 60_000,
+      },
+    );
   };
 
   return (
@@ -120,8 +161,9 @@ export default function CitizenReportPage() {
             <input
               id="citizen-report-latitude"
               className="ops-input"
-              value={latitude}
-              onChange={(event) => setLatitude(event.target.value)}
+              inputMode="decimal"
+              value={reportedLocation.latitude}
+              onChange={(event) => updateReportedLocation("latitude", event.target.value)}
             />
           </div>
           <div className="ops-field">
@@ -131,19 +173,46 @@ export default function CitizenReportPage() {
             <input
               id="citizen-report-longitude"
               className="ops-input"
-              value={longitude}
-              onChange={(event) => setLongitude(event.target.value)}
+              inputMode="decimal"
+              value={reportedLocation.longitude}
+              onChange={(event) => updateReportedLocation("longitude", event.target.value)}
             />
           </div>
         </div>
 
+        <div className="ops-actions">
+          <button
+            type="button"
+            className="ops-btn ops-btn-outline"
+            onClick={captureDeviceLocation}
+            disabled={createReportMutation.isPending}
+          >
+            Use My Location
+          </button>
+        </div>
+
+        {locationMessage ? (
+          <p
+            className={
+              locationTone === "success"
+                ? "ops-status ops-status-success"
+                : "ops-status ops-status-error"
+            }
+            role="status"
+          >
+            {locationMessage}
+          </p>
+        ) : null}
+
         <div className="ops-field">
           <label htmlFor="citizen-report-photo-url" className="ops-label">
-            Photo URL (optional)
+            Photo URL (optional, http/https)
           </label>
           <input
             id="citizen-report-photo-url"
+            type="url"
             className="ops-input"
+            placeholder="https://example.com/overflow.jpg"
             value={photoUrl}
             onChange={(event) => setPhotoUrl(event.target.value)}
           />

@@ -24,7 +24,7 @@ Known readiness exceptions from this run:
 ### Worktree Cleanup And Isolation
 
 - [ ] Decide whether the current local changes should be committed, stashed, or split into a separate branch before DB work starts.
-- [x] Remove overlap risk in `database/src/schema.ts` by reconciling existing local edits before the namespace refactor begins.
+- [x] Remove overlap risk in `database/schema/index.ts` by reconciling existing local edits before the namespace refactor begins.
 - [x] Reconcile the current local changes in `database/migrations/meta/_journal.json` before adding any new migrations.
 - [x] Decide whether `database/migrations/0011_legal_captain_universe.sql` is a legitimate baseline migration to keep, rename, or replace.
 - [x] Decide whether `database/migrations/meta/0011_snapshot.json` is the accepted current baseline snapshot.

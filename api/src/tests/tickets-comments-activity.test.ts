@@ -1,14 +1,14 @@
-﻿import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthService } from '../auth/auth.service.js';
-import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../auth/permissions.guard.js';
-import { TicketsController } from '../tickets/tickets.controller.js';
-import { TicketsService } from '../tickets/tickets.service.js';
-import { UsersService } from '../users/users.service.js';
+import { AuthService } from '../modules/auth/auth.service.js';
+import { AuthenticatedUserGuard } from '../modules/auth/authenticated-user.guard.js';
+import { PermissionsGuard } from '../modules/auth/permissions.guard.js';
+import { TicketsController } from '../modules/tickets/tickets.controller.js';
+import { TicketsService } from '../modules/tickets/tickets.service.js';
+import { UsersService } from '../modules/users/users.service.js';
 
 describe('Tickets comments and activity endpoints', () => {
   const ticketId = 'b3b6c9be-4b1d-4b11-8f65-9d9b6c3c7a3e';
@@ -176,4 +176,5 @@ describe('Tickets comments and activity endpoints', () => {
     expect(response.body).toEqual({ activity: payload });
   });
 });
+
 

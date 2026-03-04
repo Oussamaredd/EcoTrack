@@ -1,8 +1,8 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
-import { HealthController } from '../health/health.controller.js';
-import type { HealthService } from '../health/health.service.js';
+import { HealthController } from '../modules/health/health.controller.js';
+import type { HealthService } from '../modules/health/health.service.js';
 
 describe('HealthController', () => {
   it('returns fast liveness payload without querying the database', () => {
@@ -69,3 +69,4 @@ describe('HealthController', () => {
     expect(healthService.checkDatabase).toHaveBeenCalledTimes(1);
   });
 });
+

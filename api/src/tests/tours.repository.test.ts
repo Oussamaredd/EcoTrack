@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ToursRepository } from '../tours/tours.repository.js';
+import { ToursRepository } from '../modules/collections/tours.repository.js';
 
 const createTourSelectionChain = (rows: unknown[]) => ({
   from: vi.fn().mockReturnValue({
@@ -269,3 +269,4 @@ describe('ToursRepository invariants', () => {
     );
   });
 });
+

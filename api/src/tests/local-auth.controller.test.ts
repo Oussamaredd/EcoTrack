@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LocalAuthController } from '../auth/local-auth.controller.js';
+import { LocalAuthController } from '../modules/auth/local-auth.controller.js';
 
 describe('LocalAuthController', () => {
   const authServiceMock = {
@@ -158,3 +158,4 @@ describe('LocalAuthController', () => {
     ).resolves.toEqual({ success: true });
   });
 });
+

@@ -99,6 +99,13 @@
       "when": 1772547172397,
       "tag": "0013_cdc_storage_foundations",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1772626591918,
+      "tag": "0014_stormy_black_bolt",
+      "breakpoints": true
     }
   ]
 }

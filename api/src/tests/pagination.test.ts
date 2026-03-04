@@ -48,3 +48,4 @@ describe("search term normalization", () => {
     expect(normalizeSearchTerm("  overflowing bins  ")).toBe("overflowing bins");
   });
 });
+

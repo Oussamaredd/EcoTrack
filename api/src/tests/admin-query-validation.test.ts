@@ -3,12 +3,13 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AdminAuditController } from '../admin/admin.audit.controller.js';
-import { AdminAuditService } from '../admin/admin.audit.service.js';
-import { AdminGuard } from '../admin/admin.guard.js';
-import { AdminUsersController } from '../admin/admin.users.controller.js';
-import { AuthService } from '../auth/auth.service.js';
-import { UsersService } from '../users/users.service.js';
+import { AdminAuditController } from '../modules/admin/admin.audit.controller.js';
+import { AdminAuditService } from '../modules/admin/admin.audit.service.js';
+import { AdminGuard } from '../modules/admin/admin.guard.js';
+import { AdminUsersController } from '../modules/admin/admin.users.controller.js';
+import { AuthService } from '../modules/auth/auth.service.js';
+import { USERS_ADMIN_PORT } from '../modules/users/users.contract.js';
+import { UsersService } from '../modules/users/users.service.js';
 
 describe('Admin query validation', () => {
   const usersServiceMock = {
@@ -30,6 +31,7 @@ describe('Admin query validation', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AdminUsersController, AdminAuditController],
       providers: [
+        { provide: USERS_ADMIN_PORT, useValue: usersServiceMock },
         { provide: UsersService, useValue: usersServiceMock },
         { provide: AdminAuditService, useValue: auditServiceMock },
         { provide: AuthService, useValue: authServiceMock },
@@ -90,3 +92,4 @@ describe('Admin query validation', () => {
     expect(auditServiceMock.listLogs).not.toHaveBeenCalled();
   });
 });
+

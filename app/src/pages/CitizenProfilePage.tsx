@@ -25,8 +25,13 @@ export default function CitizenProfilePage() {
   const historyPayload = (historyQuery.data ?? {}) as {
     history?: Array<{
       id: string;
+      containerCode?: string | null;
+      containerLabel?: string | null;
       description?: string;
+      photoUrl?: string | null;
       status?: string;
+      latitude?: string | null;
+      longitude?: string | null;
       reportedAt?: string;
     }>;
     pagination?: {
@@ -107,11 +112,26 @@ export default function CitizenProfilePage() {
           ) : (
             history.map((item) => (
               <li key={item.id} className="ops-list-item">
+                <p className="ops-list-meta">
+                  {formatContainerReference(item.containerCode, item.containerLabel)}
+                </p>
                 <p>{item.description ?? "No description"}</p>
                 <p className="ops-list-meta">
                   Status: {item.status ?? "submitted"} -{" "}
                   {item.reportedAt ? new Date(item.reportedAt).toLocaleString() : "N/A"}
                 </p>
+                {item.photoUrl ? (
+                  <p className="ops-list-meta">
+                    <a href={item.photoUrl} target="_blank" rel="noreferrer">
+                      View photo evidence
+                    </a>
+                  </p>
+                ) : null}
+                {item.latitude || item.longitude ? (
+                  <p className="ops-list-meta">
+                    Location: {formatReportedLocation(item.latitude, item.longitude)}
+                  </p>
+                ) : null}
               </li>
             ))
           )}
@@ -147,4 +167,20 @@ function MetricCard({ label, value }: { label: string; value: string | number })
       <p className="ops-kpi-value">{value}</p>
     </article>
   );
+}
+
+function formatContainerReference(containerCode?: string | null, containerLabel?: string | null) {
+  const parts = [containerCode, containerLabel].filter(
+    (value): value is string => typeof value === "string" && value.trim().length > 0,
+  );
+
+  return parts.length > 0 ? parts.join(" - ") : "Container reference unavailable";
+}
+
+function formatReportedLocation(latitude?: string | null, longitude?: string | null) {
+  const parts = [latitude, longitude].filter(
+    (value): value is string => typeof value === "string" && value.trim().length > 0,
+  );
+
+  return parts.length > 0 ? parts.join(", ") : "Location unavailable";
 }

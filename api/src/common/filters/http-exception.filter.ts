@@ -46,6 +46,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
       ...(normalizedError.details !== undefined ? { details: normalizedError.details } : {}),
     };
 
+    if (response.headersSent) {
+      if (normalizedError.statusCode >= 500) {
+        this.logger.error(
+          `${request.method} ${request.originalUrl ?? request.url} ${normalizedError.statusCode} (${requestId})`,
+          normalizedError.logStack,
+        );
+      }
+
+      return;
+    }
+
     response.setHeader(RESPONSE_REQUEST_ID_HEADER, requestId);
     response.status(normalizedError.statusCode).json(body);
 

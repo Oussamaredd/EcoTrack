@@ -1,7 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CitizenController } from '../citizen/citizen.controller.js';
+import { CitizenController } from '../modules/citizen/citizen.controller.js';
 
 describe('Citizen profile and challenges controller contract', () => {
   const authUserId = '390ca84d-6d0f-4b55-a2d6-c38fb9834a57';
@@ -100,4 +100,5 @@ describe('Citizen profile and challenges controller contract', () => {
     );
   });
 });
+
 

@@ -4,7 +4,8 @@
 
 EcoTrack exposes a REST API for citizen reporting, agent tour execution, manager planning, support workflows, and admin governance.
 
-- Base URL (local): `http://localhost:3001/api`
+- Browser-facing base URL (host dev): `http://localhost:5173/api`
+- Direct API base URL (local backend port): `http://localhost:3001/api`
 - Auth mode: JWT bearer token (`Authorization: Bearer <token>`) with cookie support for web auth flows
 - Response format: JSON
 - Correlation: `X-Request-Id` is returned on responses and reused from `x-request-id` when provided
@@ -59,7 +60,6 @@ PUT /zones/:id
 
 ```text
 GET /citizen-reports
-POST /citizen-reports
 
 GET /citizen/profile
 GET /citizen/history
@@ -68,6 +68,12 @@ POST /citizen/challenges/:challengeId/enroll
 POST /citizen/challenges/:challengeId/progress
 POST /citizen/reports
 ```
+
+Citizen reporting notes:
+- `POST /api/citizen/reports` is the canonical overflow-report submission endpoint.
+- `GET /api/citizen-reports` remains a read-only listing surface for report review workflows.
+- `photoUrl` in citizen report payloads must be a valid `http`/`https` URL when provided.
+- citizen history now returns durable `containerCode` / `containerLabel` values from report snapshots when the linked container is later changed or deleted.
 
 ### Agent Tours and Field Execution
 
@@ -141,6 +147,7 @@ GPS fields (`latitude`, `longitude`) in citizen reporting, container setup, and 
 `manualContainerIds` in `POST /planning/optimize-tour` must be an array of UUID strings.
 `POST /planning/optimize-tour` excludes containers already assigned to non-terminal tours in the same zone within `+/- 120 minutes` of `scheduledFor`; explicitly supplied `manualContainerIds` still override that schedule deferral.
 `orderedContainerIds` in `POST /planning/create-tour` must all belong to the selected `zoneId`.
+`GET /api/planning/dashboard` returns `telemetryHealth.lastMeasurementAt` as an ISO 8601 timestamp string or `null`.
 `GET /api/planning/alerts` exposes persisted `alert_events`, and `POST /api/planning/alerts/:id/acknowledge` marks an alert as acknowledged.
 `GET /api/planning/notifications` returns recent persisted notifications with their delivery attempts.
 
@@ -221,6 +228,10 @@ POST /errors
 POST /metrics/frontend
 GET /metrics
 ```
+
+Readiness notes:
+- `GET /api/health/ready` and `GET /api/health/database` validate the ticketing schema plus the planning dashboard and telemetry schema dependencies.
+- These readiness endpoints return HTTP `503` when database connectivity fails or when a required relation/column is no longer queryable after a schema change.
 
 ## OpenAPI References
 

@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ToursService } from '../tours/tours.service.js';
+import { ToursService } from '../modules/collections/tours.service.js';
 
 describe('ToursService route geometry enrichment', () => {
   const repositoryMock = {
@@ -702,3 +702,4 @@ describe('ToursService route geometry enrichment', () => {
     );
   });
 });
+

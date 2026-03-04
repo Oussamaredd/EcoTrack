@@ -26,11 +26,6 @@ export default function LoginButton({
       return;
     }
 
-    const configuredApiBase = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL;
-    if (API_BASE === 'http://localhost:3001' && !configuredApiBase) {
-      console.warn('Warning: VITE_API_BASE_URL not set, using default http://localhost:3001');
-    }
-
     onStartSignIn?.();
     window.location.assign(GOOGLE_AUTH_URL);
   };

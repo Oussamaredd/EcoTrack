@@ -2,11 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 
 const API_READY_RETRY_DELAY_MS = 1200;
 const API_READY_TIMEOUT_MS = 1500;
+const FALLBACK_API_BASE = 'http://localhost:3001';
 
 const normalizeApiBaseUrl = (apiBaseUrl: string) => {
   const trimmed = apiBaseUrl.trim().replace(/\/+$/, '');
   if (!trimmed) {
-    return 'http://localhost:3001';
+    if (typeof window !== 'undefined' && typeof window.location?.origin === 'string') {
+      const origin = window.location.origin.trim();
+      if (origin.length > 0) {
+        return origin;
+      }
+    }
+
+    return FALLBACK_API_BASE;
   }
 
   return trimmed.endsWith('/api') ? trimmed.slice(0, -4) : trimmed;

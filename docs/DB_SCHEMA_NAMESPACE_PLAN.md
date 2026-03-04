@@ -8,7 +8,7 @@ This plan is based on:
 
 - `docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx`, especially CDC sections 4.x (use cases), 5.2 (Development modules), 7.1 to 7.2 (business concepts and OLTP constraints), and 10.1 (expected API surface).
 - `AGENTS.md`, especially the Temporary Specialty Scope Freeze limiting active implementation to Development plus partial Dev/Data for storage/query only.
-- The current database model in `database/src/schema.ts`, `database/migrations/meta/0011_snapshot.json`, and the latest migration `database/migrations/0011_legal_captain_universe.sql`.
+- The current database model in `database/schema/index.ts`, `database/migrations/meta/0011_snapshot.json`, and the latest migration `database/migrations/0011_legal_captain_universe.sql`.
 
 Current database facts:
 
@@ -207,7 +207,7 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 
 ### Phase 1: Introduce Schemas And Move Tables Safely
 
-1. Add `pgSchema()` definitions in `database/src/schema.ts` for `auth`, `core`, `iot`, `ops`, `incident`, `notify`, `game`, `audit`, `admin`, `export`, and `support`.
+1. Add `pgSchema()` definitions in `database/schema/index.ts` for `auth`, `core`, `iot`, `ops`, `incident`, `notify`, `game`, `audit`, `admin`, `export`, and `support`.
 2. Rebind each existing table definition from `pgTable('table_name', ...)` to `<schema>.table('table_name', ...)` while keeping table names unchanged.
 3. Do not rely on a generated destructive diff for schema relocation; hand-author the migration SQL for this phase.
 4. In the migration, create schemas first:
@@ -305,9 +305,9 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 
 ## Concrete Code Changes To Apply After Plan Approval
 
-- Update `database/src/schema.ts` to define `pgSchema()` namespaces and rebind all 22 existing tables into their target schemas.
-- Add new Drizzle table definitions in `database/src/schema.ts` for `core.container_types`, `iot.sensor_devices`, `iot.measurements`, `admin.alert_rules`, `incident.alert_events`, `notify.notifications`, and `notify.notification_deliveries`.
-- Extend existing Drizzle table definitions in `database/src/schema.ts` for `core.zones`, `core.containers`, `ops.tour_routes`, and `ops.tours` with the additive Phase 2 columns.
+- Update `database/schema/index.ts` to define `pgSchema()` namespaces and rebind all 22 existing tables into their target schemas.
+- Add new Drizzle table definitions in `database/schema/index.ts` for `core.container_types`, `iot.sensor_devices`, `iot.measurements`, `admin.alert_rules`, `incident.alert_events`, `notify.notifications`, and `notify.notification_deliveries`.
+- Extend existing Drizzle table definitions in `database/schema/index.ts` for `core.zones`, `core.containers`, `ops.tour_routes`, and `ops.tours` with the additive Phase 2 columns.
 - Add one manual migration in `database/migrations/` for schema creation plus `ALTER TABLE ... SET SCHEMA ...` moves.
 - Add one follow-up migration in `database/migrations/` for the new tables, additive columns, indexes, and optional PostGIS enablement.
 - Refresh `database/migrations/meta/_journal.json` and the latest snapshot only after the hand-authored migration SQL and updated Drizzle schema are aligned.
