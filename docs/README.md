@@ -10,10 +10,10 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `ENVIRONMENT_SETUP.md` - host/Docker/deploy environment setup
 
 ## Environment and Configuration
-- `ENV.md` - canonical env model and key policies
-- `ENV_INVENTORY.md` - env variable inventory
-- `ENV_CONFLICTS.md` - conflict matrix and normalization notes
-- `ENV_CANONICAL_DECISIONS.md` - canonicalization decisions
+- `ENV.md` - current source of truth for env rules, browser origins, and the port contract
+- `ENV_INVENTORY.md` - env variable inventory reference snapshot
+- `ENV_CONFLICTS.md` - historical conflict matrix and normalization notes
+- `ENV_CANONICAL_DECISIONS.md` - decision record behind the current canonical env model
 - `SECURITY.md` - secret management and leakage safeguards
 
 ## Runtime and Operations
@@ -22,7 +22,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
 - `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy
 - `runbooks/DEMO_READINESS.md` - checklist and script for demo preparation
-- `runbooks/OAUTH_CALLBACK_REMEDIATION.md` - OAuth callback incident/remediation runbook
+- `runbooks/OAUTH_CALLBACK_REMEDIATION.md` - historical OAuth callback remediation record plus current troubleshooting notes
 
 ## Product and API
 - `API_DOCUMENTATION.md` - API contract and examples

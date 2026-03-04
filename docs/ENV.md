@@ -149,6 +149,8 @@ cp api/.env.example api/.env
 cp infrastructure/environments/.env.docker.example infrastructure/environments/.env.docker
 ```
 
+`api/.env` remains template-only guidance for service-scoped reference values. In host dev, the canonical runtime source is still root `/.env`.
+
 ## Docker Commands
 
 ```bash

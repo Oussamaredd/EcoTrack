@@ -1,4 +1,6 @@
-# PR Tasks: OAuth Callback Failure (Port/Path Mismatch) Remediation
+# OAuth Callback Failure (Port/Path Mismatch) Remediation
+
+This runbook records a resolved incident and the remediation path that led to the current contract. For the steady-state rules, use the Port Contract in `README.md` and the env/OAuth contract in `docs/ENV.md`. Use this file when troubleshooting a regression or auditing why the current rules exist.
 
 ## Context
 Google OAuth login initiation works, but callback completion fails in local/dev flows.
@@ -9,6 +11,7 @@ Current contract note:
 - Host dev public callback URI: `http://localhost:5173/api/auth/google/callback`
 - Docker dev public callback URI: `http://localhost:3000/api/auth/google/callback`
 - Direct API callback route on `http://localhost:3001/api/auth/google/callback` remains available only in host-native diagnostics; in Docker dev, the backend `3001` port is internal-only and browser traffic must use `http://localhost:3000`.
+- Docker verification now runs through `npm run smoke-test`, which checks the `3000` edge callback contract and confirms host `3001` stays closed.
 
 ## Confirmed Root Cause (Read-Only Diagnosis)
 - API runtime is configured for port `3001`:

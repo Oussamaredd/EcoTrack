@@ -4,7 +4,8 @@ info:
   version: 0.1.0
   description: Additive contract draft for Sprint 0 domain framing.
 servers:
-  - url: http://localhost:3001/api
+  - url: /api
+    description: Browser-facing edge-relative API base
 paths:
   /auth/status:
     get:

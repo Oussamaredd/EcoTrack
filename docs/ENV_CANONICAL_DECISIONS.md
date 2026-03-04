@@ -3,6 +3,8 @@
 Date: 2026-02-11
 Status: Approved
 
+This file records the decision history behind the current env model. For active runtime rules and the live port contract, use `docs/ENV.md`.
+
 ## 1) Canonical Keys
 
 - Database connection: `DATABASE_URL`
@@ -16,7 +18,18 @@ Deprecated aliases (read-only compatibility window):
 - `PORT` -> `API_PORT`
 - `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_PORT` -> `DATABASE_URL`
 
-## 2) Canonical File Locations By Workflow
+## 2) Port Contract
+
+- `API_PORT` is the backend listen port, not the browser entrypoint.
+- `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public frontend edge origin.
+- Host/native dev:
+  - Browser entrypoint: `http://localhost:5173`
+  - Direct backend diagnostics: `http://localhost:3001`
+- Docker dev:
+  - Sole browser entrypoint: `http://localhost:3000`
+  - Backend keeps `API_PORT=3001` internally and does not publish host `3001`
+
+## 3) Canonical File Locations By Workflow
 
 ### Host/native dev
 
@@ -36,23 +49,23 @@ Deprecated aliases (read-only compatibility window):
   - `infrastructure/environments/.env.staging.example`
   - `infrastructure/environments/.env.production.example`
 
-## 3) Precedence Policy
+## 4) Precedence Policy
 
 1. Explicit process env injected by shell/CI/runtime
 2. Canonical workflow env file
 3. `.example` templates (never runtime inputs)
 
-## 4) Frontend Policy (Vite)
+## 5) Frontend Policy (Vite)
 
 - Frontend env files (`app/.env.local`, `app/.env.example`, mode files) may contain only `VITE_*` keys.
 - Backend/database/infrastructure keys are forbidden in app env files.
 
-## 5) Database Naming Policy
+## 6) Database Naming Policy
 
 - Canonical database name is `ticketdb`.
 - All committed `DATABASE_URL` examples and compose templates must target `/ticketdb`.
 
-## 6) Migration Window Notes
+## 7) Migration Window Notes
 
 - Code may continue to read deprecated aliases temporarily.
 - No new file should write deprecated aliases.

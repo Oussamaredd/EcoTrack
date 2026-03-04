@@ -28,7 +28,10 @@ The repository already follows a four-layer layout. Ownership and dependency dir
 
 - `app` runtime must not render TanStack Query Devtools UI in any environment.
 - `app` runtime must not render manual in-app debug/testing panels.
-- Browser-facing app runtimes may proxy `/api` and `/health` at the frontend edge, but `app` source remains responsible only for UI and client-side API consumption.
+- Browser-facing app runtimes proxy `/api` and `/health` at the frontend edge, and that frontend edge is the canonical public API origin for browser traffic.
+- Host/native browser traffic enters through the Vite frontend edge on `http://localhost:5173`; the API process keeps `API_PORT=3001` for direct host diagnostics only.
+- Docker browser traffic enters through the frontend container on `http://localhost:3000`; the backend keeps `API_PORT=3001` on the internal Docker network only.
+- Public API docs and examples should prefer the browser-facing edge origin or edge-relative `/api` paths instead of hardcoding a direct backend diagnostics port.
 - Controllers in `api` must not execute Drizzle queries directly.
 - Data access path: `controller -> service -> repository -> database`.
 - `database` is the source of truth for schema, migration, and seed commands.

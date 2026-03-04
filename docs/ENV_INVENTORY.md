@@ -1,6 +1,8 @@
 # Environment Variable Inventory
 
-Last updated: 2026-02-11
+Last updated: 2026-03-04
+
+This inventory is a reference snapshot, not the day-to-day policy document. For the active runtime contract, use `docs/ENV.md`.
 
 ## Discovery Scope
 
@@ -41,7 +43,8 @@ Visibility legend:
 | API_PORT | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | API_BASE_URL | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | API_URL | api | private | host-dev, deploy-dev, deploy-staging, deploy-prod | removed runtime alias (use `API_BASE_URL` when explicit API base is needed) |
-| APP_URL | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
+| APP_BASE_URL | api | private | host-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical optional explicit frontend app base |
+| APP_URL | api | private | docker-dev, deploy-dev, deploy-staging, deploy-prod | supported frontend app-origin fallback (`APP_BASE_URL` takes precedence when both are set) |
 | BCRYPT_ROUNDS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | CACHE_MAX_SIZE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | CACHE_TTL | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -108,3 +111,4 @@ Visibility legend:
 
 - No secret values are included in this inventory; this file is key-only.
 - Canonical naming and deprecation decisions are finalized in `docs/ENV_CANONICAL_DECISIONS.md`.
+- Local browser traffic should follow the Port Contract in `docs/ENV.md` instead of inferring browser origins from `API_PORT`.
