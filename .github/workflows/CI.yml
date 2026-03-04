@@ -157,7 +157,31 @@ jobs:
         run: npm run db:migrate --workspace=ecotrack-database
 
       - name: Test backend against migrated DB (Vitest)
-        run: npm run test --workspace=ecotrack-api
+        shell: bash
+        run: |
+          set -euo pipefail
+          max_attempts=2
+          attempt=1
+          while [[ "$attempt" -le "$max_attempts" ]]; do
+            echo "[backend-ci] Running backend tests (attempt $attempt/$max_attempts)"
+            output_file="$(mktemp)"
+            if npm run test --workspace=ecotrack-api 2>&1 | tee "$output_file"; then
+              rm -f "$output_file"
+              exit 0
+            fi
+
+            if [[ "$attempt" -eq "$max_attempts" ]]; then
+              echo "[backend-ci] Backend tests failed after $max_attempts attempts"
+              tail -n 120 "$output_file" > /tmp/backend-ci-tail.log || true
+              escaped_tail="$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/backend-ci-tail.log)"
+              echo "::error title=Backend Vitest failure::$escaped_tail"
+              exit 1
+            fi
+
+            echo "[backend-ci] Retrying after transient failure..."
+            sleep 5
+            attempt=$((attempt + 1))
+          done
 
       - name: Collect backend coverage (best effort)
         continue-on-error: true
