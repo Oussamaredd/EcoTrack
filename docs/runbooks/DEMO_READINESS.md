@@ -19,7 +19,7 @@ Use this checklist to confirm the current EcoTrack implementation is demo-ready.
 npm install
 ```
 
-2. Prepare host env files:
+2. Prepare local env files:
 
 ```bash
 cp .env.example .env
@@ -81,3 +81,4 @@ npm run test:coverage
 - API references: `docs/API_DOCUMENTATION.md`, `docs/openapi/`
 - Accessibility baseline: `docs/runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md`
 - Role quick guides: `docs/guides/`
+

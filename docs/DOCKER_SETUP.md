@@ -45,7 +45,7 @@ npm run smoke-test
 - Browser-facing entrypoint: `http://localhost:3000`
 - Browser-facing API: `http://localhost:3000/api`
 - Backend keeps `API_PORT=3001` internally on the Docker network only
-- Host `3001` should remain closed during Docker dev; if it is reachable, the single-entrypoint contract is broken
+- Local machine port `3001` should remain closed during Docker dev; if it is reachable, the single-entrypoint contract is broken
 - Backend liveness/readiness checks run inside the backend container on `http://localhost:3001/health` and `http://localhost:3001/api/health/ready`
 
 ## Migration Commands
@@ -55,6 +55,8 @@ npm run migrate:up --workspace=ecotrack-infrastructure
 npm run migrate:up:seed --workspace=ecotrack-infrastructure
 npm run migrate:status --workspace=ecotrack-infrastructure
 ```
+
+`migrate:up` now follows `ENABLE_SEED_DATA` from `infrastructure/environments/.env.docker` (default `true` in the template).
 
 ## Policy
 

@@ -5,7 +5,8 @@ import { type DatabaseClient, passwordResetTokens, roles, userRoles, users } fro
 import { DRIZZLE } from '../../database/database.constants.js';
 import type { AuthUser } from '../auth/auth.types.js';
 
-const DEFAULT_ROLE = 'agent';
+const LOCAL_DEFAULT_ROLE = 'citizen';
+const OAUTH_DEFAULT_ROLE = 'citizen';
 const GOOGLE_SIGNIN_BLOCKED_BY_LOCAL_ACCOUNT_MESSAGE =
   'This email is registered with email/password. Please sign in with your password.';
 
@@ -104,7 +105,10 @@ export class UsersRepository {
         .where(eq(users.id, existing.id))
         .returning();
 
-      return updated ?? existing;
+      const resolvedUser = updated ?? existing;
+      const roleName = resolvedUser.role?.trim() || OAUTH_DEFAULT_ROLE;
+      await this.ensureRoleAssignmentForUser(resolvedUser.id, roleName);
+      return resolvedUser;
     }
 
     const displayName = authUser.name?.trim() || email.split('@')[0] || 'User';
@@ -118,7 +122,7 @@ export class UsersRepository {
         googleId: authUser.id,
         displayName,
         avatarUrl: authUser.avatarUrl ?? null,
-        role: DEFAULT_ROLE,
+        role: OAUTH_DEFAULT_ROLE,
       })
       .onConflictDoUpdate({
         target: users.email,
@@ -132,7 +136,13 @@ export class UsersRepository {
       })
       .returning();
 
-    return upserted ?? this.findByEmail(email);
+    const resolvedUser = upserted ?? (await this.findByEmail(email));
+    if (resolvedUser) {
+      const roleName = resolvedUser.role?.trim() || OAUTH_DEFAULT_ROLE;
+      await this.ensureRoleAssignmentForUser(resolvedUser.id, roleName);
+    }
+
+    return resolvedUser;
   }
 
   async createLocalUser(params: {
@@ -140,6 +150,7 @@ export class UsersRepository {
     passwordHash: string;
     displayName?: string;
     roleIds?: string[];
+    defaultRoleName?: string;
     isActive?: boolean;
   }): Promise<(LocalUserRecord & { roles: Array<{ id: string; name: string }> }) | null> {
     const email = params.email.trim();
@@ -150,8 +161,10 @@ export class UsersRepository {
 
     const displayName = params.displayName?.trim() || email.split('@')[0] || 'User';
     const resolvedRoleIds = Array.isArray(params.roleIds) ? params.roleIds.filter(Boolean) : [];
+    const normalizedDefaultRoleName =
+      params.defaultRoleName?.trim().toLowerCase() || LOCAL_DEFAULT_ROLE;
     let selectedRoles: Array<{ id: string; name: string }> = [];
-    let primaryRole = DEFAULT_ROLE;
+    let primaryRole = normalizedDefaultRoleName;
 
     if (resolvedRoleIds.length > 0) {
       const roleRows = await this.db.select().from(roles).where(inArray(roles.id, resolvedRoleIds));
@@ -161,6 +174,15 @@ export class UsersRepository {
 
       selectedRoles = roleRows.map((role) => ({ id: role.id, name: role.name }));
       primaryRole = this.pickPrimaryRole(roleRows.map((role) => role.name));
+    } else {
+      const defaultRole = await this.resolveRoleByName(normalizedDefaultRoleName);
+      selectedRoles = [
+        {
+          id: defaultRole.id,
+          name: defaultRole.name,
+        },
+      ];
+      primaryRole = defaultRole.name;
     }
 
     await this.db.transaction(async (tx) => {
@@ -458,10 +480,18 @@ export class UsersRepository {
           .set({ role: primaryRole, updatedAt: new Date() })
           .where(eq(users.id, userId));
       } else {
-        rolesForUser = [];
+        const defaultRole = await this.resolveRoleByName(LOCAL_DEFAULT_ROLE);
+        await tx
+          .insert(userRoles)
+          .values({
+            userId,
+            roleId: defaultRole.id,
+          })
+          .onConflictDoNothing();
+        rolesForUser = [{ id: defaultRole.id, name: defaultRole.name }];
         await tx
           .update(users)
-          .set({ role: DEFAULT_ROLE, updatedAt: new Date() })
+          .set({ role: defaultRole.name, updatedAt: new Date() })
           .where(eq(users.id, userId));
       }
     });
@@ -511,7 +541,46 @@ export class UsersRepository {
     if (roleNames.includes('manager')) return 'manager';
     if (roleNames.includes('agent')) return 'agent';
     if (roleNames.includes('citizen')) return 'citizen';
-    return roleNames[0] ?? DEFAULT_ROLE;
+    return roleNames[0] ?? LOCAL_DEFAULT_ROLE;
+  }
+
+  private async ensureRoleAssignmentForUser(userId: string, roleName: string) {
+    const normalizedRoleName = roleName.trim().toLowerCase();
+    if (!normalizedRoleName) {
+      return;
+    }
+
+    const roleRow = await this.resolveRoleByName(normalizedRoleName);
+
+    await this.db
+      .insert(userRoles)
+      .values({
+        userId,
+        roleId: roleRow.id,
+      })
+      .onConflictDoNothing();
+  }
+
+  private async resolveRoleByName(roleName: string) {
+    const normalizedRoleName = roleName.trim().toLowerCase();
+    if (!normalizedRoleName) {
+      throw new NotFoundException('Role name is required');
+    }
+
+    const [roleRow] = await this.db
+      .select({
+        id: roles.id,
+        name: roles.name,
+      })
+      .from(roles)
+      .where(eq(roles.name, normalizedRoleName))
+      .limit(1);
+
+    if (!roleRow) {
+      throw new NotFoundException(`Role '${normalizedRoleName}' not found`);
+    }
+
+    return roleRow;
   }
 }
 

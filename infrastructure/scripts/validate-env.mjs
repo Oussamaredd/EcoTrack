@@ -28,7 +28,7 @@ const DEPRECATED_KEYS = new Map([
 ]);
 
 const WORKFLOW_RULES = {
-  'host-dev': {
+  'local-dev': {
     requiredKeys: [
       'NODE_ENV',
       'API_PORT',
@@ -121,6 +121,10 @@ const WORKFLOW_RULES = {
       'WEBHOOK_SECRET',
     ],
   },
+};
+
+const WORKFLOW_ALIASES = {
+  'host-dev': 'local-dev',
 };
 
 function parseArgs(argv) {
@@ -502,7 +506,7 @@ function checkWorkflowAlignmentPolicy(entries, workflow, errors) {
     return;
   }
 
-  if (workflow === 'host-dev' && entries.has('VITE_API_BASE_URL')) {
+  if (workflow === 'local-dev' && entries.has('VITE_API_BASE_URL')) {
     const rawFrontendApiBase = String(entries.get('VITE_API_BASE_URL') ?? '').trim();
     const normalizedFrontendApiBase = rawFrontendApiBase
       ? rawFrontendApiBase.replace(/\/+$/, '').replace(/\/api$/, '')
@@ -611,7 +615,8 @@ function checkDuplicateKeyPolicy(duplicateKeys, sourceLabel, errors) {
 
 function main() {
   const args = parseArgs(process.argv);
-  const workflow = args.workflow;
+  const requestedWorkflow = args.workflow;
+  const workflow = WORKFLOW_ALIASES[requestedWorkflow] ?? requestedWorkflow;
   const filesArg = args.files;
 
   if (!workflow || !filesArg || !WORKFLOW_RULES[workflow]) {
@@ -628,6 +633,9 @@ function main() {
   }
 
   console.log(`[validate-env] workflow=${workflow}`);
+  if (requestedWorkflow && requestedWorkflow !== workflow) {
+    console.log(`[validate-env] workflow-alias=${requestedWorkflow} -> ${workflow}`);
+  }
   console.log(`[validate-env] files=${files.join(', ')}`);
 
   const errors = [];

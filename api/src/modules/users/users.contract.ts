@@ -12,6 +12,7 @@ export interface UsersAdminPort {
     passwordHash: string;
     displayName?: string;
     roleIds?: string[];
+    defaultRoleName?: string;
     isActive?: boolean;
   }): Promise<{
     id: string;

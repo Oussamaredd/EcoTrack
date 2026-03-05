@@ -126,6 +126,37 @@ describe('AuthService', () => {
     );
   });
 
+  it('assigns citizen as the default role for self-service local signup', async () => {
+    usersServiceMock.findByEmail.mockResolvedValueOnce(null);
+    usersServiceMock.createLocalUser.mockResolvedValueOnce({
+      id: 'u-1',
+      email: 'local@example.com',
+      authProvider: 'local',
+      passwordHash: 'hash',
+      displayName: 'Local User',
+      avatarUrl: null,
+      role: 'citizen',
+      isActive: true,
+    });
+    usersServiceMock.getRolesForUser.mockResolvedValueOnce([{ id: 'role-citizen', name: 'citizen' }]);
+
+    const service = new AuthService(usersServiceMock as any);
+    const result = await service.signupLocal('local@example.com', 'Password123!', 'Local User');
+
+    expect(usersServiceMock.createLocalUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'local@example.com',
+        displayName: 'Local User',
+        defaultRoleName: 'citizen',
+      }),
+    );
+    expect(result.user).toMatchObject({
+      role: 'citizen',
+      roles: [{ id: 'role-citizen', name: 'citizen' }],
+      provider: 'local',
+    });
+  });
+
   it('returns Unauthorized for invalid local login credentials', async () => {
     const { default: bcryptPkg } = await import('bcryptjs');
     const validPasswordHash = await bcryptPkg.hash('Password123!', 10);

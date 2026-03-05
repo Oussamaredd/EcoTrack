@@ -440,7 +440,7 @@ const SETTING_SEEDS: SettingSeed[] = [
   },
   {
     key: 'default_user_role',
-    value: 'agent',
+    value: 'citizen',
     description: 'Default role for new users',
     isPublic: false,
   },
@@ -879,12 +879,12 @@ export async function seedDatabase() {
         roleIds.set(seed.name, row.id);
       }
 
-      const agentRoleId = roleIds.get('agent');
-      if (agentRoleId) {
+      const citizenRoleId = roleIds.get('citizen');
+      if (citizenRoleId) {
         const legacyUsers = await tx
           .update(users)
           .set({
-            role: 'agent',
+            role: 'citizen',
             updatedAt: now,
           })
           .where(eq(users.role, 'user'))
@@ -896,7 +896,7 @@ export async function seedDatabase() {
             .insert(userRoles)
             .values({
               userId: row.id,
-              roleId: agentRoleId,
+              roleId: citizenRoleId,
             })
             .onConflictDoNothing();
         }

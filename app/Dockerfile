@@ -18,7 +18,9 @@ WORKDIR /workspace
 COPY . .
 
 WORKDIR /workspace/app
-RUN npm run build
+# Ensure Docker builds are not polluted by host-only frontend env files
+# (for example app/.env.local with Vite dev port 5173).
+RUN rm -f .env.local .env.*.local && npm run build
 
 # Step 2: Serve app with Nginx
 FROM nginx:alpine

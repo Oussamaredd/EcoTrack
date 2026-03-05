@@ -29,7 +29,7 @@ The repository already follows a four-layer layout. Ownership and dependency dir
 - `app` runtime must not render TanStack Query Devtools UI in any environment.
 - `app` runtime must not render manual in-app debug/testing panels.
 - Browser-facing app runtimes proxy `/api` and `/health` at the frontend edge, and that frontend edge is the canonical public API origin for browser traffic.
-- Host/native browser traffic enters through the Vite frontend edge on `http://localhost:5173`; the API process keeps `API_PORT=3001` for direct host diagnostics only.
+- Local/native browser traffic enters through the Vite frontend edge on `http://localhost:5173`; the API process keeps `API_PORT=3001` for direct local diagnostics only.
 - Docker browser traffic enters through the frontend container on `http://localhost:3000`; the backend keeps `API_PORT=3001` on the internal Docker network only.
 - Public API docs and examples should prefer the browser-facing edge origin or edge-relative `/api` paths instead of hardcoding a direct backend diagnostics port.
 - Controllers in `api` must not execute Drizzle queries directly.
@@ -44,7 +44,7 @@ The repository already follows a four-layer layout. Ownership and dependency dir
 
 ### Environment ownership rules
 
-- Host/native runtime source: root `.env` plus `app/.env.local` (`VITE_*` only).
+- Local/native runtime source: root `.env` plus `app/.env.local` (`VITE_*` only).
 - Docker runtime source: `infrastructure/environments/.env.docker`.
 - Deployed runtime source: secret-manager injection; committed files are templates only.
 - Canonical keys:
@@ -63,5 +63,6 @@ The repository already follows a four-layer layout. Ownership and dependency dir
 ## Consequences
 
 - Layer ownership is explicit and testable.
-- Env-source ambiguity is removed across host, docker, and deploy workflows.
+- Env-source ambiguity is removed across local, docker, and deploy workflows.
 - Regression risk shifts from runtime surprises to CI failures.
+

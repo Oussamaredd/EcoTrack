@@ -4,7 +4,7 @@ This repository uses one canonical env source per workflow and strict public/pri
 
 ## Canonical Sources
 
-- Host/native dev:
+- Local/native dev:
   - Private source: `/.env`
   - Frontend public source: `app/.env.local` (`VITE_*` only)
 - Docker dev:
@@ -39,14 +39,14 @@ Agent tour mapping note:
 
 ## Port Contract
 
-- Host/native dev:
+- Local/native dev:
   - Browser entrypoint: `http://localhost:5173`
   - Public edge API/health: `http://localhost:5173/api` and `http://localhost:5173/health`
-  - API process listen port for direct host diagnostics: `http://localhost:3001`
+  - API process listen port for direct local diagnostics: `http://localhost:3001`
 - Docker dev:
   - Sole browser entrypoint: `http://localhost:3000`
   - Public edge API/health: `http://localhost:3000/api` and `http://localhost:3000/health`
-  - Backend keeps `API_PORT=3001` on the internal Docker network only; host `3001` should stay closed
+  - Backend keeps `API_PORT=3001` on the internal Docker network only; local machine port `3001` should stay closed
 - `API_PORT` is the backend listen port, not the browser entrypoint.
 - `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public edge origin, not the direct API listen port.
 
@@ -56,6 +56,15 @@ Agent tour mapping note:
 - `RATE_LIMIT_MAX_REQUESTS` for global throttling ceiling (default `120`)
 - `LOG_LEVEL` for API logger level (`fatal|error|warn|info|debug|trace|silent`); in non-production, `debug|trace` also enables verbose Nest startup logs
 - `LOG_FORMAT` for API log output format (`json` or `pretty`); defaults to `pretty` outside production and `json` in production
+
+## Optional CI Quality Keys
+
+- `SONAR_TOKEN` for SonarCloud authentication token in CI quality-gate workflows
+- `SONAR_ORGANIZATION` for SonarCloud organization key used by scanner runs
+- `SONAR_PROJECT_KEY` for SonarCloud project key used by scanner runs
+- SonarCloud host URL is fixed in CI to `https://sonarcloud.io`
+- In GitHub Actions, set `SONAR_TOKEN` as a repository secret and set `SONAR_ORGANIZATION` + `SONAR_PROJECT_KEY` as repository variables
+- If mirrored in local/backend env files for onboarding, keep placeholder values only
 
 ## CORS Origin Policy
 
@@ -67,7 +76,7 @@ Agent tour mapping note:
 
 ### Environment Defaults
 
-- host dev: allow local frontend origins and short-lived team-controlled dev origins only.
+- local dev: allow local frontend origins and short-lived team-controlled dev origins only.
 - docker dev: allow only active local/docker frontend origins.
 - staging: allow only controlled staging frontend origin(s).
 - production: allow only owned production frontend origin(s).
@@ -83,7 +92,7 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
   - returns HTTP `503` when readiness dependencies fail or a required schema surface is not queryable
 - Diagnostics alias: `GET /api/health/database`
 - Frontend sign-in readiness checks should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
-- Local `npm run dev` waits on the host direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status
+- Local `npm run dev` waits on the local direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status
 
 ## Auth Exchange Flow
 
@@ -121,12 +130,12 @@ Removed runtime aliases (no longer read by API runtime):
 
 - `app/.env.local`, `app/.env.example`, and mode env files must include only `VITE_*` keys.
 - API/database/infrastructure secrets must never appear in app env files.
-- In host and Docker browser-facing runtimes, `VITE_API_BASE_URL` should target the frontend origin so the edge layer owns `/api` and `/health` routing.
+- In local and Docker browser-facing runtimes, `VITE_API_BASE_URL` should target the frontend origin so the edge layer owns `/api` and `/health` routing.
 - `APP_URL`/`CLIENT_ORIGIN` values, when used, must target the frontend origin root (for example `https://app.example.com`), not removed legacy paths such as `/auth` or `/dashboard`.
 
 ## OAuth Callback Contract
 
-- Canonical host-dev callback URI: `http://localhost:5173/api/auth/google/callback`
+- Canonical local-dev callback URI: `http://localhost:5173/api/auth/google/callback`
 - Canonical docker-dev callback URI: `http://localhost:3000/api/auth/google/callback`
 - Callback path is fixed: `/api/auth/google/callback`
 - When `API_BASE_URL` is set, `GOOGLE_CALLBACK_URL` should match the callback derived from that public API base exactly.
@@ -149,7 +158,7 @@ cp api/.env.example api/.env
 cp infrastructure/environments/.env.docker.example infrastructure/environments/.env.docker
 ```
 
-`api/.env` remains template-only guidance for service-scoped reference values. In host dev, the canonical runtime source is still root `/.env`.
+`api/.env` remains template-only guidance for service-scoped reference values. In local dev, the canonical runtime source is still root `/.env`.
 
 ## Docker Commands
 
@@ -163,3 +172,5 @@ docker compose --env-file infrastructure/environments/.env.docker -f infrastruct
 - Inventory: `docs/ENV_INVENTORY.md`
 - Conflicts: `docs/ENV_CONFLICTS.md`
 - Decisions: `docs/ENV_CANONICAL_DECISIONS.md`
+
+

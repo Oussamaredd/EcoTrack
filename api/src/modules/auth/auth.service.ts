@@ -352,6 +352,7 @@ export class AuthService {
       email: normalizedEmail,
       passwordHash,
       displayName,
+      defaultRoleName: 'citizen',
     });
 
     if (!createdUser) {
