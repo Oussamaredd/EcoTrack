@@ -15,4 +15,4 @@ echo "[ci] run database migrations"
 npm run db:migrate --workspace=ecotrack-database
 
 echo "[ci] run backend tests"
-npm run test --workspace=ecotrack-api
+npm run test:api

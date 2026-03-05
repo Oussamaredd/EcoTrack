@@ -21,7 +21,7 @@ EcoTrack/
 
 ## Canonical Env Model
 
-- Host/native dev:
+- Local/native dev:
   - Private source: `/.env`
   - Frontend public source: `app/.env.local` (`VITE_*` only)
 - Docker dev:
@@ -35,7 +35,7 @@ EcoTrack/
 
 Precedence: process env > canonical workflow env file > `.example` templates.
 
-## Quick Start (Host/Native)
+## Quick Start (Local/Native)
 
 ```bash
 npm install
@@ -44,9 +44,9 @@ cp app/.env.example app/.env.local
 npm run dev
 ```
 
-`npm run dev` now blocks frontend startup until the host direct API readiness URL from the Port Contract returns `200`, so schema drift and failed migrations stop the host-dev flow before Vite starts.
+`npm run dev` now blocks frontend startup until the local direct API readiness URL from the Port Contract returns `200`, so schema drift and failed migrations stop the local-dev flow before Vite starts.
 
-Optional service-scoped template (reference only; root `/.env` remains the host runtime source):
+Optional service-scoped template (reference only; root `/.env` remains the local runtime source):
 
 ```bash
 cp api/.env.example api/.env
@@ -54,12 +54,12 @@ cp api/.env.example api/.env
 
 ## Port Contract
 
-Host/native dev:
+Local/native dev:
 
 - Browser entrypoint: `http://localhost:5173`
 - Public edge API: `http://localhost:5173/api`
 - Public edge health: `http://localhost:5173/health`
-- API process listen port (direct host diagnostics only): `http://localhost:3001`
+- API process listen port (direct local diagnostics only): `http://localhost:3001`
 - Root `npm run dev` waits on `http://localhost:3001/api/health/ready` before Vite starts
 
 Docker dev:
@@ -67,11 +67,11 @@ Docker dev:
 - Sole browser entrypoint: `http://localhost:3000`
 - Public edge API: `http://localhost:3000/api`
 - Public edge health: `http://localhost:3000/health`
-- Backend container still listens on `API_PORT=3001`, but that port is internal-only and not published to the host
+- Backend container still listens on `API_PORT=3001`, but that port is internal-only and not published to the local machine
 
-Use `5173` or `3000` in the browser. Use direct `3001` only for host-native API diagnostics. In Docker, `3000` is the only browser-facing entrypoint.
+Use `5173` or `3000` in the browser. Use direct `3001` only for local-native API diagnostics. In Docker, `3000` is the only browser-facing entrypoint.
 
-If host-native frontend `/api/*` requests fail, verify the API process directly with:
+If local-native frontend `/api/*` requests fail, verify the API process directly with:
 
 ```bash
 curl -f http://localhost:3001/health
@@ -80,16 +80,16 @@ curl -f http://localhost:3001/api/health/ready
 
 If the readiness check fails, `npm run dev` will stop before launching the frontend dev server. Read the API startup error in the terminal output, then rerun `npm run dev` after the database or API issue is fixed.
 
-## Auth Routes (Host/Docker)
+## Auth Routes (Local/Docker)
 
-The frontend auth routes are path-stable across host and Docker:
+The frontend auth routes are path-stable across local and Docker:
 
 - `/login`
 - `/signup`
 - `/forgot-password`
 - `/reset-password`
 
-Resolve them on the frontend origin defined in the Port Contract (`5173` for host dev, `3000` for Docker dev).
+Resolve them on the frontend origin defined in the Port Contract (`5173` for local dev, `3000` for Docker dev).
 
 Local auth contract:
 
@@ -104,7 +104,7 @@ Local auth contract:
 
 ## OAuth Callback Setup
 
-- Host dev callback URI: `http://localhost:5173/api/auth/google/callback`
+- Local dev callback URI: `http://localhost:5173/api/auth/google/callback`
 - Docker dev callback URI: `http://localhost:3000/api/auth/google/callback`
 - Set `API_BASE_URL` and `GOOGLE_CALLBACK_URL` to the same public edge origin in active runtime env files.
 - In Google Cloud Console, **Authorized redirect URI** must exactly match runtime callback URI:
@@ -148,12 +148,14 @@ Database name policy: committed connection-string templates target `ticketdb`.
 
 ## Root Commands
 
-- `npm run dev` - host/native app + api dev workflow
-- `npm run dev:doctor` - fast host diagnostics (env keys, db reachability/migrations, health endpoints)
+- `npm run dev` - local/native app + api dev workflow
+- `npm run dev:doctor` - fast local diagnostics (env keys, db reachability/migrations, health endpoints)
 - `npm run build` - build database, app, api
 - `npm run test` - app + api tests
+- `npm run test:api` - backend tests with required `ecotrack-database` build pre-step
 - `npm run test:e2e` - key citizen/agent/manager journey tests
 - `npm run test:coverage` - coverage-gated validation for app + api
+- `npm run test:coverage:api` - backend coverage with required `ecotrack-database` build pre-step
 - `npm run typecheck` - app + api + database type checks
 - `npm run lint` - lint + architecture boundaries
 - `npm run validate-specs` - enforce CDC traceability matrix and executable spec contracts
@@ -163,7 +165,7 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run smoke-test` - strict Docker edge smoke test (public `3000` edge + internal backend health)
 
 `npm run infra:health` is a strict gate: it exits non-zero when Docker is unreachable or any core service health check fails.
-`npm run smoke-test` validates the single-entrypoint Docker contract: host `3001` stays closed, internal backend `3001` stays healthy, and OAuth `/api/auth/google` still emits the `3000` callback origin.
+`npm run smoke-test` validates the single-entrypoint Docker contract: local machine port `3001` stays closed, internal backend `3001` stays healthy, and OAuth `/api/auth/google` still emits the `3000` callback origin.
 
 ## Architecture Contract
 
@@ -176,3 +178,5 @@ See `docs/README.md` for organized documentation by domain (setup, env, operatio
 ## CI/CD
 
 `CI.yml` and `CD.yml` enforce architecture, migration, build/test, and env validation gates.
+
+

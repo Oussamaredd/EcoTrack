@@ -26,7 +26,7 @@ export const users = authSchema.table('users', {
   googleId: text('google_id').unique(),
   displayName: text('display_name').notNull(),
   avatarUrl: text('avatar_url'),
-  role: text('role').default('agent').notNull(),
+  role: text('role').default('citizen').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

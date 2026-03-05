@@ -7,7 +7,7 @@ For the current runtime port and origin contract, use `docs/ENV.md` as the activ
 
 | Workflow | Canonical source | Notes |
 | --- | --- | --- |
-| host-dev | `/.env` + `app/.env.local` | `app/.env.local` must contain only `VITE_*` keys |
+| local-dev | `/.env` + `app/.env.local` | `app/.env.local` must contain only `VITE_*` keys |
 | docker-dev | `infrastructure/environments/.env.docker` | Used by compose core profile with `--env-file` |
 | deploy-dev | secret-manager injection | Use committed template `.env.development.example` |
 | deploy-staging | secret-manager injection | Use committed template `.env.staging.example` |
@@ -19,14 +19,14 @@ For the current runtime port and origin contract, use `docs/ENV.md` as the activ
 2. Canonical workflow env file
 3. `.example` templates (never runtime inputs)
 
-## Host/Native Setup
+## Local/Native Setup
 
 ```bash
 cp .env.example .env
 cp app/.env.example app/.env.local
 ```
 
-Optional service-scoped template (reference only; root `/.env` remains the host runtime source):
+Optional service-scoped template (reference only; root `/.env` remains the local runtime source):
 
 ```bash
 cp api/.env.example api/.env
@@ -42,7 +42,7 @@ npm run smoke-test
 
 ## Port Contract
 
-- Host/native dev browser traffic enters through `http://localhost:5173`; the API process listens on `http://localhost:3001` for host-native diagnostics only.
+- Local/native dev browser traffic enters through `http://localhost:5173`; the API process listens on `http://localhost:3001` for local-native diagnostics only.
 - Docker dev browser traffic enters through `http://localhost:3000`; the backend still listens on `API_PORT=3001`, but that port stays internal-only on the Docker network.
 - `API_PORT` is the backend listen port, while `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public frontend edge origin.
 
@@ -72,7 +72,7 @@ Templates to keep in source control:
 
 ## OAuth Callback Requirements
 
-- Canonical callback URI for host dev:
+- Canonical callback URI for local dev:
   - `http://localhost:5173/api/auth/google/callback`
 - Canonical callback URI for Docker dev:
   - `http://localhost:3000/api/auth/google/callback`
@@ -100,3 +100,5 @@ npm run db:migrate --workspace=ecotrack-database
 npm run build
 npm run test
 ```
+
+

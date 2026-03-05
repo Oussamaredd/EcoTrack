@@ -5,7 +5,7 @@
 EcoTrack exposes a REST API for citizen reporting, agent tour execution, manager planning, support workflows, and admin governance.
 
 - Browser-facing base URL: `<frontend-origin>/api` (resolve the current local origin from the Port Contract in `README.md` or `docs/ENV.md`)
-- Direct API base URL (host-native backend diagnostics only): `http://localhost:3001/api`
+- Direct API base URL (local-native backend diagnostics only): `http://localhost:3001/api`
 - In Docker, the backend `3001` port is internal-only; browser traffic must enter through the `3000` edge
 - Auth mode: JWT bearer token (`Authorization: Bearer <token>`) with cookie support for web auth flows
 - Response format: JSON
@@ -29,6 +29,9 @@ POST /forgot-password
 POST /reset-password
 ```
 
+Local signup note:
+- `POST /signup` creates self-service accounts with the `citizen` role by default.
+
 `PUT /me` supports profile updates for `displayName` and optional `avatarUrl` (`http`/`https` URL or image data URL for PNG/JPEG/WEBP).
 `PUT /me/password` requires `currentPassword` and strong `newPassword` (12+ chars with uppercase, lowercase, number, and symbol) and is available for local accounts only.
 
@@ -38,6 +41,10 @@ OAuth endpoints:
 GET /auth/google
 GET /auth/google/callback
 ```
+
+OAuth provisioning notes:
+- First-time Google OAuth users are created with the `citizen` role.
+- The API also writes the matching RBAC link in `auth.user_roles` so permission guards resolve consistently.
 
 ## Core EcoTrack Domain Endpoints
 
@@ -259,3 +266,4 @@ Errors follow a normalized structure:
 
 - The platform is currently in the Development specialty scope only.
 - Security/Data specialty features are tracked as future dependencies and are not implemented in this phase.
+

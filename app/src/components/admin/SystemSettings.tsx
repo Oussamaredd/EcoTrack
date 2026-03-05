@@ -28,7 +28,7 @@ export function SystemSettings() {
 
   const [formData, setFormData] = useState({
     user_registration: true,
-    default_user_role: 'agent',
+    default_user_role: 'citizen',
     session_timeout: 24 * 60 * 60 * 1000,
     audit_log_retention: 90,
     max_login_attempts: 5,
@@ -124,7 +124,7 @@ export function SystemSettings() {
     if (window.confirm('Are you sure you want to reset all settings to their default values? This action cannot be undone.')) {
       const defaultSettings = {
         user_registration: true,
-        default_user_role: 'agent',
+        default_user_role: 'citizen',
         session_timeout: 24 * 60 * 60 * 1000,
         audit_log_retention: 90,
         max_login_attempts: 5,
@@ -327,15 +327,14 @@ export function SystemSettings() {
               </label>
               <select
                 value={formData.default_user_role}
-                onChange={(e) => handleInputChange('default_user_role', e.target.value)}
+                disabled
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               >
                 <option value="citizen">Citizen</option>
-                <option value="agent">Agent</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
-                <option value="super_admin">Super Admin</option>
               </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Self-registration defaults are locked to citizen by policy.
+              </p>
             </div>
 
             <div>

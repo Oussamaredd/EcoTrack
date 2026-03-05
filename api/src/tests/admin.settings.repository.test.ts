@@ -96,5 +96,47 @@ describe('AdminSettingsRepository', () => {
       }),
     );
   });
+
+  it('normalizes default_user_role updates to citizen', async () => {
+    const insertedSettings: Array<Record<string, unknown>> = [];
+    const tx = {
+      insert: vi.fn().mockReturnValue({
+        values: vi.fn((payload: Record<string, unknown>) => {
+          insertedSettings.push(payload);
+          return {
+            onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+          };
+        }),
+      }),
+    };
+
+    const dbMock = {
+      transaction: vi.fn(async (callback: (trx: typeof tx) => Promise<void>) => callback(tx)),
+    };
+
+    const repository = new AdminSettingsRepository(dbMock as any);
+    vi.spyOn(repository, 'getSettings').mockResolvedValue({
+      default_user_role: 'citizen',
+    } as any);
+
+    const updated = await repository.updateSettings(
+      {
+        default_user_role: 'super_admin',
+      },
+      'admin-1',
+    );
+
+    expect(insertedSettings[0]).toEqual(
+      expect.objectContaining({
+        key: 'default_user_role',
+        value: 'citizen',
+      }),
+    );
+    expect(updated).toEqual(
+      expect.objectContaining({
+        default_user_role: 'citizen',
+      }),
+    );
+  });
 });
 

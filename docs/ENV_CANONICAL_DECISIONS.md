@@ -22,16 +22,16 @@ Deprecated aliases (read-only compatibility window):
 
 - `API_PORT` is the backend listen port, not the browser entrypoint.
 - `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public frontend edge origin.
-- Host/native dev:
+- Local/native dev:
   - Browser entrypoint: `http://localhost:5173`
   - Direct backend diagnostics: `http://localhost:3001`
 - Docker dev:
   - Sole browser entrypoint: `http://localhost:3000`
-  - Backend keeps `API_PORT=3001` internally and does not publish host `3001`
+  - Backend keeps `API_PORT=3001` internally and does not publish local machine port `3001`
 
 ## 3) Canonical File Locations By Workflow
 
-### Host/native dev
+### Local/native dev
 
 - Private backend/database source: `/.env`
 - Public frontend source: `app/.env.local` (`VITE_*` only)
@@ -70,3 +70,4 @@ Deprecated aliases (read-only compatibility window):
 - Code may continue to read deprecated aliases temporarily.
 - No new file should write deprecated aliases.
 - Documentation and templates must use canonical names only.
+

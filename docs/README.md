@@ -7,7 +7,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `ROADMAP.md` - development roadmap, sprint status, and canonical progress tracking
 - `ROADMAP.md` section "UI Completion Execution Plan (Live)" - agent-dispatch sprint plan for remaining UI gaps
 - `ARCHITECTURE_OVERVIEW.md` - layer boundaries and architecture contract
-- `ENVIRONMENT_SETUP.md` - host/Docker/deploy environment setup
+- `ENVIRONMENT_SETUP.md` - local/Docker/deploy environment setup
 
 ## Environment and Configuration
 - `ENV.md` - current source of truth for env rules, browser origins, and the port contract
@@ -60,8 +60,10 @@ Validate:
 npm run lint
 npm run typecheck
 npm run test
+npm run test:api
 npm run test:e2e
 npm run test:coverage
+npm run test:coverage:api
 npm run validate-env:all
 npm run validate-specs
 ```

@@ -31,7 +31,7 @@ openssl rand -base64 16
 
 ## Setup Instructions
 
-1. Copy environment templates (`api/.env` is optional service-scoped reference only; host runtime still uses root `/.env`):
+1. Copy environment templates (`api/.env` is optional service-scoped reference only; local runtime still uses root `/.env`):
 ```bash
 cp .env.example .env
 cp api/.env.example api/.env
@@ -78,3 +78,4 @@ npm run validate-env:all
 - Nest internal startup/module/route mapping logs are suppressed by default in `development`/`test` (restored when `LOG_LEVEL=debug|trace`).
 - Each response carries `X-Request-Id` and the same value is emitted in logs/error payloads for traceability.
 - Global rate limiting is enabled (`RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`) with stricter limits on auth abuse endpoints.
+

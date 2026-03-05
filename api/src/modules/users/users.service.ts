@@ -40,6 +40,7 @@ export class UsersService {
     passwordHash: string;
     displayName?: string;
     roleIds?: string[];
+    defaultRoleName?: string;
     isActive?: boolean;
   }) {
     return this.usersRepository.createLocalUser(params);

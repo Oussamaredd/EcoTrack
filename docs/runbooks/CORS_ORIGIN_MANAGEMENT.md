@@ -5,7 +5,7 @@ Use this runbook to manage browser-origin access for EcoTrack API and realtime W
 ## Scope
 
 - Applies to API HTTP CORS and planning WebSocket CORS.
-- Applies to host dev, docker dev, deploy development, staging, and production.
+- Applies to local dev, docker dev, deploy development, staging, and production.
 - Development-only scope: this runbook covers application/runtime configuration and process controls only.
 
 ## Phase 1 - Origin Registry (Owner + Purpose + Expiry)
@@ -14,8 +14,7 @@ Track active origins in this registry before changing env values.
 
 | Environment | Origin | Purpose | Owner | Expiry (if temporary) | Status |
 | --- | --- | --- | --- | --- | --- |
-| host-dev | http://localhost:5173 | local frontend dev | dev team | n/a | active |
-| host-dev | http://127.0.0.1:5173 | local frontend dev alias | dev team | n/a | active |
+| local-dev | http://localhost:5173 | local frontend dev | dev team | n/a | active |
 | docker-dev | http://localhost:3000 | docker frontend dev | dev team | n/a | active |
 | deploy-dev | https://dev.example.com | shared dev frontend | platform/devops | n/a | template |
 | deploy-staging | https://staging.example.com | pre-prod validation | platform/devops | n/a | template |
@@ -85,3 +84,4 @@ API runtime enforces:
 - [ ] `npm run test`
 - [ ] Browser call from allowed origin succeeds (HTTP + WS)
 - [ ] Browser call from disallowed origin is blocked by CORS
+

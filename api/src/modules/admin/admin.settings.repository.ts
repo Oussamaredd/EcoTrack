@@ -13,7 +13,7 @@ import { DRIZZLE } from '../../database/database.constants.js';
 
 const DEFAULT_SETTINGS = {
   user_registration: true,
-  default_user_role: 'agent',
+  default_user_role: 'citizen',
   session_timeout: 24 * 60 * 60 * 1000,
   audit_log_retention: 90,
   max_login_attempts: 5,
@@ -325,7 +325,7 @@ export class AdminSettingsRepository {
     const updates: Record<string, unknown> = {};
     for (const key of Object.keys(DEFAULT_SETTINGS)) {
       if (Object.prototype.hasOwnProperty.call(payload, key)) {
-        updates[key] = payload[key];
+        updates[key] = key === 'default_user_role' ? 'citizen' : payload[key];
       }
     }
 
