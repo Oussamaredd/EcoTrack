@@ -19,8 +19,8 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 ## Runtime and Operations
 - `DOCKER_SETUP.md` - compose workflow and expected service states
 - `ELK.md` - observability stack notes
-- `.github/workflows/ci-pr.yml` - PR preflight + path-aware CI lanes (triggered on `pull_request` to `main` and `workflow_dispatch`)
-- `.github/workflows/ci-main.yml` - main-branch preflight + path-aware CI lanes (triggered on `push` to `main` and `workflow_dispatch`)
+- `.github/workflows/ci-pr.yml` - PR preflight + path-aware CI lanes (triggered on `pull_request` to `main`, plus `workflow_dispatch` with optional `full_run=true` override)
+- `.github/workflows/ci-main.yml` - main-branch preflight + full CI lanes on `push` to `main` (plus `workflow_dispatch`; use `full_run=true` to force all lanes manually)
 - `.github/workflows/ci-quality-nightly.yml` - nightly/manual M10 quality lanes (scheduled daily at `02:00 UTC` plus `workflow_dispatch`)
 - SonarCloud CI scanner lanes in `ci-pr.yml` and `ci-main.yml` run only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
 - `.github/workflows/CD.yml` - deployment workflow
