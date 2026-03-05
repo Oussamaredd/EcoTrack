@@ -44,7 +44,7 @@ cp app/.env.example app/.env.local
 npm run dev
 ```
 
-`npm run dev` now blocks frontend startup until the local direct API readiness URL from the Port Contract returns `200`, so schema drift and failed migrations stop the local-dev flow before Vite starts.
+`npm run dev` now blocks frontend startup until the local direct API readiness URL from the Port Contract returns `200`, so schema drift and failed migrations stop the local-dev flow before Vite starts. The default readiness wait timeout is `180000ms`.
 
 Optional service-scoped template (reference only; root `/.env` remains the local runtime source):
 
@@ -159,6 +159,10 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run typecheck` - app + api + database type checks
 - `npm run lint` - lint + architecture boundaries
 - `npm run validate-specs` - enforce CDC traceability matrix and executable spec contracts
+- `npm run ci:cdc:summary` - generate CDC evidence artifact used by CI preflight
+- `npm run ci:quality:mutation` - run mutation gate hook (enabled by CI variable)
+- `npm run ci:quality:visual` - run visual-regression hook (enabled by CI variable + Percy token/command)
+- `npm run ci:quality:lighthouse` - run Lighthouse gate hook (enabled by CI variable)
 - `npm run db:migrate` - run Drizzle migrations
 - `npm run db:seed` - run seeders
 - `npm run infra:up` / `npm run infra:down` / `npm run infra:health` - Docker lifecycle wrappers
@@ -177,6 +181,10 @@ See `docs/README.md` for organized documentation by domain (setup, env, operatio
 
 ## CI/CD
 
-`CI.yml` and `CD.yml` enforce architecture, migration, build/test, and env validation gates.
+- `ci-pr.yml`: PR-focused preflight + path-aware workspace lanes + strict Sonar gate (when `SONAR_TOKEN` is configured); supports manual `workflow_dispatch` with `full_run=true` to force all lanes
+- `ci-main.yml`: main-branch preflight + full workspace lanes on `push` to `main` + strict Sonar gate; supports manual `workflow_dispatch` with `full_run=true`
+- `ci-quality-nightly.yml`: nightly/manual M10 quality lanes (K6, ZAP baseline, mutation hook, visual hook, Lighthouse)
+- `CD.yml`: deployment workflow with pre-deploy validation and release checks
+- Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and artifact/report lanes that can be promoted to blocking checks later.
 
 
