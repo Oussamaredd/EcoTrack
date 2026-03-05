@@ -19,9 +19,10 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 ## Runtime and Operations
 - `DOCKER_SETUP.md` - compose workflow and expected service states
 - `ELK.md` - observability stack notes
-- `.github/workflows/ci-pr.yml` - PR preflight + path-aware CI lanes
-- `.github/workflows/ci-main.yml` - main-branch preflight + path-aware CI lanes
-- `.github/workflows/ci-quality-nightly.yml` - nightly/manual M10 quality lanes
+- `.github/workflows/ci-pr.yml` - PR preflight + path-aware CI lanes (triggered on `pull_request` to `main` and `workflow_dispatch`)
+- `.github/workflows/ci-main.yml` - main-branch preflight + path-aware CI lanes (triggered on `push` to `main` and `workflow_dispatch`)
+- `.github/workflows/ci-quality-nightly.yml` - nightly/manual M10 quality lanes (scheduled daily at `02:00 UTC` plus `workflow_dispatch`)
+- SonarCloud CI scanner lanes in `ci-pr.yml` and `ci-main.yml` run only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
 - `.github/workflows/CD.yml` - deployment workflow
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
 - `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy

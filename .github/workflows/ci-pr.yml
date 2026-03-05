@@ -289,6 +289,7 @@ jobs:
       needs.changes.outputs.root == 'true'
     outputs:
       enabled: ${{ steps.check.outputs.enabled }}
+      reason: ${{ steps.check.outputs.reason }}
     steps:
       - name: Check SonarCloud configuration
         id: check
@@ -296,13 +297,44 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          if [[ -n "${SONAR_TOKEN}" ]]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          if [[ -z "${SONAR_TOKEN}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing-sonar-token" >> "$GITHUB_OUTPUT"
+            echo "Skipping SonarCloud analysis because SONAR_TOKEN is missing."
             exit 0
           fi
 
-          echo "enabled=false" >> "$GITHUB_OUTPUT"
-          echo "Skipping SonarCloud analysis because SONAR_TOKEN is missing."
+          sonar_project_key="$(grep -E '^sonar\.projectKey=' sonar-project.properties | head -n1 | cut -d= -f2- | tr -d '\r')"
+          if [[ -z "${sonar_project_key}" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=missing-sonar-project-key" >> "$GITHUB_OUTPUT"
+            echo "Skipping SonarCloud analysis because sonar.projectKey is missing in sonar-project.properties."
+            exit 0
+          fi
+
+          sonar_settings_json="$(curl -fsS --retry 3 --retry-delay 2 "https://sonarcloud.io/api/settings/values?component=${sonar_project_key}&keys=sonar.autoscan.enabled" || true)"
+          autoscan_enabled="$(
+            SONAR_SETTINGS_JSON="${sonar_settings_json}" node -e "
+              const raw = process.env.SONAR_SETTINGS_JSON || '';
+              try {
+                const payload = JSON.parse(raw);
+                const setting = (payload.settings || []).find((entry) => entry.key === 'sonar.autoscan.enabled');
+                process.stdout.write(String(setting?.value ?? 'false').toLowerCase());
+              } catch {
+                process.stdout.write('unknown');
+              }
+            "
+          )"
+
+          if [[ "${autoscan_enabled}" == "true" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "reason=sonar-automatic-analysis-enabled" >> "$GITHUB_OUTPUT"
+            echo "Skipping SonarCloud CI scan because Automatic Analysis is enabled for ${sonar_project_key}. Disable Automatic Analysis in SonarCloud project settings to re-enable CI scan and quality gate."
+            exit 0
+          fi
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "reason=ready" >> "$GITHUB_OUTPUT"
 
   sonar:
     name: SonarCloud Analysis and Quality Gate
