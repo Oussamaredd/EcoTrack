@@ -1,4 +1,5 @@
-name: Release Readiness
+# Canonical workflow name; keep aligned with branch protection and docs.
+name: CD Deployment
 
 on:
   push:

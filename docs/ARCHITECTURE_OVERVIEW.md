@@ -59,7 +59,7 @@ The repository already follows a four-layer layout. Ownership and dependency dir
 - Lint blocks forbidden cross-layer imports.
 - CI/CD gates run architecture lint, migration checks, build/test, and env validation in:
   - `.github/workflows/CI.yaml` (`CI Integration`)
-  - `.github/workflows/CD.yml`
+  - `.github/workflows/CD.yml` (`CD Deployment`)
 - Frontend env policy checks fail on non-`VITE_*` keys in frontend env files.
 
 ## Consequences

@@ -23,10 +23,10 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `ELK.md` - observability stack notes
 - `runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md` - phased deployment plan for Cloudflare Pages, Render, and Neon
 - `runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` - current Neon Phase 3 baseline, validated resources, and direct-connection workflow
-- `.github/workflows/CI.yaml` - unified `CI Integration` workflow for PR/main with path-aware lanes, `full_run` override, manual `run_extended_quality` lanes, Sonar scan/gate, and a final required aggregator job
+- `.github/workflows/CI.yaml` - canonical `CI Integration` workflow for PR/main with path-aware lanes, `full_run` override, manual `run_extended_quality` lanes, Sonar scan/gate, and a final required aggregator job
 - SonarCloud CI scanner lane in `CI.yaml` runs only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
 - Sonar coverage gate currently excludes `database/**`, `api/src/modules/users/users.repository.ts`, and `api/src/modules/admin/admin.settings.repository.ts` pending dedicated coverage instrumentation alignment
-- `.github/workflows/CD.yml` - deployment workflow
+- `.github/workflows/CD.yml` - canonical `CD Deployment` workflow
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
 - `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy
 - `runbooks/DEMO_READINESS.md` - checklist and script for demo preparation
