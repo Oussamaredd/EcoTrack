@@ -32,6 +32,12 @@ Optional service-scoped template (reference only; root `/.env` remains the local
 cp api/.env.example api/.env
 ```
 
+Managed Neon local-testing note:
+
+- When you intentionally want local native `api`/`database` commands to target the managed Neon baseline, update root `/.env` `DATABASE_URL` to the direct Neon connection string.
+- Keep `app/.env.local` frontend-only (`VITE_*` keys only).
+- Keep `infrastructure/environments/.env.docker` pointed at the local Docker Postgres sandbox unless you are deliberately changing the Docker workflow.
+
 ## Docker Setup
 
 ```bash
@@ -56,12 +62,12 @@ Templates to keep in source control:
 - `infrastructure/environments/.env.staging.example`
 - `infrastructure/environments/.env.production.example`
 
-## GitHub Pages CD Build Inputs
+## GitHub Pages Status
 
-- Frontend deploy base path is derived from repository name in CD:
-  - `VITE_BASE=/<repository-name>/`
-- Configure repository variable `VITE_API_BASE_URL` in GitHub Actions for deploy builds.
-- `VITE_API_BASE_URL` must not use `localhost` for Pages deployment.
+- GitHub Pages is retired as the EcoTrack app host.
+- `.github/workflows/CD.yml` no longer publishes the frontend to GitHub Pages.
+- Any future GitHub Pages publishing is reserved for docs-only follow-up work.
+- Do not point app deploy env values, OAuth settings, or frontend links at a `github.io` URL.
 
 ## Canonical Keys
 

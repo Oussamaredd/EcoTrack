@@ -19,6 +19,13 @@ This repository uses one canonical env source per workflow and strict public/pri
 Database package runtime note:
 - `ecotrack-database` runtime entrypoints (for example `db:seed`) fall back to root `/.env` when `DATABASE_URL` is not already present in process env.
 
+Neon managed baseline note:
+- Neon is the managed deployment Postgres baseline for Phase 3.
+- Local Docker Postgres remains a local-only sandbox and is not continuously synced with Neon.
+- For Neon-backed migration and seed operations, `DATABASE_URL` must be the direct Neon connection string, not the pooled `-pooler` hostname.
+- Store Neon connection strings only in local untracked env files or deployment/provider secret stores.
+- See `docs/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the bootstrap and validation workflow.
+
 ## Canonical Keys
 
 - `DATABASE_URL` for database connectivity

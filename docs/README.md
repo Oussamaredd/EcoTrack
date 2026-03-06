@@ -15,10 +15,14 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `ENV_CONFLICTS.md` - historical conflict matrix and normalization notes
 - `ENV_CANONICAL_DECISIONS.md` - decision record behind the current canonical env model
 - `SECURITY.md` - secret management and leakage safeguards
+- `DB_SCHEMA_NAMESPACE_PLAN.md` - approved namespace migration and additive-entity design for the database
+- `DB_SCHEMA_NAMESPACE_STATUS.md` - preserved implementation status for the DB namespace rollout, including done, partial, and open items
 
 ## Runtime and Operations
 - `DOCKER_SETUP.md` - compose workflow and expected service states
 - `ELK.md` - observability stack notes
+- `runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md` - phased deployment plan for Cloudflare Pages, Render, and Neon
+- `runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` - current Neon Phase 3 baseline, validated resources, and direct-connection workflow
 - `.github/workflows/CI.yaml` - unified `CI Integration` workflow for PR/main with path-aware lanes, `full_run` override, manual `run_extended_quality` lanes, Sonar scan/gate, and a final required aggregator job
 - SonarCloud CI scanner lane in `CI.yaml` runs only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
 - Sonar coverage gate currently excludes `database/**`, `api/src/modules/users/users.repository.ts`, and `api/src/modules/admin/admin.settings.repository.ts` pending dedicated coverage instrumentation alignment
@@ -39,6 +43,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 ## Local Source Inputs
 - `ECOTRACK_CDC_COMMUN_V2 .docx` and `ECOTRACK_M2_DEV.xlsx` are local working inputs used to derive tracked documentation.
 - Keep decisions and implementation-ready outputs in tracked Markdown files such as `DB_SCHEMA_NAMESPACE_PLAN.md`.
+- `PR_TASKS.md` - active deployment rollout tracker showing what is done in planning and what remains open for implementation
 - Keep `PR_TASKS.md` only while its checklist still has open items; remove it after the checklist is fully closed.
 
 ## Historical Baselines
