@@ -1,3 +1,4 @@
+# Canonical workflow name; keep aligned with branch protection and docs.
 name: CI Integration
 
 on:
