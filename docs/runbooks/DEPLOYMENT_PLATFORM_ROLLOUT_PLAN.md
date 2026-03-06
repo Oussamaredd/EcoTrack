@@ -1,0 +1,332 @@
+# Deployment Platform Rollout Plan
+
+Last updated: 2026-03-06
+
+## Scope
+
+This plan defines the target deployment model for the EcoTrack modular monolith during the current Development-focused phase.
+
+The target hosting split is:
+
+- Cloudflare Pages for the frontend SPA in `app`
+- Render Web Service for the single Node/Nest runtime in `api`
+- Neon managed Postgres for the deployment database
+
+Out of scope for the first rollout:
+
+- Cloudflare Workers as an application runtime
+- GitHub Pages as a live app host
+- PostGIS activation in the first deployment pass
+- Data-specialty infrastructure beyond the minimum future-ready hooks
+
+## Delivery Intent
+
+The goal is to move EcoTrack toward one clear deployment story for the app while preserving the modular-monolith architecture already described in the repository.
+
+This rollout is intentionally split into phases so the team can:
+
+- stop the current hosting ambiguity between GitHub Pages and Cloudflare-hosted options
+- deploy the frontend on a static host that fits the Vite SPA
+- keep the backend on a standard web-service platform that fits the current Nest runtime
+- move the deployment database to managed Postgres without introducing an unnecessary platform rewrite
+- keep room for later documentation hosting and later geospatial enablement without mixing that into the first cutover
+
+## Phase 1 - Deployment Ownership Freeze
+
+Description:
+
+This phase establishes the canonical deployment ownership for each runtime surface before any platform changes are made. EcoTrack already has a modular monolith with one backend runtime, one database contract, and one frontend SPA. The first job is to remove ambiguity and define one host per layer.
+
+Decisions captured in this phase:
+
+- the main app frontend will be hosted on Cloudflare Pages
+- the monolith backend will be hosted on Render as one web service
+- the deployment database will be hosted on Neon as managed Postgres
+- GitHub Pages will no longer be used for the main app frontend
+- GitHub Pages may later be reused for docs only
+- Cloudflare Workers are not part of the current app runtime plan
+
+Why this phase comes first:
+
+- OAuth, CORS, and public-origin settings cannot be stabilized until the deployment owners are fixed
+- provider setup work becomes noisy and error-prone if the team is still deciding between multiple frontend hosts
+- the current roadmap favors a single deployable monolith, not a split edge-runtime rewrite
+
+Checklist:
+
+- [x] Define one canonical frontend host for the live app.
+- [x] Define one canonical backend host for the monolith runtime.
+- [x] Define one canonical managed database for deployment environments.
+- [x] Exclude Cloudflare Workers from the current runtime scope.
+- [x] Reserve GitHub Pages for future docs-only use.
+
+## Phase 2 - GitHub Pages Retirement for the App
+
+Description:
+
+This phase removes GitHub Pages from the main app deployment path. The repo currently contains a GitHub Pages deployment workflow, but the target platform for the app frontend is now Cloudflare Pages. Keeping both live app hosts would create duplicate URLs, duplicate release paths, and confusing callback/CORS behavior.
+
+The main intent is not to destroy GitHub Pages permanently. The intent is to retire it as the app host while keeping the repository cleanly reusable for docs later.
+
+Work included in this phase:
+
+- disable or remove the app-facing GitHub Pages deployment path
+- unpublish the existing app site if it is still active
+- stop treating the `github-pages` environment as the main release target
+- keep a later path open for docs-only publishing
+
+Completion definition:
+
+- there is no active GitHub Pages deployment serving the EcoTrack app
+- the repo no longer treats GitHub Pages as the app production target
+- any future GitHub Pages use is clearly documented as docs-only
+
+Checklist:
+
+- [x] Unpublish the current GitHub Pages app site.
+- [x] Disable or replace the app-facing GitHub Pages workflow in `.github/workflows/CD.yml`.
+- [x] Remove the app release dependency on the `github-pages` environment.
+- [x] Record that GitHub Pages is reserved for docs-only follow-up work.
+- [x] Confirm no app OAuth or frontend links still point to GitHub Pages.
+
+## Phase 3 - Neon Managed Postgres Baseline
+
+Description:
+
+This phase creates the managed deployment database baseline. EcoTrack already uses Postgres and Drizzle with a canonical `DATABASE_URL`, plus explicit migration and seed scripts. That makes Neon a straightforward fit because the deployment change is operational, not architectural.
+
+The local Docker Postgres container remains useful after this phase, but only as a development sandbox. It should not be treated as a peer deployment database and should not be continuously synchronized with the hosted database.
+
+The intended database discipline is:
+
+- local container for local development
+- managed Neon database for deployed environments
+- migrations for schema alignment
+- optional seed or one-time import for demo data
+- no live bidirectional sync between local Docker and Neon
+
+Environment strategy for this phase:
+
+- start with one deployment-ready Neon project for the app
+- keep the canonical database name aligned with `ticketdb`
+- use branches or separate project boundaries for future environment separation
+- store the Neon connection string only in provider secrets and deployment envs
+- implemented baseline:
+  - Neon project `ecotrack` in `aws-eu-central-1` (Frankfurt)
+  - one baseline branch: `main`
+  - canonical managed database: `ticketdb`
+  - repo Drizzle migrations and seed flow applied against the direct Neon connection string
+  - local API readiness verified against the managed database baseline
+  - see `docs/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the exact validated state
+
+Checklist:
+
+- [x] Create the Neon project for EcoTrack.
+- [x] Create the deployment database with the canonical `ticketdb` naming.
+- [x] Capture the managed `DATABASE_URL` outside the repository.
+- [x] Define migration policy for deployment environments.
+- [x] Define whether demo data uses seed scripts or a one-time import.
+- [x] Document that local Docker Postgres is not continuously synced with Neon.
+
+## Phase 4 - Render Web Service Baseline
+
+Description:
+
+This phase prepares the EcoTrack monolith backend for a standard Node web-service host. The current backend is a Nest runtime with health/readiness endpoints, auth flows, realtime transport, and a standard build/start contract. That fits a conventional web service much better than a Cloudflare Worker runtime.
+
+This phase should keep the service model simple:
+
+- one Render Web Service for the monolith runtime
+- one deployment pipeline for API build and release
+- one health check target
+- one managed database connection
+
+The main design constraints to resolve here are:
+
+- how the monorepo is built on Render
+- how migrations are executed on deployment
+- how the service port contract is aligned with the Render runtime
+- how secrets and public origin values are injected safely
+
+Completion definition:
+
+- Render can build and run the EcoTrack API reliably
+- health checks use the canonical readiness path
+- the service can connect to Neon and pass startup validation
+
+Checklist:
+
+- [ ] Create the Render web service.
+- [ ] Choose the deployment method for the monorepo build.
+- [ ] Resolve the backend port contract for Render.
+- [ ] Configure the readiness health check path.
+- [ ] Configure deployment secrets and public runtime env values.
+- [ ] Define how migrations run on each deployment.
+
+## Phase 5 - Cloudflare Pages Frontend Baseline
+
+Description:
+
+This phase moves the frontend SPA onto Cloudflare Pages. EcoTrack's frontend is already a Vite application that outputs static assets, so it is a good fit for Pages. The important rule is that this must be configured as a Pages project, not as a Worker project.
+
+The main work here is operational:
+
+- point Cloudflare Pages at the repository
+- use a frontend-only build command
+- publish the `app/dist` output
+- align the frontend base-path strategy with Cloudflare instead of GitHub Pages
+
+This phase should also prepare preview environments so branch work can be reviewed without mixing preview URLs into production env settings.
+
+Completion definition:
+
+- production frontend builds come from Cloudflare Pages
+- branch previews are available where appropriate
+- the frontend build no longer assumes a GitHub Pages repository subpath
+
+Checklist:
+
+- [ ] Create the Cloudflare Pages project.
+- [ ] Confirm the project is Pages and not Workers.
+- [ ] Configure the frontend-only build command.
+- [ ] Configure the output directory as `app/dist`.
+- [ ] Align `VITE_BASE` behavior for Cloudflare-hosted deployment.
+- [ ] Enable preview deployment behavior for branches or pull requests.
+
+## Phase 6 - Public Origin, OAuth, and CORS Alignment
+
+Description:
+
+This phase aligns the deployed public URL contract across the frontend, backend, and auth flows. It is the phase that prevents the most common deployment regressions: wrong callback URLs, mismatched origins, localhost leakage, and failed browser auth or API calls.
+
+The target result is one consistent production-style public contract:
+
+- frontend public origin served from Cloudflare Pages or a mapped custom domain
+- backend public origin served from Render or a mapped custom domain
+- backend-generated callback URLs aligned with the public frontend edge
+- browser-facing API configuration aligned with the deployed frontend
+- CORS allowlist restricted to the intended frontend origin set
+
+This phase must be handled carefully because the repo already enforces canonical env rules and public/private separation.
+
+Checklist:
+
+- [ ] Finalize the frontend public origin.
+- [ ] Finalize the backend public origin.
+- [ ] Set `VITE_API_BASE_URL` for the deployed frontend.
+- [ ] Set `API_BASE_URL`, `APP_URL` or `APP_BASE_URL`, and `CORS_ORIGINS` for the backend.
+- [ ] Update `GOOGLE_CALLBACK_URL` to match the deployed callback contract.
+- [ ] Confirm no deployment env still points to localhost or GitHub Pages.
+
+## Phase 7 - Database Migration, Seed, and Release Flow
+
+Description:
+
+This phase defines the release discipline for the first deployed environment. The main objective is to make database state predictable during the rollout.
+
+The release flow should be:
+
+1. deploy or prepare Neon
+2. apply migrations
+3. optionally seed demo data
+4. start or update the Render service
+5. deploy or promote the Cloudflare Pages frontend
+6. run end-to-end smoke checks
+
+The seed strategy must remain intentional. Demo data can be useful for a student project, but it should be explicit and environment-aware, never accidental.
+
+Completion definition:
+
+- database migrations are part of the release process
+- seed usage is documented and controlled
+- the release order is written down and repeatable
+
+Checklist:
+
+- [ ] Define the deployment release order across database, backend, and frontend.
+- [ ] Decide whether migrations run automatically or as an explicit release step.
+- [ ] Decide where seed data is allowed.
+- [ ] Confirm how rollback will be handled if a deploy fails after migration.
+- [ ] Document the first-release bootstrap path for the managed database.
+
+## Phase 8 - Cutover Validation and Operational Checks
+
+Description:
+
+This phase validates that the deployed stack behaves like the local architecture contract expects. It focuses on the flows that are most likely to break during a hosting cutover: auth, health checks, API routing, realtime transport, and the main role-based journeys.
+
+The goal is not exhaustive QA. The goal is to confirm that the first deployed environment is operational and that the public-origin contract is correct.
+
+Minimum validation areas:
+
+- API readiness and health
+- login and session behavior
+- Google OAuth callback path
+- role-protected app navigation
+- critical manager, citizen, and agent workflows
+- realtime connectivity and fallback behavior
+
+Checklist:
+
+- [ ] Validate backend readiness on the deployed URL.
+- [ ] Validate frontend-to-backend API communication.
+- [ ] Validate local auth login and protected-route behavior.
+- [ ] Validate Google OAuth callback behavior on deployed origins.
+- [ ] Validate at least one critical citizen, agent, and manager flow.
+- [ ] Validate realtime behavior and fallback after deployment.
+
+## Phase 9 - GitHub Pages Docs Follow-Up
+
+Description:
+
+This phase is intentionally deferred. Once the main app rollout is stable, GitHub Pages can be repurposed for documentation only. That should be handled as a separate publishing stream with separate outputs, separate URLs, and separate ownership from the main app.
+
+This phase must not reuse the app deployment path. The docs site should have its own source, workflow, and domain strategy.
+
+Completion definition:
+
+- GitHub Pages, if re-enabled, serves docs only
+- the docs site has an independent publishing workflow
+- app and docs hosting are operationally separated
+
+Checklist:
+
+- [ ] Decide whether GitHub Pages will host docs in a later phase.
+- [ ] Define the docs source and build path.
+- [ ] Define the docs-only publishing workflow.
+- [ ] Define the docs URL strategy separate from the app.
+
+## Phase 10 - Future PostGIS Activation
+
+Description:
+
+This phase is intentionally deferred until Development and Data scope require real geospatial features beyond the current baseline. The current rollout should stay on plain Postgres so the team can complete the main deployment path without mixing in geospatial extension work prematurely.
+
+When this phase begins later, it should be treated as a normal database change with migration review, query review, index review, and environment validation. It should not be treated as a casual toggle.
+
+Expected future work in that later phase:
+
+- confirm which geospatial use cases require PostGIS
+- confirm Neon extension support for the target environment
+- add the extension through migration or controlled database setup
+- add geometry columns and indexes only where the approved data scope requires them
+- validate storage, performance, and backup implications
+
+Checklist:
+
+- [x] Keep PostGIS out of the first deployment pass.
+- [ ] Open a future task for PostGIS readiness once data-scope work requires it.
+- [ ] Define the first approved PostGIS use cases before adding the extension.
+- [ ] Treat PostGIS enablement as a reviewed database migration change.
+
+## Completion Rule
+
+The deployment rollout should be considered complete only when:
+
+- GitHub Pages no longer serves the EcoTrack app
+- Cloudflare Pages serves the frontend
+- Render serves the monolith backend
+- Neon serves the deployment database
+- deployed env values follow the canonical repository rules
+- auth, API, and realtime validation pass after cutover
+- future docs-only hosting and future PostGIS work remain documented as separate follow-up phases

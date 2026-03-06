@@ -1,144 +1,184 @@
-# PR Tasks - DB Schema Namespace Rollout
+# PR Tasks - Deployment Platform Rollout
 
-Last updated: 2026-03-03
+Last updated: 2026-03-06
 
-Related planning doc:
+## Related Planning Docs
 
-- `docs/DB_SCHEMA_NAMESPACE_PLAN.md`
+- `docs/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md`
+- `docs/ENV.md`
+- `docs/ENVIRONMENT_SETUP.md`
+- `docs/ARCHITECTURE_OVERVIEW.md`
+- `docs/DB_SCHEMA_NAMESPACE_STATUS.md` for the preserved status of the previous DB namespace rollout checklist
 
 ## Current Readiness Status
 
-Current repo status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PASSED WITH KNOWN EXCEPTIONS`
+Current repo status: `PARTIAL IMPLEMENTATION - PHASES 2 AND 3 COMPLETE`
 
-Known readiness exceptions from this run:
+Completed in this documentation pass:
 
-- The worktree still has broad unrelated local changes across `app`, `api`, `database`, `docs`, environment templates, and `package-lock.json`.
-- The implementation was completed in-place at the user's request; the branch is still not isolated from unrelated app/API/UI changes.
-- `pg_dump` is not available in this environment, so no pre-migration database backup file was captured in this workspace.
-- PostGIS is not installed and not available in the active dev database, so the conditional spatial columns and GiST indexes were intentionally skipped.
-- No in-repo runtime dependency on legacy `public.<table>` names was found, so no compatibility views were added.
-- The worktree is still not isolated, but the in-scope API layer now compiles, lints, and passes its full test suite against the updated database package.
+- the target deployment stack is now documented as Cloudflare Pages for the frontend, Render for the monolith backend, and Neon for managed Postgres
+- the GitHub Pages app retirement path is now documented
+- future GitHub Pages reuse is now explicitly limited to docs-only follow-up work
+- future PostGIS enablement is now explicitly deferred and scoped as a separate phase
+- the deployment rollout plan is now linked from the docs index
+- the live GitHub Pages app site has been unpublished
+- `.github/workflows/CD.yml` no longer deploys the app to GitHub Pages
+- the `github-pages` environment is no longer part of the app release path
+- repo deployment notes no longer describe GitHub Pages as an app target
+- Neon is now provisioned as the managed deployment database baseline in `aws-eu-central-1` (Frankfurt)
+- the canonical `ticketdb` managed database is created on the single baseline branch
+- the repo Drizzle migration chain and existing seed strategy have been validated against Neon
+- local API readiness has been validated against the direct Neon connection string
 
-## Readiness Gate (Must Be Complete Before Implementation Starts)
+Still not done:
 
-### Worktree Cleanup And Isolation
+- Cloudflare Pages has not yet been configured for the frontend
+- Render has not yet been configured for the backend runtime
+- deployed public origins, OAuth callback values, and CORS allowlists have not yet been cut over
+- the first deployed validation pass has not yet been executed
 
-- [ ] Decide whether the current local changes should be committed, stashed, or split into a separate branch before DB work starts.
-- [x] Remove overlap risk in `database/schema/index.ts` by reconciling existing local edits before the namespace refactor begins.
-- [x] Reconcile the current local changes in `database/migrations/meta/_journal.json` before adding any new migrations.
-- [x] Decide whether `database/migrations/0011_legal_captain_universe.sql` is a legitimate baseline migration to keep, rename, or replace.
-- [x] Decide whether `database/migrations/meta/0011_snapshot.json` is the accepted current baseline snapshot.
-- [ ] Confirm the branch used for implementation is isolated from unrelated app/API/UI work.
-- [x] Re-run `git status --short` and confirm there are no unresolved merge conflicts.
+## Task 0 - Planning Baseline And Documentation
 
-### Pre-Implementation Baseline
+Description:
 
-- [x] Treat `docs/DB_SCHEMA_NAMESPACE_PLAN.md` as the approved namespace design baseline.
-- [x] Confirm the current 22-table inventory from the latest accepted database snapshot.
-- [ ] Confirm no external consumers depend on hardcoded `public.<table>` names, or explicitly list the ones that do.
-- [ ] Capture a dev database backup or restore point before any schema move migration is applied.
-- [x] Confirm whether PostGIS is already enabled in the dev database.
+This task covers the planning work completed in this pass. It records the target stack, the rollout order, and the later follow-up boundaries so implementation can proceed without revisiting the hosting decision.
 
-## Implementation PR Task Checklist
+- [x] Define the target hosting split for frontend, backend, and database.
+- [x] Exclude Cloudflare Workers from the current runtime plan.
+- [x] Record GitHub Pages as docs-only follow-up work instead of live app hosting.
+- [x] Record PostGIS as a later scoped database change rather than part of the first rollout.
+- [x] Add a dedicated deployment rollout plan markdown file under `docs/runbooks/`.
+- [x] Ensure the docs index points to the rollout plan and to this active PR task file.
 
-### Task 1 - Phase 0 Inventory And Compatibility Audit
+## Task 1 - Freeze Deployment Ownership
 
-- [x] Search repo runtime code for hardcoded `public.` references.
-- [x] Search migration SQL for hardcoded `public.` references.
-- [x] Inventory all current business tables by schema and row count.
-- [x] Confirm the expected target schema for each of the 22 current tables.
-- [x] Identify any raw SQL, scripts, or manual queries that assume `public`.
-- [x] Document whether a temporary compatibility layer will be needed.
+Description:
 
-### Task 2 - Drizzle Namespace Refactor In Source
+This task confirms one canonical host per layer before any platform setup starts. The implementation team should not proceed while frontend or backend ownership is still ambiguous.
 
-- [x] Add `pgSchema()` definitions for `auth`, `core`, `iot`, `ops`, `incident`, `notify`, `game`, `audit`, `admin`, `export`, and `support`.
-- [x] Move `users`, `password_reset_tokens`, `roles`, and `user_roles` to `auth`.
-- [x] Move `zones` and `containers` to `core`.
-- [x] Move `tours`, `tour_stops`, `tour_routes`, and `collection_events` to `ops`.
-- [x] Move `citizen_reports`, `anomaly_types`, and `anomaly_reports` to `incident`.
-- [x] Move `gamification_profiles`, `challenges`, and `challenge_participations` to `game`.
-- [x] Move `audit_logs` to `audit`.
-- [x] Move `system_settings` to `admin`.
-- [x] Move `report_exports` to `export`.
-- [x] Move `tickets`, `comments`, and `attachments` to `support`.
-- [x] Update all Drizzle relations so cross-schema references still compile cleanly.
+- [x] Decide that the live frontend host will be Cloudflare Pages.
+- [x] Decide that the monolith backend host will be Render.
+- [x] Decide that the deployment database host will be Neon.
+- [x] Decide that GitHub Pages will not remain the live app host.
+- [ ] Record final team sign-off on the deployment ownership split if formal approval is required.
 
-### Task 3 - Manual Migration For Schema Moves
+## Task 2 - Retire GitHub Pages As The App Host
 
-- [x] Create one hand-authored migration that creates all target schemas.
-- [x] Add `ALTER TABLE ... SET SCHEMA ...` statements for all 22 existing tables.
-- [x] Verify cross-schema foreign keys remain valid after table moves.
-- [x] Ensure the migration does not drop and recreate tables unnecessarily.
-- [x] Keep `public` empty of business tables after the move unless compatibility views are explicitly required.
+Description:
 
-### Task 4 - Add Missing CDC-Scope Tables
+This task removes GitHub Pages from the main app release path while keeping future docs-only hosting possible.
 
-- [x] Add `core.container_types`.
-- [x] Add `iot.sensor_devices`.
-- [x] Add `iot.measurements`.
-- [x] Add `admin.alert_rules`.
-- [x] Add `incident.alert_events`.
-- [x] Add `notify.notifications`.
-- [x] Add `notify.notification_deliveries`.
-- [x] Add only OLTP storage/query structures; do not add DW, ETL, ML, or ingestion pipeline artifacts.
+- [x] Unpublish the current GitHub Pages app site if it is still active.
+- [x] Disable or replace the app-facing GitHub Pages release path in `.github/workflows/CD.yml`.
+- [x] Remove the main app dependency on the `github-pages` environment.
+- [x] Confirm no active frontend links, OAuth entries, or deployment notes still point at GitHub Pages for the app.
+- [x] Preserve GitHub Pages only as a later docs-hosting option.
 
-### Task 5 - Additive Changes To Existing Tables
+## Task 3 - Provision Neon Managed Postgres
 
-- [ ] Add `boundary_geom` to `core.zones` if PostGIS is enabled. (Blocked: PostGIS is unavailable in the active dev database.)
-- [ ] Add `location_geom` and `container_type_id` to `core.containers`. (Partial: `container_type_id` added; `location_geom` skipped because PostGIS is unavailable.)
-- [x] Decide whether `latitude` and `longitude` remain temporarily during backfill.
-- [ ] Add `route_geom` to `ops.tour_routes` if PostGIS is enabled. (Blocked: PostGIS is unavailable in the active dev database.)
-- [x] Add `started_at` and `completed_at` to `ops.tours`.
-- [x] Keep helpdesk tables isolated in `support` and do not fold them into CDC core domains.
-- [x] Keep `support.attachments` intact; only note optional later reuse for incident media.
+Description:
 
-### Task 6 - Optional Compatibility Layer (Only If Needed)
+This task creates the deployment-ready managed Postgres baseline without changing the local Docker development database role.
 
-- [x] Confirm whether any real dependency still requires legacy `public.<table>` names.
-- [x] If needed, add temporary read-only `public` views for legacy consumers. (Not needed; none were added.)
-- [x] Do not add writable compatibility triggers unless there is a proven blocker.
-- [x] Define a deprecation window for the compatibility views. (Not needed; no compatibility views were added.)
-- [x] Add a removal task for those views in the next database cleanup PR. (Not needed; no compatibility views were added.)
+- [x] Create the Neon project for EcoTrack.
+- [x] Create the managed deployment database using the canonical `ticketdb` naming.
+- [x] Store the managed `DATABASE_URL` outside the repository.
+- [x] Define the migration policy for deployed environments.
+- [x] Define whether demo data uses seed scripts or a one-time import.
+- [x] Document that local Docker Postgres is a dev sandbox and not a live-synced peer of Neon.
 
-### Task 7 - Indexes, Partitioning, And Practical Constraints
+## Task 4 - Provision Render For The Monolith Backend
 
-- [x] Add only operational indexes needed for dashboard and API queries.
-- [x] Add composite indexes aligned with filter and sort patterns for active alerts, latest measurements, active tours, and export history.
-- [x] Add GiST indexes for geometry columns if PostGIS columns are introduced. (Not applicable in this pass; no PostGIS columns were introduced.)
-- [x] Design `iot.measurements` for monthly range partitioning on `measured_at`.
-- [x] Avoid broad retrofitting of PostgreSQL enums during the namespace move.
-- [x] Keep status fields practical: use app enums or narrow checks first, DB enums only where stable.
+Description:
 
-### Task 8 - Snapshot, Migration Metadata, And Validation
+This task prepares the existing Nest runtime to run as one web service with a predictable health check and managed database connection.
 
-- [x] Refresh the Drizzle snapshot only after source definitions and manual migration SQL are aligned.
-- [x] Update migration journal metadata only after migration order is final.
-- [x] Run `npm run build --workspace=ecotrack-database`.
-- [x] Run `npm run typecheck --workspace=ecotrack-database`.
-- [x] Run `npm run db:migrate --workspace=ecotrack-database`.
-- [x] Verify no business tables remain in `public`.
-- [x] Verify row counts match before and after the schema move.
-- [x] Verify representative inserts and reads for `auth`, `ops`, `incident`, `notify`, and `iot`.
+- [ ] Create the Render web service for EcoTrack.
+- [ ] Choose the monorepo deployment method for the backend service.
+- [ ] Resolve the backend service port contract for Render.
+- [ ] Configure the Render health check to use `/api/health/ready`.
+- [ ] Configure backend deployment secrets and public runtime env values.
+- [ ] Define how migrations will be executed as part of deployment.
 
-### Task 9 - App And API Smoke Validation After DB Cutover
+## Task 5 - Provision Cloudflare Pages For The Frontend
 
-Database smoke validation is complete, and the API layer has now passed compile, lint, and test validation against the updated database package.
+Description:
 
-- [x] Verify auth login and role-protected routes still work.
-- [x] Verify citizen report creation still persists successfully.
-- [x] Verify tour creation, assignment, start, and stop validation still persist.
-- [x] Verify anomaly reporting still persists and can be queried.
-- [x] Verify manager dashboard reads still return containers, alerts, and report exports.
-- [x] Verify support tickets, comments, and attachments still work with the isolated `support` schema.
+This task moves the frontend SPA to Cloudflare Pages and removes the old GitHub Pages app-hosting assumption.
 
-## PR Exit Criteria
+- [ ] Create the Cloudflare Pages project.
+- [ ] Confirm the project is configured as Pages and not Workers.
+- [ ] Configure the frontend-only build command.
+- [ ] Configure the output directory as `app/dist`.
+- [ ] Align `VITE_BASE` behavior for Cloudflare-hosted deployment.
+- [ ] Configure preview deployments for branch or pull-request review where needed.
 
-- [ ] Worktree was clean or intentionally isolated before schema implementation started.
-- [x] Namespace refactor matches `docs/DB_SCHEMA_NAMESPACE_PLAN.md`.
-- [x] Required new in-scope tables are present.
-- [x] No out-of-scope DW/ETL/ML/cyber artifacts were added.
-- [x] Database migration path is hand-authored where needed and reviewable.
-- [x] Required database validation commands passed.
-- [x] App/API smoke checks passed after cutover.
-- [x] Any temporary `public` compatibility views are documented with a removal deadline. (No compatibility views were needed.)
+## Task 6 - Align Public Origins, OAuth, And CORS
+
+Description:
+
+This task stabilizes the public URL contract after the platform targets exist. It should be completed before the final cutover.
+
+- [ ] Finalize the frontend public origin.
+- [ ] Finalize the backend public origin.
+- [ ] Set the deployed `VITE_API_BASE_URL`.
+- [ ] Set `API_BASE_URL`, `APP_URL` or `APP_BASE_URL`, `CORS_ORIGINS`, and `GOOGLE_CALLBACK_URL` for the deployed backend runtime.
+- [ ] Confirm no deployment env still references localhost or GitHub Pages for the live app.
+
+## Task 7 - Define Release Order, Migration Discipline, And Rollback
+
+Description:
+
+This task makes the deployment repeatable and reduces the risk of a first-release failure caused by unmanaged database changes.
+
+- [ ] Define the release order across Neon, Render, and Cloudflare Pages.
+- [ ] Decide whether migrations are automatic or explicitly triggered during release.
+- [ ] Decide where seed data is allowed.
+- [ ] Define rollback expectations after a failed deploy.
+- [ ] Document the first-release bootstrap process for the managed database.
+
+## Task 8 - Execute Cutover Validation
+
+Description:
+
+This task verifies that the deployed stack behaves correctly after the hosting move.
+
+- [ ] Validate backend readiness on the deployed URL.
+- [ ] Validate frontend-to-backend API communication.
+- [ ] Validate local auth login and protected-route behavior.
+- [ ] Validate Google OAuth callback behavior on deployed origins.
+- [ ] Validate one critical citizen flow, one critical agent flow, and one critical manager flow.
+- [ ] Validate realtime transport behavior and fallback after deployment.
+
+## Task 9 - Docs-Only GitHub Pages Follow-Up
+
+Description:
+
+This task is intentionally deferred until after the app rollout is stable. It exists so the repo stays ready for future documentation hosting without mixing docs and app deployment concerns.
+
+- [ ] Decide whether GitHub Pages will be re-enabled for docs.
+- [ ] Define the docs source and output path.
+- [ ] Define the docs-only publish workflow.
+- [ ] Define the docs URL strategy separate from the app.
+
+## Task 10 - Future PostGIS Enablement
+
+Description:
+
+This task is intentionally deferred until Development and Data scope require it. It remains listed here so the team does not accidentally absorb PostGIS into the first deployment pass.
+
+- [x] Document that PostGIS is out of scope for the first deployment pass.
+- [ ] Open a future implementation task for PostGIS readiness when data-scope work requires it.
+- [ ] Confirm the approved geospatial use cases before enabling the extension.
+- [ ] Treat PostGIS enablement as a reviewed database migration change.
+
+## PR Exit Criteria For This Planning Pass
+
+- [x] The deployment target stack is documented.
+- [x] The rollout is organized into phases with detailed descriptions.
+- [x] The docs include a dedicated markdown plan for the rollout.
+- [x] `docs/PR_TASKS.md` reflects completed planning work versus open implementation work.
+- [x] The docs index includes the new rollout plan and the active PR task tracker.
+- [x] Platform configuration has been implemented for the Phase 3 Neon baseline.
+- [x] GitHub Pages has been retired as the app host.
+- [ ] Cloudflare Pages and Render have been provisioned and validated.
