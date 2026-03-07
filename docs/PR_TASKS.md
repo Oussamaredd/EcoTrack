@@ -12,7 +12,7 @@ Last updated: 2026-03-07
 
 ## Current Readiness Status
 
-Current repo status: `COMPLETE FOR ACTIVE SCOPE - PHASES 1 TO 8 COMPLETE, PHASES 9 AND 10 DEFERRED`
+Current repo status: `PHASES 1 TO 9 COMPLETE, PHASE 10 DEFERRED`
 
 Completed in this documentation pass:
 
@@ -36,11 +36,14 @@ Completed in this documentation pass:
 - the deployed Google OAuth start flow now issues a callback URL on the Render origin
 - the Render API now returns CORS headers for `https://ecotrack-jmj.pages.dev`
 - deployed CORS preflight for the Pages origin now succeeds with credentials enabled
+- a non-`main` Cloudflare Pages preview deployment has been smoke-tested successfully at `https://chore-docs-pages-cleanup.ecotrack-jmj.pages.dev`
+- GitHub Pages now serves docs only at `https://oussamaredd.github.io/EcoTrack/`
+- docs-only publishing is handled by `.github/workflows/docs-pages.yml` using `docs/` as the site source
 
 Still not done:
 
-- preview deployment behavior is configured by Pages, but a successful non-`main` preview deployment has not yet been smoke-tested
-- future docs-only GitHub Pages work and future PostGIS work remain intentionally deferred
+- the legacy Cloudflare Worker GitHub integration still emits failing `Workers Builds: ecotrack` checks outside the repo workflow and should be disconnected or deleted separately
+- future PostGIS work remains intentionally deferred
 
 ## Task 0 - Planning Baseline And Documentation
 
@@ -134,7 +137,7 @@ Validated implementation notes:
 - The Pages project is Git-connected and builds from the repo root using `npm run build:app`.
 - The published output directory is `app/dist`.
 - Deployed route refreshes for `/`, `/login`, and `/app/dashboard` return HTML successfully.
-- Preview deployment behavior is provided by the Pages Git integration, but a non-`main` preview deployment still needs an explicit smoke test.
+- Preview deployment behavior is provided by the Pages Git integration and was smoke-tested successfully at `https://chore-docs-pages-cleanup.ecotrack-jmj.pages.dev`.
 
 ## Task 6 - Align Public Origins, OAuth, And CORS
 
@@ -206,12 +209,19 @@ Current validation notes:
 
 Description:
 
-This task is intentionally deferred until after the app rollout is stable. It exists so the repo stays ready for future documentation hosting without mixing docs and app deployment concerns.
+This task is now implemented as a docs-only publishing stream. It keeps GitHub Pages available for documentation without reintroducing app-hosting ambiguity.
 
-- [ ] Decide whether GitHub Pages will be re-enabled for docs.
-- [ ] Define the docs source and output path.
-- [ ] Define the docs-only publish workflow.
-- [ ] Define the docs URL strategy separate from the app.
+- [x] Decide whether GitHub Pages will be re-enabled for docs.
+- [x] Define the docs source and output path.
+- [x] Define the docs-only publish workflow.
+- [x] Define the docs URL strategy separate from the app.
+
+Implemented docs-only publishing notes:
+
+- GitHub Pages docs site is enabled at `https://oussamaredd.github.io/EcoTrack/`.
+- The site source is `docs/`, with `docs/_config.yml` configuring the GitHub Pages Jekyll build.
+- `.github/workflows/docs-pages.yml` handles docs-only publishing through the `github-pages` environment.
+- The app stays on Cloudflare Pages at `https://ecotrack-jmj.pages.dev`, so app and docs URLs remain operationally separated.
 
 ## Task 10 - Future PostGIS Enablement
 
