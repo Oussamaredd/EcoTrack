@@ -196,7 +196,7 @@ Completion definition:
   - the Git-connected Pages project builds from the repo root using `npm run build:app`
   - the deployed artifact publishes the `app/dist` output
   - deployed route refreshes for `/`, `/login`, and `/app/dashboard` return HTML successfully
-  - preview deployment behavior is enabled through the Pages Git integration; preview smoke validation still requires a successful non-`main` branch deployment
+  - preview deployment behavior is enabled through the Pages Git integration and was smoke-tested successfully at `https://chore-docs-pages-cleanup.ecotrack-jmj.pages.dev`
 
 Checklist:
 
@@ -330,7 +330,7 @@ Checklist:
 
 Description:
 
-This phase is intentionally deferred. Once the main app rollout is stable, GitHub Pages can be repurposed for documentation only. That should be handled as a separate publishing stream with separate outputs, separate URLs, and separate ownership from the main app.
+This phase is now implemented as a docs-only publishing stream. GitHub Pages has been re-enabled for documentation without reintroducing app-hosting ambiguity.
 
 This phase must not reuse the app deployment path. The docs site should have its own source, workflow, and domain strategy.
 
@@ -340,12 +340,19 @@ Completion definition:
 - the docs site has an independent publishing workflow
 - app and docs hosting are operationally separated
 
+Implemented docs-only state (2026-03-07):
+
+- GitHub Pages now serves docs only at `https://oussamaredd.github.io/EcoTrack/`
+- the site source is `docs/`
+- `.github/workflows/docs-pages.yml` owns docs-only publishing through the `github-pages` environment
+- app hosting remains on Cloudflare Pages at `https://ecotrack-jmj.pages.dev`
+
 Checklist:
 
-- [ ] Decide whether GitHub Pages will host docs in a later phase.
-- [ ] Define the docs source and build path.
-- [ ] Define the docs-only publishing workflow.
-- [ ] Define the docs URL strategy separate from the app.
+- [x] Decide whether GitHub Pages will host docs in a later phase.
+- [x] Define the docs source and build path.
+- [x] Define the docs-only publishing workflow.
+- [x] Define the docs URL strategy separate from the app.
 
 ## Phase 10 - Future PostGIS Activation
 
@@ -384,6 +391,6 @@ The deployment rollout should be considered complete only when:
 
 Current status:
 
-- rollout execution is complete for the active deployment scope
-- Phases 1 through 8 are complete
-- Phases 9 and 10 remain intentionally deferred follow-up work
+- rollout execution is complete for the implemented deployment and docs follow-up scope
+- Phases 1 through 9 are complete
+- Phase 10 remains intentionally deferred follow-up work
