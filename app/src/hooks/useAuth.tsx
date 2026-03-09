@@ -4,10 +4,13 @@ import { AUTH_SESSION_INVALIDATED_EVENT, API_BASE, createApiHeaders } from '../s
 import { authApi, type AuthSuccess, type AuthUser } from '../services/authApi';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../services/authToken';
 
+export type AuthState = 'unknown' | 'authenticated' | 'anonymous';
+
 type AuthContextValue = {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  authState: AuthState;
   login: (session: AuthSuccess) => void;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
@@ -19,12 +22,23 @@ const AUTH_CHECK_TIMEOUT_MS = 6000;
 const AUTH_CHECK_RETRIES = 2;
 const AUTH_RETRY_DELAY_MS = 300;
 
+const isProtectedAppPath = () =>
+  typeof window !== 'undefined' && window.location.pathname.startsWith('/app');
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const initialToken = getAccessToken();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getAccessToken()));
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(initialToken));
+  const [authState, setAuthState] = useState<AuthState>(() => {
+    if (initialToken || isProtectedAppPath()) {
+      return 'unknown';
+    }
+
+    return 'anonymous';
+  });
   const abortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+  const isLoading = authState === 'unknown';
 
   const applyAuthenticatedState = useCallback((nextUser: AuthUser | null) => {
     setUser(nextUser);
@@ -38,6 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const token = getAccessToken();
     const isAuthCallbackRoute =
       typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/callback');
+    const shouldBlockOnBootstrap = Boolean(token) || isProtectedAppPath() || isAuthCallbackRoute;
 
     if (!isMountedRef.current || lifecycleController.signal.aborted) {
       return;
@@ -45,8 +60,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (isAuthCallbackRoute && !token) {
       applyAuthenticatedState(null);
-      setIsLoading(false);
+      setAuthState('anonymous');
       return;
+    }
+
+    if (shouldBlockOnBootstrap) {
+      setAuthState('unknown');
+    } else {
+      applyAuthenticatedState(null);
+      setAuthState('anonymous');
     }
 
     for (let attempt = 1; attempt <= AUTH_CHECK_RETRIES + 1; attempt += 1) {
@@ -89,7 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
 
           applyAuthenticatedState(payload.authenticated ? (payload.user ?? null) : null);
-          setIsLoading(false);
+          setAuthState(payload.authenticated ? 'authenticated' : 'anonymous');
           return;
         }
 
@@ -98,7 +120,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             clearAccessToken();
           }
           applyAuthenticatedState(null);
-          setIsLoading(false);
+          setAuthState('anonymous');
           return;
         }
       } catch {
@@ -113,12 +135,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (getAccessToken()) {
       setIsAuthenticated(true);
-      setIsLoading(false);
+      setAuthState('authenticated');
       return;
     }
 
     applyAuthenticatedState(null);
-    setIsLoading(false);
+    setAuthState('anonymous');
   }, [applyAuthenticatedState]);
 
   useEffect(() => {
@@ -130,7 +152,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       abortControllerRef.current?.abort();
       clearAccessToken();
       applyAuthenticatedState(null);
-      setIsLoading(false);
+      setAuthState('anonymous');
     };
 
     window.addEventListener(AUTH_SESSION_INVALIDATED_EVENT, handleSessionInvalidated);
@@ -159,7 +181,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     (session: AuthSuccess) => {
       setAccessToken(session.accessToken);
       applyAuthenticatedState(session.user);
-      setIsLoading(false);
+      setAuthState('authenticated');
     },
     [applyAuthenticatedState],
   );
@@ -172,7 +194,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       clearAccessToken();
       applyAuthenticatedState(null);
-      setIsLoading(false);
+      setAuthState('anonymous');
     }
   }, [applyAuthenticatedState]);
 
@@ -186,12 +208,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       user,
       isAuthenticated,
       isLoading,
+      authState,
       login,
       logout,
       refreshAuth,
       getAuthHeaders,
     }),
-    [getAuthHeaders, isAuthenticated, isLoading, login, logout, refreshAuth, user],
+    [authState, getAuthHeaders, isAuthenticated, isLoading, login, logout, refreshAuth, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -204,6 +227,7 @@ export const useAuth = (): AuthContextValue => {
       user: null,
       isAuthenticated: false,
       isLoading: true,
+      authState: 'unknown',
       login: (_session: AuthSuccess) => undefined,
       logout: async () => undefined,
       refreshAuth: async () => undefined,
@@ -215,8 +239,8 @@ export const useAuth = (): AuthContextValue => {
 };
 
 export const useCurrentUser = () => {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  return { user, isAuthenticated, isLoading, error: null };
+  const { user, isAuthenticated, isLoading, authState } = useAuth();
+  return { user, isAuthenticated, isLoading, authState, error: null };
 };
 
 export default AuthProvider;

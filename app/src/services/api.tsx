@@ -2,6 +2,7 @@
 import { clearAccessToken, withAuthHeader } from './authToken';
 
 const FALLBACK_API_BASE = 'http://localhost:3001';
+const EDGE_PROXY_ENABLED = import.meta.env.VITE_USE_EDGE_API_PROXY === 'true';
 
 const resolveDefaultApiBase = () => {
   if (typeof window !== 'undefined' && typeof window.location?.origin === 'string') {
@@ -19,15 +20,70 @@ const configuredApiBase =
   // Temporary alias support during migration to VITE_API_BASE_URL.
   import.meta.env.VITE_API_URL;
 
+const resolveApiBaseFromRuntime = () => {
+  if (EDGE_PROXY_ENABLED) {
+    return resolveDefaultApiBase();
+  }
+
+  if (typeof configuredApiBase === 'string' && configuredApiBase.trim().length > 0) {
+    return configuredApiBase;
+  }
+
+  return resolveDefaultApiBase();
+};
+
 const rawApiBase =
-  typeof configuredApiBase === 'string' && configuredApiBase.trim().length > 0
-    ? configuredApiBase
-    : resolveDefaultApiBase();
+  resolveApiBaseFromRuntime();
 
 const trimmedApiBase = rawApiBase.replace(/\/+$/, '');
 export const API_BASE = trimmedApiBase.endsWith('/api')
   ? trimmedApiBase.slice(0, -4)
   : trimmedApiBase;
+
+const normalizeOrigin = (value: string) => {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+};
+
+const ensureConnectionHint = (rel: 'dns-prefetch' | 'preconnect', href: string) => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  if (document.querySelector(`link[rel="${rel}"][href="${href}"]`)) {
+    return;
+  }
+
+  const link = document.createElement('link');
+  link.rel = rel;
+  link.href = href;
+  if (rel === 'preconnect') {
+    link.crossOrigin = '';
+  }
+  document.head.appendChild(link);
+};
+
+const addApiConnectionHints = (apiBase: string) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const apiOrigin = normalizeOrigin(apiBase);
+  const currentOrigin = normalizeOrigin(window.location.origin);
+  if (!apiOrigin || !currentOrigin || apiOrigin === currentOrigin) {
+    return;
+  }
+
+  ensureConnectionHint('dns-prefetch', apiOrigin);
+  ensureConnectionHint('preconnect', apiOrigin);
+};
+
+if (typeof window !== 'undefined') {
+  addApiConnectionHints(API_BASE);
+}
 
 export const AUTH_SESSION_INVALIDATED_EVENT = 'ecotrack:auth-session-invalidated';
 

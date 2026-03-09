@@ -6,13 +6,74 @@ import { fileURLToPath } from "node:url";
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const spawnRestricted = process.env.ECOTRACK_VITE_SPAWN_RESTRICTED === "1";
 
+const normalizeProxyTargetOrigin = (value, key) => {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error(`${key} must be a valid absolute URL.`);
+  }
+
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error(`${key} must use http or https.`);
+  }
+
+  parsed.pathname = "";
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString().replace(/\/$/, "");
+};
+
+const createCloudflarePagesRedirectsPlugin = ({
+  edgeProxyEnabled,
+  edgeProxyTargetOrigin,
+}) => ({
+  name: "ecotrack-cloudflare-pages-redirects",
+  apply: "build",
+  generateBundle() {
+    const redirectRules = [];
+
+    if (edgeProxyEnabled) {
+      if (!edgeProxyTargetOrigin) {
+        throw new Error(
+          "EDGE_PROXY_TARGET_ORIGIN is required when VITE_USE_EDGE_API_PROXY=true.",
+        );
+      }
+
+      const normalizedTarget = normalizeProxyTargetOrigin(
+        edgeProxyTargetOrigin,
+        "EDGE_PROXY_TARGET_ORIGIN",
+      );
+
+      redirectRules.push(`/api/* ${normalizedTarget}/api/:splat 200`);
+      redirectRules.push(`/health ${normalizedTarget}/health 200`);
+    }
+
+    redirectRules.push("/* /index.html 200");
+
+    this.emitFile({
+      type: "asset",
+      fileName: "_redirects",
+      source: `${redirectRules.join("\n")}\n`,
+    });
+  },
+});
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const base = env.VITE_BASE || "/";
+  const edgeProxyEnabled = env.VITE_USE_EDGE_API_PROXY === "true";
+  const edgeProxyTargetOrigin = env.EDGE_PROXY_TARGET_ORIGIN?.trim() ?? "";
 
   return {
     base,
-    plugins: [react()],
+    plugins: [
+      react(),
+      createCloudflarePagesRedirectsPlugin({
+        edgeProxyEnabled,
+        edgeProxyTargetOrigin,
+      }),
+    ],
     root: ".",
     optimizeDeps: spawnRestricted
       ? {

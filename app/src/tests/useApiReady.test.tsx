@@ -27,6 +27,7 @@ describe('useApiReady', () => {
 
     await waitFor(() => {
       expect(result.current.isApiReady).toBe(true);
+      expect(result.current.apiReachability).toBe('ready');
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -38,7 +39,7 @@ describe('useApiReady', () => {
     );
   });
 
-  test('retries until the API responds on /health', async () => {
+  test('marks the API as degraded until a retry succeeds', async () => {
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new Error('ECONNREFUSED'))
@@ -47,12 +48,17 @@ describe('useApiReady', () => {
 
     const { result } = renderHook(() => useApiReady('http://localhost:3001'));
 
+    await waitFor(() => {
+      expect(result.current.apiReachability).toBe('degraded');
+    });
+
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1200);
+      await result.current.retry();
     });
 
     await waitFor(() => {
       expect(result.current.isApiReady).toBe(true);
+      expect(result.current.apiReachability).toBe('ready');
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../../components/branding/BrandLogo';
 import LoginButton from '../../components/LoginButton';
-import { useApiReady } from '../../hooks/useApiReady';
+import { probeApiHealth, useApiReady } from '../../hooks/useApiReady';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
 import { API_BASE } from '../../services/api';
@@ -12,6 +12,8 @@ import {
   resolveRequestedAuthRedirect,
   storePendingAuthRedirect,
 } from '../../services/authRedirect';
+
+const GOOGLE_AUTH_URL = `${API_BASE}/api/auth/google`;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -23,11 +25,11 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  const { isApiReady } = useApiReady(API_BASE);
+  const { apiReachability, retry } = useApiReady(API_BASE);
 
   const redirectTarget = useMemo(() => resolveRequestedAuthRedirect(location.search), [location.search]);
   const oauthError = useMemo(() => new URLSearchParams(location.search).get('error'), [location.search]);
-  const isAuthDisabled = !isApiReady || isSigningIn;
+  const isAuthDisabled = isSigningIn;
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -83,16 +85,26 @@ export default function LoginPage() {
     };
   }, []);
 
-  const handleGoogleStart = () => {
-    storePendingAuthRedirect(redirectTarget);
+  const handleGoogleStart = async () => {
     setError(null);
     setSignInMethod('google');
     setIsSigningIn(true);
+
+    const isApiHealthy = await probeApiHealth(API_BASE);
+    if (!isApiHealthy) {
+      setError('EcoTrack is still reconnecting to the sign-in service. Please retry in a moment.');
+      setIsSigningIn(false);
+      setSignInMethod(null);
+      return;
+    }
+
+    storePendingAuthRedirect(redirectTarget);
+    window.location.assign(GOOGLE_AUTH_URL);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!isApiReady || isSigningIn) {
+    if (isSigningIn) {
       return;
     }
 
@@ -120,7 +132,11 @@ export default function LoginPage() {
       }
       navigate(`/auth/callback?${params.toString()}`, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to sign in.');
+      if (err instanceof TypeError || err instanceof DOMException) {
+        setError('Unable to reach EcoTrack right now. Check your connection and try again.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Unable to sign in.');
+      }
       setIsSigningIn(false);
       setSignInMethod(null);
     }
@@ -142,12 +158,30 @@ export default function LoginPage() {
 
         {oauthError ? <p className="auth-error-banner">{oauthError}</p> : null}
         {error ? <p className="auth-error-banner">{error}</p> : null}
+        {apiReachability === 'checking' ? (
+          <p className="auth-status-banner auth-status-banner-info">
+            Checking service connection. You can start entering your credentials now.
+          </p>
+        ) : null}
+        {apiReachability === 'degraded' ? (
+          <div className="auth-status-banner auth-status-banner-warning" role="status">
+            <span>EcoTrack is having trouble reaching the API. You can keep filling the form and retry sign-in.</span>
+            <button
+              type="button"
+              className="auth-status-action"
+              onClick={() => void retry()}
+              disabled={isSigningIn}
+            >
+              Retry connection
+            </button>
+          </div>
+        ) : null}
 
         <LoginButton
           className="auth-google-btn auth-login-google-btn"
           disabled={isAuthDisabled}
           isLoading={isSigningIn && signInMethod === 'google'}
-          onStartSignIn={handleGoogleStart}
+          onClick={handleGoogleStart}
         >
           Continue with Google
         </LoginButton>

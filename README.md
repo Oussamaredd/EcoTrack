@@ -91,6 +91,12 @@ The frontend auth routes are path-stable across local and Docker:
 
 Resolve them on the frontend origin defined in the Port Contract (`5173` for local dev, `3000` for Docker dev).
 
+UX contract:
+
+- public routes such as `/` and `/login` render immediately while session discovery runs in the background
+- only protected `/app/**` routes wait on session confirmation
+- login inputs stay editable while background health checks run
+
 Local auth contract:
 
 - `POST /api/login` returns `{ code, accessToken, user }` for local sign-in; `code` remains available for callback compatibility
@@ -112,6 +118,12 @@ Local auth contract:
   - same host
   - same port
   - same path (`/api/auth/google/callback`)
+
+Cloudflare Pages edge proxy:
+
+- set `VITE_USE_EDGE_API_PROXY=true` in the Pages build environment
+- set `EDGE_PROXY_TARGET_ORIGIN=<backend-public-origin>` so the generated `_redirects` file proxies `/api/*` and `/health`
+- keep deployed `VITE_API_BASE_URL` on the frontend origin when the edge proxy is enabled
 
 ## Quick Start (Docker Core)
 

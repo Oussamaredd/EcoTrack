@@ -1,17 +1,13 @@
 import type { ReactNode } from 'react';
 
 import { cn } from '../lib/utils';
-import { API_BASE } from '../services/api';
-
-const AUTH_BASE_URL = `${API_BASE}/api/auth`;
-const GOOGLE_AUTH_URL = `${AUTH_BASE_URL}/google`;
 
 type LoginButtonProps = {
   className?: string;
   children?: ReactNode;
   disabled?: boolean;
   isLoading?: boolean;
-  onStartSignIn?: () => void;
+  onClick?: () => void | Promise<void>;
 };
 
 export default function LoginButton({
@@ -19,15 +15,14 @@ export default function LoginButton({
   children,
   disabled = false,
   isLoading = false,
-  onStartSignIn,
+  onClick,
 }: LoginButtonProps) {
   const handleClick = () => {
     if (disabled) {
       return;
     }
 
-    onStartSignIn?.();
-    window.location.assign(GOOGLE_AUTH_URL);
+    void onClick?.();
   };
 
   return (
