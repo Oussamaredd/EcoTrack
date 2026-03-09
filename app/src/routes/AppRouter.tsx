@@ -1,7 +1,12 @@
 import { Suspense, lazy, type ReactElement } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import AppStatusScreen from "../components/AppStatusScreen";
 import RouteScrollToTop from "../components/RouteScrollToTop";
 import { useCurrentUser } from "../hooks/useAuth";
+import AuthLayout from "../layouts/AuthLayout";
+import PublicLayout from "../layouts/PublicLayout";
+import LoginPage from "../pages/auth/LoginPage";
+import LandingPage from "../pages/landing/LandingPage";
 import { MARKETING_PAGE_LIST } from "../pages/landing/marketingPages";
 import {
   hasAdminAccess,
@@ -12,8 +17,6 @@ import {
 import RequireAuth from "./guards/RequireAuth";
 import RequireGuest from "./guards/RequireGuest";
 
-const PublicLayout = lazy(() => import("../layouts/PublicLayout"));
-const AuthLayout = lazy(() => import("../layouts/AuthLayout"));
 const AppLayout = lazy(() => import("../layouts/AppLayout"));
 const AppHomePage = lazy(() => import("../pages/AppHomePage"));
 const Dashboard = lazy(() => import("../pages/Dashboard"));
@@ -34,17 +37,16 @@ const AdminDashboard = lazy(() =>
   })),
 );
 const AuthCallbackPage = lazy(() => import("../pages/auth/AuthCallbackPage"));
-const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
-const SignupPage = lazy(() => import("../pages/auth/SignupPage"));
 const ForgotPasswordPage = lazy(() => import("../pages/auth/ForgotPasswordPage"));
-const ResetPasswordPage = lazy(() => import("../pages/auth/ResetPasswordPage"));
-const LandingPage = lazy(() => import("../pages/landing/LandingPage"));
 const MarketingInfoPage = lazy(() => import("../pages/landing/MarketingInfoPage"));
+const ResetPasswordPage = lazy(() => import("../pages/auth/ResetPasswordPage"));
+const SignupPage = lazy(() => import("../pages/auth/SignupPage"));
 
 const RouteLoadingFallback = () => (
-  <div className="app-loading-screen">
-    <div>Loading...</div>
-  </div>
+  <AppStatusScreen
+    title="Loading EcoTrack"
+    message="Preparing the next page so you can keep moving through the workspace."
+  />
 );
 
 const withRouteSuspense = (element: ReactElement) => (
@@ -52,23 +54,16 @@ const withRouteSuspense = (element: ReactElement) => (
 );
 
 function RootLandingRoute() {
-  const { user, isAuthenticated, isLoading } = useCurrentUser();
+  const { user, isAuthenticated, isLoading, authState } = useCurrentUser();
   const location = useLocation();
   const isLoggedIn = Boolean(user) || Boolean(isAuthenticated);
+  const resolvedAuthState = authState ?? (isLoading ? 'unknown' : isLoggedIn ? 'authenticated' : 'anonymous');
 
-  if (isLoading) {
-    return (
-      <div className="app-loading-screen">
-        <div>Loading...</div>
-      </div>
-    );
-  }
-
-  if (isLoggedIn && !location.hash) {
+  if ((resolvedAuthState === 'authenticated' || (resolvedAuthState !== 'unknown' && isLoggedIn)) && !location.hash) {
     return <Navigate to="/app" replace />;
   }
 
-  return withRouteSuspense(<LandingPage />);
+  return <LandingPage />;
 }
 
 function AdminRoute() {
@@ -179,7 +174,7 @@ export default function AppRouter() {
     <>
       <RouteScrollToTop />
       <Routes>
-        <Route element={withRouteSuspense(<PublicLayout />)}>
+        <Route element={<PublicLayout />}>
           <Route path="/" element={<RootLandingRoute />} />
           {MARKETING_PAGE_LIST.map((page) => (
             <Route
@@ -192,15 +187,15 @@ export default function AppRouter() {
         </Route>
 
         <Route element={<RequireGuest />}>
-          <Route element={withRouteSuspense(<AuthLayout />)}>
-            <Route path="/login" element={withRouteSuspense(<LoginPage />)} />
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={withRouteSuspense(<SignupPage />)} />
             <Route path="/forgot-password" element={withRouteSuspense(<ForgotPasswordPage />)} />
             <Route path="/reset-password" element={withRouteSuspense(<ResetPasswordPage />)} />
           </Route>
         </Route>
 
-        <Route element={withRouteSuspense(<AuthLayout />)}>
+        <Route element={<AuthLayout />}>
           <Route path="/auth/callback" element={withRouteSuspense(<AuthCallbackPage />)} />
         </Route>
 

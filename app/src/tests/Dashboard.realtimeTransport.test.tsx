@@ -60,6 +60,7 @@ describe("Dashboard realtime transport precedence", () => {
       },
       isAuthenticated: true,
       isLoading: false,
+      authState: "authenticated",
       error: null,
     });
 

@@ -19,7 +19,7 @@ const session = {
 };
 
 function AuthProbe() {
-  const { login, getAuthHeaders, isAuthenticated, isLoading } = useAuth();
+  const { authState, login, getAuthHeaders, isAuthenticated, isLoading } = useAuth();
   const headers = getAuthHeaders();
 
   return (
@@ -29,6 +29,7 @@ function AuthProbe() {
       </button>
       <p data-testid="auth-header">{headers.Authorization ?? ''}</p>
       <p data-testid="auth-is-authenticated">{String(isAuthenticated)}</p>
+      <p data-testid="auth-state">{authState}</p>
       <p data-testid="auth-loading">{String(isLoading)}</p>
     </div>
   );
@@ -37,6 +38,7 @@ function AuthProbe() {
 describe('useAuth local storage', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.history.pushState({}, '', '/');
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
@@ -69,6 +71,7 @@ describe('useAuth local storage', () => {
 
   test('resolves loading state after auth check timeouts and retries', async () => {
     vi.useFakeTimers();
+    window.history.pushState({}, '', '/app');
 
     const abortableFetch = vi.fn((_: RequestInfo | URL, init?: RequestInit) => {
       return new Promise<Response>((_, reject) => {
@@ -104,6 +107,47 @@ describe('useAuth local storage', () => {
     });
 
     expect(abortableFetch).toHaveBeenCalledTimes(3);
+  });
+
+  test('keeps public routes interactive while session discovery runs in the background', async () => {
+    vi.useFakeTimers();
+    window.history.pushState({}, '', '/login');
+
+    const abortableFetch = vi.fn((_: RequestInfo | URL, init?: RequestInit) => {
+      return new Promise<Response>((_, reject) => {
+        const signal = init?.signal;
+
+        const rejectAbort = () => {
+          reject(new DOMException('Aborted', 'AbortError'));
+        };
+
+        if (signal?.aborted) {
+          rejectAbort();
+          return;
+        }
+
+        signal?.addEventListener('abort', rejectAbort, { once: true });
+      });
+    });
+
+    vi.stubGlobal('fetch', abortableFetch as unknown as typeof fetch);
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    );
+
+    expect(screen.getByTestId('auth-loading').textContent).toBe('false');
+    expect(screen.getByTestId('auth-state').textContent).toBe('anonymous');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20000);
+    });
+
+    expect(abortableFetch).toHaveBeenCalledTimes(3);
+    expect(screen.getByTestId('auth-loading').textContent).toBe('false');
+    expect(screen.getByTestId('auth-state').textContent).toBe('anonymous');
   });
 
   test('keeps stored bearer state when auth status checks fail transiently', async () => {
@@ -145,6 +189,7 @@ describe('useAuth local storage', () => {
 
     expect(screen.getByTestId('auth-header').textContent).toBe('Bearer persisted-token');
     expect(screen.getByTestId('auth-is-authenticated').textContent).toBe('true');
+    expect(screen.getByTestId('auth-state').textContent).toBe('authenticated');
   });
 
   test('clears stale stored bearer when auth status reports unauthenticated', async () => {
@@ -171,6 +216,7 @@ describe('useAuth local storage', () => {
     expect(window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY)).toBeNull();
     expect(screen.getByTestId('auth-header').textContent).toBe('');
     expect(screen.getByTestId('auth-is-authenticated').textContent).toBe('false');
+    expect(screen.getByTestId('auth-state').textContent).toBe('anonymous');
   });
 });
 

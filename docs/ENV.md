@@ -56,6 +56,7 @@ Agent tour mapping note:
   - Backend keeps `API_PORT=3001` on the internal Docker network only; local machine port `3001` should stay closed
 - `API_PORT` is the backend listen port, not the browser entrypoint.
 - `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public edge origin, not the direct API listen port.
+- When Cloudflare Pages fronts the SPA, keep `VITE_API_BASE_URL` on the frontend origin and enable the Pages edge proxy so browser traffic stays same-origin.
 
 ## Optional API Hardening Keys
 
@@ -103,6 +104,7 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
   - returns HTTP `503` when readiness dependencies fail or a required schema surface is not queryable
 - Diagnostics alias: `GET /api/health/database`
 - Frontend sign-in readiness checks should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
+- Frontend `/login` must stay interactive while background health checks run; `/health` is advisory UI only and must not hard-disable credential inputs.
 - Local `npm run dev` waits on the local direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status (default wait timeout: `180000ms`)
 
 ## Auth Exchange Flow
@@ -142,6 +144,7 @@ Removed runtime aliases (no longer read by API runtime):
 - `app/.env.local`, `app/.env.example`, and mode env files must include only `VITE_*` keys.
 - API/database/infrastructure secrets must never appear in app env files.
 - In local and Docker browser-facing runtimes, `VITE_API_BASE_URL` should target the frontend origin so the edge layer owns `/api` and `/health` routing.
+- For Cloudflare Pages deploys, set `VITE_USE_EDGE_API_PROXY=true` and `EDGE_PROXY_TARGET_ORIGIN=<backend-public-origin>` at build time so Vite emits a `_redirects` file that proxies `/api/*` and `/health` through the frontend edge.
 - `APP_URL`/`CLIENT_ORIGIN` values, when used, must target the frontend origin root (for example `https://app.example.com`), not removed legacy paths such as `/auth` or `/dashboard`.
 
 ## OAuth Callback Contract

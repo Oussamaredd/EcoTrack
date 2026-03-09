@@ -51,6 +51,7 @@ npm run smoke-test
 - Local/native dev browser traffic enters through `http://localhost:5173`; the API process listens on `http://localhost:3001` for local-native diagnostics only.
 - Docker dev browser traffic enters through `http://localhost:3000`; the backend still listens on `API_PORT=3001`, but that port stays internal-only on the Docker network.
 - `API_PORT` is the backend listen port, while `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public frontend edge origin.
+- Public routes such as `/` and `/login` should render immediately; only protected `/app/**` routes may wait on session resolution.
 
 ## Deployed Environments
 
@@ -61,6 +62,12 @@ Templates to keep in source control:
 - `infrastructure/environments/.env.development.example`
 - `infrastructure/environments/.env.staging.example`
 - `infrastructure/environments/.env.production.example`
+
+Cloudflare Pages build note:
+
+- Set `VITE_USE_EDGE_API_PROXY=true` in the Pages build environment to force browser API calls onto the frontend origin.
+- Set `EDGE_PROXY_TARGET_ORIGIN=<backend-public-origin>` in the Pages build environment so the generated `_redirects` file proxies `/api/*` and `/health` to the backend origin.
+- Keep deployed `VITE_API_BASE_URL` on the frontend origin when the edge proxy is enabled.
 
 ## GitHub Pages Status
 

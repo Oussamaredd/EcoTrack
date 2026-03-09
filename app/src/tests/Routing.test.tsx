@@ -27,6 +27,7 @@ type AuthMockState = {
   user: Record<string, unknown> | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  authState?: "unknown" | "authenticated" | "anonymous";
 };
 
 const setAuthState = (value: AuthMockState) => {
@@ -55,6 +56,7 @@ describe("Routing Matrix", () => {
       user: null,
       isLoading: false,
       isAuthenticated: false,
+      authState: "anonymous",
     });
   });
 
@@ -90,6 +92,25 @@ describe("Routing Matrix", () => {
     });
   });
 
+  test("`/` still renders landing while auth status is unresolved", async () => {
+    setAuthState({
+      user: null,
+      isLoading: true,
+      isAuthenticated: false,
+      authState: "unknown",
+    });
+
+    renderRoute("/");
+
+    expect(
+      await screen.findByRole(
+        "heading",
+        { name: /Bridge every ticket handoff/i },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
+  });
+
   test("`/app` renders the shared workspace home when authenticated", async () => {
     setAuthState({
       user: { id: "123", name: "Test User", role: "agent", roles: [] },
@@ -110,6 +131,19 @@ describe("Routing Matrix", () => {
 
   test("`/login` renders login page when unauthenticated", async () => {
     renderRoute("/login");
+    expect(await screen.findByRole("heading", { name: /Welcome back/i })).toBeInTheDocument();
+  });
+
+  test("`/login` renders immediately while auth status is unresolved", async () => {
+    setAuthState({
+      user: null,
+      isLoading: true,
+      isAuthenticated: false,
+      authState: "unknown",
+    });
+
+    renderRoute("/login");
+
     expect(await screen.findByRole("heading", { name: /Welcome back/i })).toBeInTheDocument();
   });
 
@@ -157,6 +191,21 @@ describe("Routing Matrix", () => {
     });
 
     expect(getLocation()?.search).toContain("next=");
+  });
+
+  test("`/app/*` keeps the session gate visible while auth status is unresolved", async () => {
+    setAuthState({
+      user: null,
+      isLoading: true,
+      isAuthenticated: false,
+      authState: "unknown",
+    });
+
+    renderRoute("/app/dashboard");
+
+    expect(
+      await screen.findByRole("heading", { name: /Checking your session/i }),
+    ).toBeInTheDocument();
   });
 
   test("sidebar toggle works consistently across app routes", async () => {
