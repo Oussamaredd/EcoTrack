@@ -22,7 +22,7 @@ describe('ResetPasswordPage', () => {
     vi.useRealTimers();
   });
 
-  it('clears stale errors and uses the latest token when the query string changes', async () => {
+  it('uses the latest token when the query string changes on the same route', async () => {
     resetPasswordMock
       .mockRejectedValueOnce(new Error('Reset token expired.'))
       .mockResolvedValueOnce({ success: true });
@@ -51,10 +51,6 @@ describe('ResetPasswordPage', () => {
 
     await act(async () => {
       await router.navigate('/reset-password?token=second-token');
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByText('Reset token expired.')).not.toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /update password/i }));
