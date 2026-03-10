@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 
@@ -14,7 +14,12 @@ vi.mock('../services/authApi', () => ({
 
 describe('ResetPasswordPage', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     resetPasswordMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('clears stale errors and uses the latest token when the query string changes', async () => {
@@ -54,6 +59,14 @@ describe('ResetPasswordPage', () => {
 
     await waitFor(() => {
       expect(resetPasswordMock).toHaveBeenLastCalledWith('second-token', 'UpdatedPass123!');
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1200);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Login')).toBeInTheDocument();
     });
   });
 });
