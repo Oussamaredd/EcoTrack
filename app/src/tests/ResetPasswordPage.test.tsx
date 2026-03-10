@@ -53,7 +53,9 @@ describe('ResetPasswordPage', () => {
       await router.navigate('/reset-password?token=second-token');
     });
 
-    expect(screen.queryByText('Reset token expired.')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Reset token expired.')).not.toBeInTheDocument();
+    });
 
     fireEvent.click(screen.getByRole('button', { name: /update password/i }));
 
