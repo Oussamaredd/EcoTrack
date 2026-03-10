@@ -126,6 +126,8 @@ export default defineConfig(({ mode }) => {
           "src/pages/CitizenReportPage.tsx",
           "src/pages/AgentTourPage.tsx",
           "src/pages/ManagerPlanningPage.tsx",
+          "src/pages/auth/AuthCallbackPage.tsx",
+          "src/pages/auth/ResetPasswordPage.tsx",
           "src/utils/authz.ts",
           "src/lib/scrollPageToTop.ts",
         ],
