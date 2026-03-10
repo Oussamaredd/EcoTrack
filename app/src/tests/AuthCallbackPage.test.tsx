@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -88,7 +88,9 @@ describe('AuthCallbackPage', () => {
       expect(clearPendingAuthRedirectMock).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Workspace')).toBeInTheDocument();
+    });
   });
 
   it('shows the retry action after an exchange failure and retries the sign-in flow', async () => {
@@ -117,8 +119,9 @@ describe('AuthCallbackPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Exchange service unavailable.');
 
+    fireEvent.click(screen.getByRole('button', { name: /retry sign in/i }));
+
     await act(async () => {
-      screen.getByRole('button', { name: /retry sign in/i }).click();
       vi.advanceTimersByTime(450);
     });
 
@@ -136,5 +139,13 @@ describe('AuthCallbackPage', () => {
     });
 
     expect(screen.getByRole('heading', { name: /successfully signed in/i })).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    await waitFor(() => {
+      expect(clearPendingAuthRedirectMock).toHaveBeenCalledTimes(1);
+    });
   });
 });
