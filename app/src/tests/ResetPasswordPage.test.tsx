@@ -48,15 +48,24 @@ describe('ResetPasswordPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /update password/i }));
 
     expect(await screen.findByText('Reset token expired.')).toBeInTheDocument();
+    expect(resetPasswordMock).toHaveBeenNthCalledWith(1, 'first-token', 'UpdatedPass123!');
 
     await act(async () => {
       await router.navigate('/reset-password?token=second-token');
     });
 
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?token=second-token');
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     fireEvent.click(screen.getByRole('button', { name: /update password/i }));
 
     await waitFor(() => {
-      expect(resetPasswordMock).toHaveBeenLastCalledWith('second-token', 'UpdatedPass123!');
+      expect(resetPasswordMock).toHaveBeenNthCalledWith(2, 'second-token', 'UpdatedPass123!');
     });
 
     await act(async () => {
