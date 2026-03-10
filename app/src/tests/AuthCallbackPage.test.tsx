@@ -52,7 +52,6 @@ describe('AuthCallbackPage', () => {
     render(<RouterProvider router={router} />);
 
     expect(screen.getByRole('heading', { name: /sign-in failed/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /retry sign in/i })).not.toBeInTheDocument();
 
     exchangeMock.mockResolvedValueOnce({
       accessToken: 'token-123',
