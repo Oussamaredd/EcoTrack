@@ -27,6 +27,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `.github/workflows/docs-pages.yml` - docs-only GitHub Pages publishing workflow using `docs/` as the site source
 - SonarCloud CI scanner lane in `CI.yaml` runs only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
 - Sonar coverage gate currently excludes `database/**`, selected frontend auth/bootstrap routing files, and selected users/auth service files pending dedicated coverage instrumentation alignment in the broader app/api source set
+- Preflight now enforces `node infrastructure/scripts/validate-sonar-coverage-alignment.mjs`, which compares the full branch diff against workspace Vitest coverage includes and `sonar.coverage.exclusions`; each changed `app/src/**` or `api/src/**` source file must live in exactly one lane
 - `.github/workflows/CD.yml` - canonical `CD Deployment` workflow
 - `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
 - `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy
@@ -86,6 +87,7 @@ npm run test:e2e
 npm run test:coverage
 npm run test:coverage:api
 npm run validate-env:all
+node infrastructure/scripts/validate-sonar-coverage-alignment.mjs
 npm run validate-specs
 node infrastructure/scripts/ci/generate-cdc-summary.mjs
 node infrastructure/scripts/ci/run-mutation-gate.mjs
