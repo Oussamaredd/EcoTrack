@@ -172,7 +172,7 @@ Execution notes:
 
 - Added a fast API liveness probe endpoint: `GET http://localhost:3001/health`.
 - Kept deeper dependency diagnostics under `GET http://localhost:3001/api/health/database`.
-- Frontend login now polls `/health` before enabling `Continue with Google` and `Sign in`.
+- Updated March 11, 2026: frontend login no longer polls `/health` before starting auth; `/health` remains a diagnostic endpoint and auth requests are allowed to wake the backend directly.
 - Frontend callback applies a short validation delay, then shows a success state with a green checkmark before redirecting to `/app`.
 - Root `npm run dev` now gates app startup with `infrastructure/scripts/wait-for-api-ready.mjs` so Vite starts only after API readiness.
 
