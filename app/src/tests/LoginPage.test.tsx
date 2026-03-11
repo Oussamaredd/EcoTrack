@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import LoginPage from '../pages/auth/LoginPage';
 import { renderWithRouter } from './test-utils';
 
-const mockLogin = vi.fn();
+const { mockLogin, mockStorePendingAuthRedirect, mockClearPendingAuthRedirect } = vi.hoisted(() => ({
+  mockLogin: vi.fn(),
+  mockStorePendingAuthRedirect: vi.fn(),
+  mockClearPendingAuthRedirect: vi.fn(),
+}));
 
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({
@@ -18,57 +22,73 @@ vi.mock('../services/authApi', () => ({
   },
 }));
 
+vi.mock('../services/authRedirect', () => ({
+  clearPendingAuthRedirect: mockClearPendingAuthRedirect,
+  resolveRequestedAuthRedirect: vi.fn(() => '/app'),
+  storePendingAuthRedirect: mockStorePendingAuthRedirect,
+}));
+
 const authApiModule = await import('../services/authApi');
 const mockAuthApiLogin = vi.mocked(authApiModule.authApi.login);
 
 describe('LoginPage', () => {
+  let locationGetterSpy: ReturnType<typeof vi.spyOn>;
+  let mockLocationAssign: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
-    vi.useFakeTimers();
     mockLogin.mockReset();
     mockAuthApiLogin.mockReset();
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('API unavailable')));
+    mockStorePendingAuthRedirect.mockReset();
+    mockClearPendingAuthRedirect.mockReset();
+    mockLocationAssign = vi.fn();
+    locationGetterSpy = vi.spyOn(window, 'location', 'get').mockReturnValue({
+      ...window.location,
+      assign: mockLocationAssign,
+    } as Location);
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    locationGetterSpy?.mockRestore();
     vi.unstubAllGlobals();
   });
 
-  test('keeps credential inputs enabled while the health check is degraded', async () => {
-    renderWithRouter(<LoginPage />, { route: '/login', path: '/login' });
+  test('does not render an API connection warning while idle', () => {
+    renderWithRouter(<LoginPage />, { route: '/login' });
 
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/password/i);
-
-    expect(emailInput).toBeEnabled();
-    expect(passwordInput).toBeEnabled();
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/having trouble reaching the api/i),
-      ).toBeInTheDocument();
-    });
-
-    expect(emailInput).toBeEnabled();
-    expect(passwordInput).toBeEnabled();
+    expect(screen.getByLabelText(/email/i)).toBeEnabled();
+    expect(screen.getByLabelText(/password/i)).toBeEnabled();
+    expect(screen.queryByText(/having trouble reaching the api/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/checking service connection/i)).not.toBeInTheDocument();
   });
 
-  test('shows an inline error instead of navigating away when google sign-in cannot reach the API', async () => {
-    renderWithRouter(<LoginPage />, { route: '/login', path: '/login' });
+  test('starts google sign-in immediately without a health precheck', async () => {
+    renderWithRouter(<LoginPage />, { route: '/login' });
 
     fireEvent.click(screen.getByRole('button', { name: /continue with google/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/still reconnecting to the sign-in service/i),
-      ).toBeInTheDocument();
+      expect(mockStorePendingAuthRedirect).toHaveBeenCalledWith('/app');
+      expect(mockLocationAssign).toHaveBeenCalledWith(expect.stringMatching(/\/api\/auth\/google$/));
     });
-
-    expect(screen.getByRole('button', { name: /continue with google/i })).toBeEnabled();
   });
 
-  test('does not call email sign-in while the API is still degraded', async () => {
-    renderWithRouter(<LoginPage />, { route: '/login', path: '/login' });
+  test('submits email sign-in without a preflight health gate', async () => {
+    mockAuthApiLogin.mockResolvedValue({
+      code: 'exchange-code',
+      accessToken: 'token',
+      user: {
+        id: 'user-1',
+        email: 'a@admin.fr',
+        displayName: 'Admin User',
+        avatarUrl: null,
+        role: 'admin',
+        roles: [],
+        isActive: true,
+        provider: 'local',
+      },
+    });
+
+    const { getLocation } = renderWithRouter(<LoginPage />, { route: '/login' });
 
     fireEvent.change(screen.getByLabelText(/email/i), {
       target: { value: 'a@admin.fr' },
@@ -76,22 +96,17 @@ describe('LoginPage', () => {
     fireEvent.change(screen.getByLabelText(/password/i), {
       target: { value: 'password123' },
     });
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/having trouble reaching the api/i),
-      ).toBeInTheDocument();
-    });
-
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/still reconnecting to the sign-in service/i),
-      ).toBeInTheDocument();
+      expect(mockAuthApiLogin).toHaveBeenCalledWith('a@admin.fr', 'password123');
+      expect(mockLogin).toHaveBeenCalledWith({
+        accessToken: 'token',
+        user: expect.objectContaining({
+          email: 'a@admin.fr',
+        }),
+      });
+      expect(getLocation()?.pathname).toBe('/app');
     });
-
-    expect(mockAuthApiLogin).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeEnabled();
   });
 });

@@ -97,7 +97,7 @@ UX contract:
 
 - public routes such as `/` and `/login` render immediately while session discovery runs in the background
 - only protected `/app/**` routes wait on session confirmation
-- login inputs stay editable while background health checks run
+- login starts auth requests immediately and does not preflight `/health`
 
 Local auth contract:
 

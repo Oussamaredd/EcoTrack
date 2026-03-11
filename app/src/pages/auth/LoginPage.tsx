@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../../components/branding/BrandLogo';
 import LoginButton from '../../components/LoginButton';
-import { useApiReady } from '../../hooks/useApiReady';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
 import { API_BASE } from '../../services/api';
@@ -25,7 +24,6 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
-  const { apiReachability, retry } = useApiReady(API_BASE);
 
   const redirectTarget = useMemo(() => resolveRequestedAuthRedirect(location.search), [location.search]);
   const oauthError = useMemo(() => new URLSearchParams(location.search).get('error'), [location.search]);
@@ -85,29 +83,10 @@ export default function LoginPage() {
     };
   }, []);
 
-  const ensureApiAvailable = async (message: string) => {
-    const isApiHealthy = await retry();
-    if (isApiHealthy) {
-      return true;
-    }
-
-    setError(message);
-    setIsSigningIn(false);
-    setSignInMethod(null);
-    return false;
-  };
-
-  const handleGoogleStart = async () => {
+  const handleGoogleStart = () => {
     setError(null);
     setSignInMethod('google');
     setIsSigningIn(true);
-
-    const canReachApi = await ensureApiAvailable(
-      'EcoTrack is still reconnecting to the sign-in service. Please retry in a moment.',
-    );
-    if (!canReachApi) {
-      return;
-    }
 
     storePendingAuthRedirect(redirectTarget);
     window.location.assign(GOOGLE_AUTH_URL);
@@ -124,15 +103,6 @@ export default function LoginPage() {
     setIsSigningIn(true);
 
     try {
-      if (apiReachability === 'degraded') {
-        const canReachApi = await ensureApiAvailable(
-          'EcoTrack is still reconnecting to the sign-in service. Please retry in a moment.',
-        );
-        if (!canReachApi) {
-          return;
-        }
-      }
-
       const payload = await authApi.login(email, password);
 
       if (payload.accessToken && payload.user) {
@@ -178,24 +148,6 @@ export default function LoginPage() {
 
         {oauthError ? <p className="auth-error-banner">{oauthError}</p> : null}
         {error ? <p className="auth-error-banner">{error}</p> : null}
-        {apiReachability === 'checking' ? (
-          <p className="auth-status-banner auth-status-banner-info">
-            Checking service connection. You can start entering your credentials now.
-          </p>
-        ) : null}
-        {apiReachability === 'degraded' ? (
-          <div className="auth-status-banner auth-status-banner-warning" role="status">
-            <span>EcoTrack is having trouble reaching the API. You can keep filling the form and retry sign-in.</span>
-            <button
-              type="button"
-              className="auth-status-action"
-              onClick={() => void retry()}
-              disabled={isSigningIn}
-            >
-              Retry connection
-            </button>
-          </div>
-        ) : null}
 
         <LoginButton
           className="auth-google-btn auth-login-google-btn"

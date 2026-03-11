@@ -103,10 +103,9 @@ Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-contr
   - returns HTTP `200` when critical ticketing and planning schema dependencies are ready
   - returns HTTP `503` when readiness dependencies fail or a required schema surface is not queryable
 - Diagnostics alias: `GET /api/health/database`
-- Frontend sign-in readiness checks should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
-- Frontend `/login` must stay interactive while background health checks run; `/health` is advisory UI only and must not hard-disable credential inputs.
+- Frontend health probes, when used for diagnostics, should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
+- Frontend `/login` must stay interactive and send auth requests directly; `/health` is advisory only and must not gate sign-in submission.
 - Local `npm run dev` waits on the local direct API readiness URL from the Port Contract before launching the app dev server, and stops startup if the readiness probe times out or returns a non-`200` status (default wait timeout: `180000ms`)
-- When `/login` is already in a degraded API state, sign-in actions should reprobe the lightweight health endpoint before starting a new auth request so the UI can recover as soon as the API returns and fail fast when it is still offline.
 
 ## Auth Exchange Flow
 
