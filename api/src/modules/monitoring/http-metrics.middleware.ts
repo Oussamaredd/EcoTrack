@@ -1,4 +1,4 @@
-import { Injectable, type NestMiddleware } from '@nestjs/common';
+import { Inject, Injectable, type NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
 import {
@@ -9,7 +9,9 @@ import { MonitoringService } from './monitoring.service.js';
 
 @Injectable()
 export class HttpMetricsMiddleware implements NestMiddleware {
-  constructor(private readonly monitoringService: MonitoringService) {}
+  constructor(
+    @Inject(MonitoringService) private readonly monitoringService: MonitoringService,
+  ) {}
 
   use(request: Request, response: Response, next: NextFunction): void {
     const rawPath = request.originalUrl ?? request.url;
