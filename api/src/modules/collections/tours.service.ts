@@ -5,6 +5,7 @@ import type { CreateTourDto } from './dto/create-tour.dto.js';
 import type { ReportAnomalyDto } from './dto/report-anomaly.dto.js';
 import type { UpdateTourDto } from './dto/update-tour.dto.js';
 import type { ValidateTourStopDto } from './dto/validate-tour-stop.dto.js';
+import { RoutingClient } from './routing/routing.client.js';
 import type { ToursRouteCoordinationPort } from './tours.contract.js';
 import { ToursRepository } from './tours.repository.js';
 
@@ -92,7 +93,6 @@ type NormalizedRouteStop = {
   longitude: number;
 };
 
-const DEFAULT_ROUTING_API_BASE_URL = 'https://router.project-osrm.org';
 const EARTH_RADIUS_KM = 6371;
 const AVERAGE_ROUTE_SPEED_KMH = 24;
 const STOP_SERVICE_DURATION_MINUTES = 4;
@@ -103,6 +103,7 @@ export class ToursService implements ToursRouteCoordinationPort {
   constructor(
     private readonly repository: ToursRepository,
     @Inject(ConfigService) private readonly configService: ConfigService,
+    private readonly routingClient: RoutingClient,
   ) {}
 
   async list(filters: TourListFilters) {
@@ -326,11 +327,6 @@ export class ToursService implements ToursRouteCoordinationPort {
     return Math.max(0, Math.round(distanceKm * 1000));
   }
 
-  private getRoutingApiBaseUrl() {
-    const configuredBaseUrl = this.configService.get<string>('routing.baseUrl');
-    return configuredBaseUrl?.trim() || DEFAULT_ROUTING_API_BASE_URL;
-  }
-
   private normalizeRouteStops(stops: AgentTourStop[]): NormalizedRouteStop[] {
     return stops
       .map((stop) => {
@@ -410,92 +406,13 @@ export class ToursService implements ToursRouteCoordinationPort {
       return this.buildFallbackRouteGeometry(normalizedStops);
     }
 
-    const routeCoordinates = normalizedStops
-      .map((stop) => `${stop.longitude.toFixed(6)},${stop.latitude.toFixed(6)}`)
-      .join(';');
+    const routeResult = await this.routingClient.fetchRoute(normalizedStops);
 
-    const routingApiBaseUrl = this.getRoutingApiBaseUrl();
-
-    try {
-      const routeUrl = new URL(
-        `route/v1/driving/${routeCoordinates}`,
-        routingApiBaseUrl.endsWith('/') ? routingApiBaseUrl : `${routingApiBaseUrl}/`,
-      );
-      routeUrl.searchParams.set('overview', 'full');
-      routeUrl.searchParams.set('geometries', 'geojson');
-      routeUrl.searchParams.set('steps', 'false');
-      routeUrl.searchParams.set('annotations', 'false');
-
-      const response = await fetch(routeUrl.toString(), {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Routing request failed with status ${response.status}.`);
-      }
-
-      const payload = (await response.json()) as {
-        routes?: Array<{
-          distance?: number;
-          duration?: number;
-          geometry?: {
-            type?: string;
-            coordinates?: number[][];
-          };
-        }>;
-      };
-
-      const route = payload.routes?.[0];
-      const geometry = route?.geometry;
-      const coordinates =
-        geometry?.type === 'LineString' && Array.isArray(geometry.coordinates)
-          ? geometry.coordinates
-              .filter(
-                (coordinate): coordinate is [number, number] =>
-                  Array.isArray(coordinate) &&
-                  coordinate.length >= 2 &&
-                  Number.isFinite(coordinate[0]) &&
-                  Number.isFinite(coordinate[1]),
-              )
-              .map((coordinate) => [coordinate[0], coordinate[1]] as [number, number])
-          : [];
-
-      if (coordinates.length < 2) {
-        throw new Error('Routing API did not return a usable LineString geometry.');
-      }
-
-      return {
-        geometry: {
-          type: 'LineString',
-          coordinates,
-        },
-        distanceKm:
-          typeof route?.distance === 'number' && Number.isFinite(route.distance)
-            ? Number(route.distance / 1000)
-            : null,
-        durationMinutes:
-          typeof route?.duration === 'number' && Number.isFinite(route.duration)
-            ? Math.max(1, Math.round(route.duration / 60))
-            : null,
-        source: 'live',
-        provider: this.getRoutingProviderName(routingApiBaseUrl),
-        resolvedAt: new Date().toISOString(),
-      };
-    } catch {
-      return this.buildFallbackRouteGeometry(normalizedStops);
+    if (routeResult) {
+      return routeResult;
     }
-  }
 
-  private getRoutingProviderName(baseUrl: string) {
-    try {
-      const parsed = new URL(baseUrl);
-      return parsed.hostname || 'osrm';
-    } catch {
-      return 'osrm';
-    }
+    return this.buildFallbackRouteGeometry(normalizedStops);
   }
 
   private computeFallbackRouteDistanceKm(stops: NormalizedRouteStop[]) {
