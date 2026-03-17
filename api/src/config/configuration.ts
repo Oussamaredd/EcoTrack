@@ -12,6 +12,9 @@ const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 120;
 const DEFAULT_LOG_LEVEL = 'info';
 const DEFAULT_LOG_FORMAT: AppConfig['logging']['format'] = 'json';
 const DEFAULT_ROUTING_API_BASE_URL = 'https://router.project-osrm.org';
+const DEFAULT_ROUTING_TIMEOUT_MS = 10_000;
+const DEFAULT_ROUTING_FAILURE_THRESHOLD = 5;
+const DEFAULT_ROUTING_RESET_WINDOW_MS = 30_000;
 
 const toPositiveInt = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
@@ -59,6 +62,11 @@ export type AppConfig = {
   };
   routing: {
     baseUrl: string;
+    circuitBreaker: {
+      timeoutMs: number;
+      failureThreshold: number;
+      resetWindowMs: number;
+    };
   };
 };
 
@@ -80,5 +88,10 @@ export default (): AppConfig => ({
   },
   routing: {
     baseUrl: process.env.ROUTING_API_BASE_URL ?? DEFAULT_ROUTING_API_BASE_URL,
+    circuitBreaker: {
+      timeoutMs: toPositiveInt(process.env.ROUTING_TIMEOUT_MS, DEFAULT_ROUTING_TIMEOUT_MS),
+      failureThreshold: toPositiveInt(process.env.ROUTING_FAILURE_THRESHOLD, DEFAULT_ROUTING_FAILURE_THRESHOLD),
+      resetWindowMs: toPositiveInt(process.env.ROUTING_RESET_WINDOW_MS, DEFAULT_ROUTING_RESET_WINDOW_MS),
+    },
   },
 });

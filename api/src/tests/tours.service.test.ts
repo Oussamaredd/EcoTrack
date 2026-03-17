@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { RoutingClient } from '../modules/collections/routing/routing.client.js';
 import { ToursService } from '../modules/collections/tours.service.js';
 
 describe('ToursService route geometry enrichment', () => {
@@ -17,6 +18,18 @@ describe('ToursService route geometry enrichment', () => {
   };
 
   const fetchMock = vi.fn();
+
+  const createRoutingClientMock = () => ({
+    fetchRoute: vi.fn(),
+    getCircuitState: vi.fn().mockReturnValue('closed'),
+    getMetrics: vi.fn().mockReturnValue({
+      state: 'closed',
+      failures: 0,
+      lastFailureTime: null,
+      lastSuccessTime: null,
+      consecutiveSuccesses: 0,
+    }),
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,6 +50,15 @@ describe('ToursService route geometry enrichment', () => {
       if (key === 'routing.baseUrl') {
         return 'https://router.example.test';
       }
+      if (key === 'routing.circuitBreaker.timeoutMs') {
+        return 10000;
+      }
+      if (key === 'routing.circuitBreaker.failureThreshold') {
+        return 5;
+      }
+      if (key === 'routing.circuitBreaker.resetWindowMs') {
+        return 30000;
+      }
 
       return undefined;
     });
@@ -45,6 +67,14 @@ describe('ToursService route geometry enrichment', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
+
+  const createService = (routingClientMock: ReturnType<typeof createRoutingClientMock>) => {
+    return new ToursService(
+      repositoryMock as any,
+      configServiceMock as unknown as ConfigService,
+      routingClientMock as unknown as RoutingClient,
+    );
+  };
 
   it('returns API-owned road geometry and overrides route metrics when routing succeeds', async () => {
     repositoryMock.getAgentTour.mockResolvedValue({
@@ -108,13 +138,27 @@ describe('ToursService route geometry enrichment', () => {
       }),
     });
 
-    const service = new ToursService(repositoryMock as any, configServiceMock as unknown as ConfigService);
+    const routingClientMock = createRoutingClientMock();
+    routingClientMock.fetchRoute.mockResolvedValue({
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [2.3522, 48.8566],
+          [2.3531, 48.8573],
+          [2.354, 48.8589],
+        ],
+      },
+      distanceKm: 0.78,
+      durationMinutes: 5,
+      source: 'live',
+      provider: 'router.example.test',
+      resolvedAt: '2026-03-02T09:00:00.000Z',
+    });
+
+    const service = createService(routingClientMock);
     const result = await service.getAgentTour('agent-1');
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('https://router.example.test/route/v1/driving/2.352200,48.856600;2.354000,48.858900'),
-      expect.objectContaining({ method: 'GET' }),
-    );
+    expect(routingClientMock.fetchRoute).toHaveBeenCalled();
     expect(result).toEqual(
       expect.objectContaining({
         routeGeometry: expect.objectContaining({
@@ -181,12 +225,15 @@ describe('ToursService route geometry enrichment', () => {
       },
       storedRoute: null,
     });
-    fetchMock.mockRejectedValue(new Error('network unavailable'));
 
-    const service = new ToursService(repositoryMock as any, configServiceMock as unknown as ConfigService);
+    const routingClientMock = createRoutingClientMock();
+    routingClientMock.fetchRoute.mockResolvedValue(null);
+
+    const service = createService(routingClientMock);
     const result = await service.getAgentTour('agent-1');
     const fallbackRoute = (result as any)?.routeGeometry;
 
+    expect(routingClientMock.fetchRoute).toHaveBeenCalled();
     expect(result).toEqual(
       expect.objectContaining({
         routeGeometry: expect.objectContaining({
@@ -273,10 +320,12 @@ describe('ToursService route geometry enrichment', () => {
       },
     });
 
-    const service = new ToursService(repositoryMock as any, configServiceMock as unknown as ConfigService);
+    const routingClientMock = createRoutingClientMock();
+
+    const service = createService(routingClientMock);
     const result = await service.getAgentTour('agent-1');
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(routingClientMock.fetchRoute).not.toHaveBeenCalled();
     expect(repositoryMock.upsertTourRoute).not.toHaveBeenCalled();
     expect(result).toEqual(
       expect.objectContaining({
@@ -369,10 +418,27 @@ describe('ToursService route geometry enrichment', () => {
       }),
     });
 
-    const service = new ToursService(repositoryMock as any, configServiceMock as unknown as ConfigService);
+    const routingClientMock = createRoutingClientMock();
+    routingClientMock.fetchRoute.mockResolvedValue({
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [2.3522, 48.8566],
+          [2.3531, 48.8573],
+          [2.354, 48.8589],
+        ],
+      },
+      distanceKm: 0.78,
+      durationMinutes: 5,
+      source: 'live',
+      provider: 'router.example.test',
+      resolvedAt: '2026-03-02T09:00:00.000Z',
+    });
+
+    const service = createService(routingClientMock);
     const result = await service.getAgentTour('agent-1');
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(routingClientMock.fetchRoute).toHaveBeenCalledTimes(1);
     // Regression lock: seeded fallback geometry must be overwritten with a live route as soon as routing succeeds.
     expect(repositoryMock.upsertTourRoute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -481,10 +547,27 @@ describe('ToursService route geometry enrichment', () => {
       }),
     });
 
-    const service = new ToursService(repositoryMock as any, configServiceMock as unknown as ConfigService);
+    const routingClientMock = createRoutingClientMock();
+    routingClientMock.fetchRoute.mockResolvedValue({
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [2.3522, 48.8566],
+          [2.3531, 48.8573],
+          [2.354, 48.8589],
+        ],
+      },
+      distanceKm: 0.78,
+      durationMinutes: 5,
+      source: 'live',
+      provider: 'router.example.test',
+      resolvedAt: '2026-03-02T09:00:00.000Z',
+    });
+
+    const service = createService(routingClientMock);
     const result = await service.getAgentTour('agent-1');
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(routingClientMock.fetchRoute).toHaveBeenCalledTimes(1);
     // Regression lock: stale persisted geometry must be replaced, not merely ignored in the response.
     expect(repositoryMock.upsertTourRoute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -606,10 +689,29 @@ describe('ToursService route geometry enrichment', () => {
       }),
     });
 
-    const service = new ToursService(repositoryMock as any, configServiceMock as unknown as ConfigService);
+    const routingClientMock = createRoutingClientMock();
+    routingClientMock.fetchRoute.mockResolvedValue({
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [2.3522, 48.8566],
+          [2.3531, 48.8573],
+          [2.3715, 48.8692],
+          [2.3565, 48.8602],
+          [2.359, 48.8614],
+        ],
+      },
+      distanceKm: 1.04,
+      durationMinutes: 7,
+      source: 'live',
+      provider: 'router.example.test',
+      resolvedAt: '2026-03-02T09:00:00.000Z',
+    });
+
+    const service = createService(routingClientMock);
     const result = await service.getAgentTour('agent-1');
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(routingClientMock.fetchRoute).toHaveBeenCalledTimes(1);
     // Regression lock: every stop must remain represented in the stored geometry, not only the endpoints.
     expect(repositoryMock.upsertTourRoute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -678,7 +780,24 @@ describe('ToursService route geometry enrichment', () => {
       }),
     });
 
-    const service = new ToursService(repositoryMock as any, configServiceMock as unknown as ConfigService);
+    const routingClientMock = createRoutingClientMock();
+    routingClientMock.fetchRoute.mockResolvedValue({
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [2.3522, 48.8566],
+          [2.3531, 48.8573],
+          [2.354, 48.8589],
+        ],
+      },
+      distanceKm: 0.78,
+      durationMinutes: 5,
+      source: 'live',
+      provider: 'router.example.test',
+      resolvedAt: '2026-03-02T09:00:00.000Z',
+    });
+
+    const service = createService(routingClientMock);
     const result = await service.rebuildRoute('tour-1', 'manager-1');
 
     expect(repositoryMock.recordRouteRebuildAuditLog).toHaveBeenCalledWith(
