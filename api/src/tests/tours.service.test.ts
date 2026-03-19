@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RoutingClient } from '../modules/collections/routing/routing.client.js';
@@ -12,12 +11,6 @@ describe('ToursService route geometry enrichment', () => {
     recordRouteRebuildAuditLog: vi.fn(),
     upsertTourRoute: vi.fn(),
   };
-
-  const configServiceMock = {
-    get: vi.fn(),
-  };
-
-  const fetchMock = vi.fn();
 
   const createRoutingClientMock = () => ({
     fetchRoute: vi.fn(),
@@ -33,7 +26,6 @@ describe('ToursService route geometry enrichment', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal('fetch', fetchMock);
     repositoryMock.upsertTourRoute.mockImplementation(async (route: any) => ({
       id: 'route-1',
       tourId: route.tourId,
@@ -46,34 +38,14 @@ describe('ToursService route geometry enrichment', () => {
       createdAt: route.resolvedAt,
       updatedAt: route.resolvedAt,
     }));
-    configServiceMock.get.mockImplementation((key: string) => {
-      if (key === 'routing.baseUrl') {
-        return 'https://router.example.test';
-      }
-      if (key === 'routing.circuitBreaker.timeoutMs') {
-        return 10000;
-      }
-      if (key === 'routing.circuitBreaker.failureThreshold') {
-        return 5;
-      }
-      if (key === 'routing.circuitBreaker.resetWindowMs') {
-        return 30000;
-      }
-
-      return undefined;
-    });
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   const createService = (routingClientMock: ReturnType<typeof createRoutingClientMock>) => {
-    return new ToursService(
-      repositoryMock as any,
-      configServiceMock as unknown as ConfigService,
-      routingClientMock as unknown as RoutingClient,
-    );
+    return new ToursService(repositoryMock as any, routingClientMock as unknown as RoutingClient);
   };
 
   it('returns API-owned road geometry and overrides route metrics when routing succeeds', async () => {
@@ -118,26 +90,6 @@ describe('ToursService route geometry enrichment', () => {
       },
       storedRoute: null,
     });
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        routes: [
-          {
-            distance: 780,
-            duration: 300,
-            geometry: {
-              type: 'LineString',
-              coordinates: [
-                [2.3522, 48.8566],
-                [2.3531, 48.8573],
-                [2.354, 48.8589],
-              ],
-            },
-          },
-        ],
-      }),
-    });
-
     const routingClientMock = createRoutingClientMock();
     routingClientMock.fetchRoute.mockResolvedValue({
       geometry: {
@@ -398,26 +350,6 @@ describe('ToursService route geometry enrichment', () => {
         updatedAt: '2026-03-02T09:00:00.000Z',
       },
     });
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        routes: [
-          {
-            distance: 780,
-            duration: 300,
-            geometry: {
-              type: 'LineString',
-              coordinates: [
-                [2.3522, 48.8566],
-                [2.3531, 48.8573],
-                [2.354, 48.8589],
-              ],
-            },
-          },
-        ],
-      }),
-    });
-
     const routingClientMock = createRoutingClientMock();
     routingClientMock.fetchRoute.mockResolvedValue({
       geometry: {
@@ -527,26 +459,6 @@ describe('ToursService route geometry enrichment', () => {
         updatedAt: '2026-03-02T09:00:00.000Z',
       },
     });
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        routes: [
-          {
-            distance: 780,
-            duration: 300,
-            geometry: {
-              type: 'LineString',
-              coordinates: [
-                [2.3522, 48.8566],
-                [2.3531, 48.8573],
-                [2.354, 48.8589],
-              ],
-            },
-          },
-        ],
-      }),
-    });
-
     const routingClientMock = createRoutingClientMock();
     routingClientMock.fetchRoute.mockResolvedValue({
       geometry: {
@@ -667,28 +579,6 @@ describe('ToursService route geometry enrichment', () => {
         updatedAt: '2026-03-02T09:00:00.000Z',
       },
     });
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        routes: [
-          {
-            distance: 1040,
-            duration: 420,
-            geometry: {
-              type: 'LineString',
-              coordinates: [
-                [2.3522, 48.8566],
-                [2.3531, 48.8573],
-                [2.3715, 48.8692],
-                [2.3565, 48.8602],
-                [2.359, 48.8614],
-              ],
-            },
-          },
-        ],
-      }),
-    });
-
     const routingClientMock = createRoutingClientMock();
     routingClientMock.fetchRoute.mockResolvedValue({
       geometry: {
@@ -760,26 +650,6 @@ describe('ToursService route geometry enrichment', () => {
         longitude: '2.3540',
       },
     ]);
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        routes: [
-          {
-            distance: 780,
-            duration: 300,
-            geometry: {
-              type: 'LineString',
-              coordinates: [
-                [2.3522, 48.8566],
-                [2.3531, 48.8573],
-                [2.354, 48.8589],
-              ],
-            },
-          },
-        ],
-      }),
-    });
-
     const routingClientMock = createRoutingClientMock();
     routingClientMock.fetchRoute.mockResolvedValue({
       geometry: {

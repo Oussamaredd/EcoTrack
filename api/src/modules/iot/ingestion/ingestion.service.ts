@@ -1,100 +1,145 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { DEFAULT_IOT_CONFIG, type IotIngestionConfig } from '../../../config/iot-ingestion.js';
 
 import type { IngestMeasurementDto } from './dto/ingest-measurement.dto.js';
-import type { IngestResponseDto, BatchIngestResponseDto, IngestionHealthDto } from './dto/ingestion-response.dto.js';
+import type {
+  BatchIngestResponseDto,
+  IngestResponseDto,
+  IngestionHealthDto,
+} from './dto/ingestion-response.dto.js';
+import {
+  IOT_PROCESSING_RECOVERY_INTERVAL_MS,
+  IOT_PROCESSING_STALE_LEASE_WINDOW_MS,
+  type StagedMeasurementInput,
+} from './ingestion.contracts.js';
+import { IngestionProcessorService } from './ingestion.processor.js';
 import { InMemoryIngestionQueue, type MeasurementJob } from './ingestion.queue.js';
-import { IngestionRepository, type ProcessedMeasurement } from './ingestion.repository.js';
-
+import { IngestionRepository } from './ingestion.repository.js';
 
 @Injectable()
 export class IngestionService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(IngestionService.name);
   private readonly config: IotIngestionConfig;
+  private readonly enqueuedEventIds = new Set<string>();
+  private recoveryTimer: NodeJS.Timeout | null = null;
   private isInitialized = false;
 
   constructor(
     @Inject(ConfigService) private readonly configService: ConfigService,
     @Inject(IngestionRepository) private readonly repository: IngestionRepository,
     @Inject(InMemoryIngestionQueue) private readonly queue: InMemoryIngestionQueue,
+    @Inject(IngestionProcessorService)
+    private readonly processorService: IngestionProcessorService,
   ) {
-    this.config = {
-      IOT_INGESTION_ENABLED: this.configService.get<boolean>('IOT_INGESTION_ENABLED') ?? DEFAULT_IOT_CONFIG.IOT_INGESTION_ENABLED,
-      IOT_MQTT_ENABLED: this.configService.get<boolean>('IOT_MQTT_ENABLED') ?? DEFAULT_IOT_CONFIG.IOT_MQTT_ENABLED,
-      IOT_MQTT_BROKER_URL: this.configService.get<string>('IOT_MQTT_BROKER_URL'),
-      IOT_MQTT_USERNAME: this.configService.get<string>('IOT_MQTT_USERNAME'),
-      IOT_MQTT_PASSWORD: this.configService.get<string>('IOT_MQTT_PASSWORD'),
-      IOT_MQTT_TOPIC: this.configService.get<string>('IOT_MQTT_TOPIC') ?? DEFAULT_IOT_CONFIG.IOT_MQTT_TOPIC,
-      IOT_QUEUE_CONCURRENCY: this.configService.get<number>('IOT_QUEUE_CONCURRENCY') ?? DEFAULT_IOT_CONFIG.IOT_QUEUE_CONCURRENCY,
-      IOT_QUEUE_BATCH_SIZE: this.configService.get<number>('IOT_QUEUE_BATCH_SIZE') ?? DEFAULT_IOT_CONFIG.IOT_QUEUE_BATCH_SIZE,
-      IOT_BACKPRESSURE_THRESHOLD: this.configService.get<number>('IOT_BACKPRESSURE_THRESHOLD') ?? DEFAULT_IOT_CONFIG.IOT_BACKPRESSURE_THRESHOLD,
-      IOT_MAX_BATCH_SIZE: this.configService.get<number>('IOT_MAX_BATCH_SIZE') ?? DEFAULT_IOT_CONFIG.IOT_MAX_BATCH_SIZE,
-      IOT_REDIS_URL: this.configService.get<string>('IOT_REDIS_URL'),
-    };
+    this.config = this.configService.get<IotIngestionConfig>('iotIngestion') ?? DEFAULT_IOT_CONFIG;
   }
 
-  async onModuleInit() {
+  onModuleInit() {
     if (!this.config.IOT_INGESTION_ENABLED) {
-      this.logger.warn('IoT Ingestion is disabled');
+      this.logger.warn('IoT ingestion is disabled');
       return;
     }
 
-    this.queue.startProcessor(this.processor.bind(this));
+    this.queue.startProcessor(this.processor.bind(this), {
+      concurrency: this.config.IOT_QUEUE_CONCURRENCY,
+      maxBatchMeasurements: this.config.IOT_QUEUE_BATCH_SIZE,
+    });
+
+    this.recoveryTimer = setInterval(() => {
+      void this.schedulePendingEventRecovery();
+    }, IOT_PROCESSING_RECOVERY_INTERVAL_MS);
+
     this.isInitialized = true;
-    this.logger.log('IoT Ingestion service initialized');
+    this.logger.log('IoT ingestion service initialized');
+    void this.schedulePendingEventRecovery();
   }
 
-  async onModuleDestroy() {
+  onModuleDestroy() {
+    if (this.recoveryTimer) {
+      clearInterval(this.recoveryTimer);
+      this.recoveryTimer = null;
+    }
+
     this.queue.stopProcessor();
-    this.logger.log('IoT Ingestion service stopped');
+    this.enqueuedEventIds.clear();
+    this.logger.log('IoT ingestion service stopped');
   }
 
   async ingestSingle(dto: IngestMeasurementDto): Promise<IngestResponseDto> {
-    if (!this.isInitialized) {
-      throw new ServiceUnavailableException('IoT Ingestion is not available');
-    }
-
+    this.ensureInitialized();
     await this.checkBackpressure();
 
-    const measurement = this.repository.transformDtoToMeasurement(dto);
-    const jobId = await this.queue.enqueue([{ measurement, deviceUid: dto.deviceUid }]);
+    const staged = await this.repository.stageMeasurements([this.toStagedMeasurement(dto, null)]);
+    await this.enqueueStagedEvents(staged);
 
     return {
       accepted: 1,
       processing: true,
-      messageId: jobId,
+      messageId: staged[0]?.id ?? randomUUID(),
     };
   }
 
-  async ingestBatch(dtts: IngestMeasurementDto[]): Promise<BatchIngestResponseDto> {
-    if (!this.isInitialized) {
-      throw new ServiceUnavailableException('IoT Ingestion is not available');
+  async ingestBatch(dtos: IngestMeasurementDto[]): Promise<BatchIngestResponseDto> {
+    this.ensureInitialized();
+
+    if (dtos.length === 0) {
+      throw new BadRequestException('At least one measurement is required.');
     }
 
-    if (dtts.length > this.config.IOT_MAX_BATCH_SIZE) {
-      throw new Error(`Batch size exceeds maximum of ${this.config.IOT_MAX_BATCH_SIZE}`);
+    if (dtos.length > this.config.IOT_MAX_BATCH_SIZE) {
+      throw new BadRequestException(
+        `Batch size exceeds maximum of ${this.config.IOT_MAX_BATCH_SIZE}.`,
+      );
     }
 
     await this.checkBackpressure();
 
-    const measurements: ProcessedMeasurement[] = dtts.map((dto) => ({
-      measurement: this.repository.transformDtoToMeasurement(dto),
-      deviceUid: dto.deviceUid,
-    }));
+    const batchId = randomUUID();
+    const staged = await this.repository.stageMeasurements(
+      dtos.map((dto) => this.toStagedMeasurement(dto, batchId)),
+    );
 
-    const batchId = await this.queue.enqueue(measurements);
+    await this.enqueueStagedEvents(staged);
 
     return {
-      accepted: dtts.length,
+      accepted: dtos.length,
       processing: true,
       batchId,
     };
   }
 
   async getHealth(): Promise<IngestionHealthDto> {
-    const pendingCount = await this.queue.getPendingCount();
+    if (!this.config.IOT_INGESTION_ENABLED) {
+      return {
+        status: 'unhealthy',
+        queueEnabled: false,
+        backpressureActive: false,
+        pendingCount: 0,
+        processedLastHour: 0,
+        processing: {
+          retryCount: 0,
+          processingCount: 0,
+          failedCount: 0,
+          rejectedCount: 0,
+          oldestPendingAgeMs: null,
+        },
+      };
+    }
+
+    const stats = await this.repository.getHealthStats();
+    const pendingCount = stats.pendingCount + stats.retryCount + stats.processingCount;
     const backpressureActive = pendingCount >= this.config.IOT_BACKPRESSURE_THRESHOLD;
 
     if (backpressureActive && !this.queue.isPaused()) {
@@ -104,39 +149,163 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     }
 
     return {
-      status: backpressureActive ? 'degraded' : 'healthy',
-      queueEnabled: this.config.IOT_INGESTION_ENABLED,
+      status:
+        backpressureActive || stats.retryCount > 0 || stats.failedCount > 0 ? 'degraded' : 'healthy',
+      queueEnabled: true,
       backpressureActive,
       pendingCount,
-      processedLastHour: (this.queue as InMemoryIngestionQueue & { getProcessedLastHour?: () => number }).getProcessedLastHour?.() ?? 0,
+      processedLastHour: stats.validatedLastHour,
+      processing: {
+        retryCount: stats.retryCount,
+        processingCount: stats.processingCount,
+        failedCount: stats.failedCount,
+        rejectedCount: stats.rejectedCount,
+        oldestPendingAgeMs: stats.oldestPendingAgeMs,
+      },
     };
   }
 
+  private ensureInitialized() {
+    if (!this.isInitialized) {
+      throw new ServiceUnavailableException('IoT ingestion is not available');
+    }
+  }
+
   private async checkBackpressure(): Promise<void> {
-    const pendingCount = await this.queue.getPendingCount();
+    const stats = await this.repository.getHealthStats();
+    const pendingCount = stats.pendingCount + stats.retryCount + stats.processingCount;
+
     if (pendingCount >= this.config.IOT_BACKPRESSURE_THRESHOLD) {
-      throw new ServiceUnavailableException('Service temporarily unavailable due to high load. Please retry later.');
+      if (!this.queue.isPaused()) {
+        this.queue.pause();
+      }
+
+      throw new ServiceUnavailableException(
+        'Service temporarily unavailable due to high load. Please retry later.',
+      );
+    }
+
+    if (this.queue.isPaused()) {
+      this.queue.resume();
+    }
+  }
+
+  private async enqueueStagedEvents(stagedEvents: Array<{ id: string; newlyStaged: boolean }>) {
+    const newEventIds = stagedEvents
+      .filter((event) => event.newlyStaged)
+      .map((event) => event.id)
+      .filter((eventId) => !this.enqueuedEventIds.has(eventId));
+
+    if (newEventIds.length === 0) {
+      return;
+    }
+
+    newEventIds.forEach((eventId) => {
+      this.enqueuedEventIds.add(eventId);
+    });
+
+    try {
+      await this.queue.enqueue(newEventIds);
+    } catch (error) {
+      newEventIds.forEach((eventId) => {
+        this.enqueuedEventIds.delete(eventId);
+      });
+      throw error;
+    }
+  }
+
+  private async schedulePendingEventRecovery() {
+    if (!this.isInitialized || this.queue.isPaused()) {
+      return;
+    }
+
+    try {
+      await this.repository.recoverStuckProcessing(
+        new Date(Date.now() - IOT_PROCESSING_STALE_LEASE_WINDOW_MS),
+      );
+
+      const runnableEventIds = await this.repository.listRunnableEventIds(
+        this.config.IOT_QUEUE_CONCURRENCY * this.config.IOT_QUEUE_BATCH_SIZE,
+      );
+
+      const eventIdsToQueue = runnableEventIds.filter((eventId) => !this.enqueuedEventIds.has(eventId));
+      if (eventIdsToQueue.length === 0) {
+        return;
+      }
+
+      eventIdsToQueue.forEach((eventId) => {
+        this.enqueuedEventIds.add(eventId);
+      });
+
+      try {
+        await this.queue.enqueue(eventIdsToQueue);
+      } catch (error) {
+        eventIdsToQueue.forEach((eventId) => {
+          this.enqueuedEventIds.delete(eventId);
+        });
+        this.logger.error(
+          `Failed to enqueue staged ingestion events: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to recover pending ingestion events: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
     }
   }
 
   private async processor(jobs: MeasurementJob[]): Promise<void> {
-    const allMeasurements: ProcessedMeasurement[] = [];
+    const eventIds = jobs.flatMap((job) => job.eventIds);
 
-    for (const job of jobs) {
-      allMeasurements.push(...job.measurements);
+    for (const eventId of eventIds) {
+      try {
+        await this.processorService.processStagedEvent(eventId);
+      } finally {
+        this.enqueuedEventIds.delete(eventId);
+      }
     }
+  }
 
-    if (allMeasurements.length === 0) {
-      return;
-    }
+  private toStagedMeasurement(dto: IngestMeasurementDto, batchId: string | null): StagedMeasurementInput {
+    const receivedAt = new Date();
+    const normalizedDeviceUid = dto.deviceUid.trim();
+    const normalizedMeasurementQuality = dto.measurementQuality?.trim().toLowerCase() ?? 'valid';
+    const normalizedIdempotencyKey = dto.idempotencyKey?.trim() || null;
 
-    const batchSize = this.config.IOT_QUEUE_BATCH_SIZE;
-
-    for (let i = 0; i < allMeasurements.length; i += batchSize) {
-      const batch = allMeasurements.slice(i, i + batchSize);
-      const result = await this.repository.batchInsertMeasurements(batch, batchSize);
-
-      this.logger.debug(`Inserted ${result.inserted} measurements, failed ${result.failed}`);
-    }
+    return {
+      batchId,
+      sensorDeviceId: dto.sensorDeviceId ?? null,
+      containerId: dto.containerId ?? null,
+      deviceUid: normalizedDeviceUid,
+      measuredAt: new Date(dto.measuredAt),
+      fillLevelPercent: dto.fillLevelPercent,
+      temperatureC: dto.temperatureC ?? null,
+      batteryPercent: dto.batteryPercent ?? null,
+      signalStrength: dto.signalStrength ?? null,
+      measurementQuality: normalizedMeasurementQuality,
+      idempotencyKey: normalizedIdempotencyKey,
+      receivedAt,
+      rawPayload: {
+        source: 'iot-ingestion-api',
+        schemaVersion: 'v1',
+        batchId,
+        measurement: {
+          sensorDeviceId: dto.sensorDeviceId ?? null,
+          containerId: dto.containerId ?? null,
+          deviceUid: normalizedDeviceUid,
+          measuredAt: dto.measuredAt,
+          fillLevelPercent: dto.fillLevelPercent,
+          temperatureC: dto.temperatureC ?? null,
+          batteryPercent: dto.batteryPercent ?? null,
+          signalStrength: dto.signalStrength ?? null,
+          measurementQuality: normalizedMeasurementQuality,
+          idempotencyKey: normalizedIdempotencyKey,
+        },
+      },
+    };
   }
 }

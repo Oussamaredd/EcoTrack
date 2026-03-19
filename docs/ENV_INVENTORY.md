@@ -70,6 +70,11 @@ Visibility legend:
 | GOOGLE_CALLBACK_URL | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical for deploy templates (path fixed to `/api/auth/google/callback`) |
 | GOOGLE_CLIENT_ID | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | GOOGLE_CLIENT_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| IOT_BACKPRESSURE_THRESHOLD | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| IOT_INGESTION_ENABLED | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| IOT_MAX_BATCH_SIZE | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| IOT_QUEUE_BATCH_SIZE | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| IOT_QUEUE_CONCURRENCY | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_ACCESS_EXPIRES_IN | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_ACCESS_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_EXPIRES_IN | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -88,6 +93,10 @@ Visibility legend:
 | RATE_LIMIT_MAX_REQUESTS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | RATE_LIMIT_WINDOW_MS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | REDIS_URL | infrastructure | private | deploy-dev, deploy-staging, deploy-prod | canonical |
+| ROUTING_API_BASE_URL | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| ROUTING_FAILURE_THRESHOLD | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| ROUTING_RESET_WINDOW_MS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| ROUTING_TIMEOUT_MS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_MAX_AGE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECURE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |

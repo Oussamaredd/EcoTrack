@@ -1,5 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import type { CreateTourDto } from './dto/create-tour.dto.js';
 import type { ReportAnomalyDto } from './dto/report-anomaly.dto.js';
@@ -102,7 +101,6 @@ const MAX_ROUTE_ENDPOINT_DRIFT_KM = 0.5;
 export class ToursService implements ToursRouteCoordinationPort {
   constructor(
     private readonly repository: ToursRepository,
-    @Inject(ConfigService) private readonly configService: ConfigService,
     private readonly routingClient: RoutingClient,
   ) {}
 

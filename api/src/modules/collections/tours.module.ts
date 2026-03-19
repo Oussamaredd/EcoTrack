@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 
 import { AuthModule } from '../auth/auth.module.js';
 
@@ -9,7 +10,7 @@ import { ToursRepository } from './tours.repository.js';
 import { ToursService } from './tours.service.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, ConfigModule],
   controllers: [ToursController],
   providers: [
     ToursRepository,
