@@ -1,13 +1,24 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { DEFAULT_IOT_CONFIG, type IotIngestionConfig } from '../../../config/iot-ingestion.js';
 
 import type { IngestMeasurementDto } from './dto/ingest-measurement.dto.js';
-import type { IngestResponseDto, BatchIngestResponseDto, IngestionHealthDto } from './dto/ingestion-response.dto.js';
+import type {
+  BatchIngestResponseDto,
+  IngestResponseDto,
+  IngestionHealthDto,
+} from './dto/ingestion-response.dto.js';
 import { InMemoryIngestionQueue, type MeasurementJob } from './ingestion.queue.js';
 import { IngestionRepository, type ProcessedMeasurement } from './ingestion.repository.js';
-
 
 @Injectable()
 export class IngestionService implements OnModuleInit, OnModuleDestroy {
@@ -20,33 +31,24 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     @Inject(IngestionRepository) private readonly repository: IngestionRepository,
     @Inject(InMemoryIngestionQueue) private readonly queue: InMemoryIngestionQueue,
   ) {
-    this.config = {
-      IOT_INGESTION_ENABLED: this.configService.get<boolean>('IOT_INGESTION_ENABLED') ?? DEFAULT_IOT_CONFIG.IOT_INGESTION_ENABLED,
-      IOT_MQTT_ENABLED: this.configService.get<boolean>('IOT_MQTT_ENABLED') ?? DEFAULT_IOT_CONFIG.IOT_MQTT_ENABLED,
-      IOT_MQTT_BROKER_URL: this.configService.get<string>('IOT_MQTT_BROKER_URL'),
-      IOT_MQTT_USERNAME: this.configService.get<string>('IOT_MQTT_USERNAME'),
-      IOT_MQTT_PASSWORD: this.configService.get<string>('IOT_MQTT_PASSWORD'),
-      IOT_MQTT_TOPIC: this.configService.get<string>('IOT_MQTT_TOPIC') ?? DEFAULT_IOT_CONFIG.IOT_MQTT_TOPIC,
-      IOT_QUEUE_CONCURRENCY: this.configService.get<number>('IOT_QUEUE_CONCURRENCY') ?? DEFAULT_IOT_CONFIG.IOT_QUEUE_CONCURRENCY,
-      IOT_QUEUE_BATCH_SIZE: this.configService.get<number>('IOT_QUEUE_BATCH_SIZE') ?? DEFAULT_IOT_CONFIG.IOT_QUEUE_BATCH_SIZE,
-      IOT_BACKPRESSURE_THRESHOLD: this.configService.get<number>('IOT_BACKPRESSURE_THRESHOLD') ?? DEFAULT_IOT_CONFIG.IOT_BACKPRESSURE_THRESHOLD,
-      IOT_MAX_BATCH_SIZE: this.configService.get<number>('IOT_MAX_BATCH_SIZE') ?? DEFAULT_IOT_CONFIG.IOT_MAX_BATCH_SIZE,
-      IOT_REDIS_URL: this.configService.get<string>('IOT_REDIS_URL'),
-    };
+    this.config = this.configService.get<IotIngestionConfig>('iotIngestion') ?? DEFAULT_IOT_CONFIG;
   }
 
-  async onModuleInit() {
+  onModuleInit() {
     if (!this.config.IOT_INGESTION_ENABLED) {
       this.logger.warn('IoT Ingestion is disabled');
       return;
     }
 
-    this.queue.startProcessor(this.processor.bind(this));
+    this.queue.startProcessor(this.processor.bind(this), {
+      concurrency: this.config.IOT_QUEUE_CONCURRENCY,
+      maxBatchMeasurements: this.config.IOT_QUEUE_BATCH_SIZE,
+    });
     this.isInitialized = true;
     this.logger.log('IoT Ingestion service initialized');
   }
 
-  async onModuleDestroy() {
+  onModuleDestroy() {
     this.queue.stopProcessor();
     this.logger.log('IoT Ingestion service stopped');
   }
@@ -68,18 +70,24 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async ingestBatch(dtts: IngestMeasurementDto[]): Promise<BatchIngestResponseDto> {
+  async ingestBatch(dtos: IngestMeasurementDto[]): Promise<BatchIngestResponseDto> {
     if (!this.isInitialized) {
       throw new ServiceUnavailableException('IoT Ingestion is not available');
     }
 
-    if (dtts.length > this.config.IOT_MAX_BATCH_SIZE) {
-      throw new Error(`Batch size exceeds maximum of ${this.config.IOT_MAX_BATCH_SIZE}`);
+    if (dtos.length === 0) {
+      throw new BadRequestException('At least one measurement is required.');
+    }
+
+    if (dtos.length > this.config.IOT_MAX_BATCH_SIZE) {
+      throw new BadRequestException(
+        `Batch size exceeds maximum of ${this.config.IOT_MAX_BATCH_SIZE}.`,
+      );
     }
 
     await this.checkBackpressure();
 
-    const measurements: ProcessedMeasurement[] = dtts.map((dto) => ({
+    const measurements: ProcessedMeasurement[] = dtos.map((dto) => ({
       measurement: this.repository.transformDtoToMeasurement(dto),
       deviceUid: dto.deviceUid,
     }));
@@ -87,13 +95,23 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     const batchId = await this.queue.enqueue(measurements);
 
     return {
-      accepted: dtts.length,
+      accepted: dtos.length,
       processing: true,
       batchId,
     };
   }
 
   async getHealth(): Promise<IngestionHealthDto> {
+    if (!this.config.IOT_INGESTION_ENABLED) {
+      return {
+        status: 'unhealthy',
+        queueEnabled: false,
+        backpressureActive: false,
+        pendingCount: 0,
+        processedLastHour: 0,
+      };
+    }
+
     const pendingCount = await this.queue.getPendingCount();
     const backpressureActive = pendingCount >= this.config.IOT_BACKPRESSURE_THRESHOLD;
 
@@ -105,17 +123,27 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     return {
       status: backpressureActive ? 'degraded' : 'healthy',
-      queueEnabled: this.config.IOT_INGESTION_ENABLED,
+      queueEnabled: true,
       backpressureActive,
       pendingCount,
-      processedLastHour: (this.queue as InMemoryIngestionQueue & { getProcessedLastHour?: () => number }).getProcessedLastHour?.() ?? 0,
+      processedLastHour: this.queue.getProcessedLastHour(),
     };
   }
 
   private async checkBackpressure(): Promise<void> {
     const pendingCount = await this.queue.getPendingCount();
     if (pendingCount >= this.config.IOT_BACKPRESSURE_THRESHOLD) {
-      throw new ServiceUnavailableException('Service temporarily unavailable due to high load. Please retry later.');
+      if (!this.queue.isPaused()) {
+        this.queue.pause();
+      }
+
+      throw new ServiceUnavailableException(
+        'Service temporarily unavailable due to high load. Please retry later.',
+      );
+    }
+
+    if (this.queue.isPaused()) {
+      this.queue.resume();
     }
   }
 
@@ -132,11 +160,17 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     const batchSize = this.config.IOT_QUEUE_BATCH_SIZE;
 
-    for (let i = 0; i < allMeasurements.length; i += batchSize) {
-      const batch = allMeasurements.slice(i, i + batchSize);
+    for (let index = 0; index < allMeasurements.length; index += batchSize) {
+      const batch = allMeasurements.slice(index, index + batchSize);
       const result = await this.repository.batchInsertMeasurements(batch, batchSize);
 
-      this.logger.debug(`Inserted ${result.inserted} measurements, failed ${result.failed}`);
+      if (result.failed > 0) {
+        this.logger.warn(
+          `Inserted ${result.inserted} measurements and failed ${result.failed} measurements.`,
+        );
+      } else {
+        this.logger.debug(`Inserted ${result.inserted} measurements.`);
+      }
     }
   }
 }

@@ -11,14 +11,14 @@ export const options = {
   ],
   thresholds: {
     http_req_failed: ["rate<0.05"],
-    http_req_duration: ["p(95)<1000"],
-    http_req_duration: ["p(99)<2000"],
+    http_req_duration: ["p(95)<200", "p(99)<500"],
   },
 };
 
 const apiBaseUrl = __ENV.API_BASE_URL || "http://127.0.0.1:3001";
 const sensorCount = 2000;
 const messagesPerDay = 500000;
+const dailyTargetRps = messagesPerDay / 86400;
 
 function generateMeasurement(sensorIndex) {
   const sensorUid = `sensor-${String(sensorIndex).padStart(4, '0')}`;
@@ -79,10 +79,10 @@ export function handleSummary(data) {
 
 function textSummary(data, opts) {
   const indent = opts.indent || "";
-  const enableColors = opts.enableColors || false;
 
   let output = `${indent}IoT Ingestion Benchmark Results\n`;
   output += `${indent}=============================\n\n`;
+  output += `${indent}Target daily volume: ${messagesPerDay} messages/day (${dailyTargetRps.toFixed(2)} req/s average)\n\n`;
 
   if (data.metrics.http_req_duration) {
     const duration = data.metrics.http_req_duration;
@@ -103,7 +103,7 @@ function textSummary(data, opts) {
   if (data.metrics.http_req_failed) {
     const failed = data.metrics.http_req_failed;
     output += `${indent}Errors:\n`;
-    output += `${indent}  failed: ${failed.values.passes} (${(failed.values.rate * 100).toFixed(2)}%)\n\n`;
+    output += `${indent}  rate: ${(failed.values.rate * 100).toFixed(2)}%\n\n`;
   }
 
   return output;

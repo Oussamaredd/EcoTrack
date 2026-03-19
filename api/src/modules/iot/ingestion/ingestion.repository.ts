@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import {
+  containerTypes,
   containers,
   measurements,
   sensorDevices,
@@ -54,44 +55,61 @@ export class IngestionRepository {
     let inserted = 0;
     let failed = 0;
 
-    for (let i = 0; i < measurementsToInsert.length; i += batchSize) {
-      const batch = measurementsToInsert.slice(i, i + batchSize);
+    for (let index = 0; index < measurementsToInsert.length; index += batchSize) {
+      const batch = measurementsToInsert.slice(index, index + batchSize);
 
       try {
         const result = await this.db.transaction(async (tx) => {
           const resolvedBatch: ProcessedMeasurement[] = [];
 
-          const deviceUids = [...new Set(batch.filter((m) => m.deviceUid).map((m) => m.deviceUid!))];
+          const deviceUids = [
+            ...new Set(
+              batch
+                .map((measurement) => measurement.deviceUid)
+                .filter((deviceUid): deviceUid is string => Boolean(deviceUid)),
+            ),
+          ];
 
-          const existingSensors: SensorDeviceRow[] = deviceUids.length > 0
-            ? await tx
-                .select({
-                  id: sensorDevices.id,
-                  deviceUid: sensorDevices.deviceUid,
-                  containerId: sensorDevices.containerId,
-                })
-                .from(sensorDevices)
-                .where(sql`${sensorDevices.deviceUid} IN ${deviceUids}`)
-            : [];
+          const existingSensors: SensorDeviceRow[] =
+            deviceUids.length > 0
+              ? await tx
+                  .select({
+                    id: sensorDevices.id,
+                    deviceUid: sensorDevices.deviceUid,
+                    containerId: sensorDevices.containerId,
+                  })
+                  .from(sensorDevices)
+                  .where(inArray(sensorDevices.deviceUid, deviceUids))
+              : [];
 
-          const sensorMap = new Map<string, SensorDeviceRow>();
-          for (const s of existingSensors) {
-            sensorMap.set(s.deviceUid, s);
-          }
+          const sensorMap = new Map(existingSensors.map((sensor) => [sensor.deviceUid, sensor]));
+
+          const thresholdMap = await this.loadThresholds(
+            tx,
+            [
+              ...batch.map((measurement) => measurement.measurement.containerId),
+              ...existingSensors.map((sensor) => sensor.containerId),
+            ].filter((containerId): containerId is string => containerId != null),
+          );
 
           for (const item of batch) {
-            const resolvedItem: ProcessedMeasurement = { ...item, measurement: { ...item.measurement } };
+            const resolvedItem: ProcessedMeasurement = {
+              ...item,
+              measurement: { ...item.measurement },
+            };
+            let resolvedSensor = item.deviceUid ? sensorMap.get(item.deviceUid) : undefined;
+            let resolvedContainerId =
+              resolvedItem.measurement.containerId ?? resolvedSensor?.containerId ?? null;
 
             if (item.deviceUid && !resolvedItem.measurement.sensorDeviceId) {
-              const existingSensor = sensorMap.get(item.deviceUid);
-              if (existingSensor) {
-                resolvedItem.measurement.sensorDeviceId = existingSensor.id;
-                resolvedItem.measurement.containerId = existingSensor.containerId;
+              if (resolvedSensor) {
+                resolvedItem.measurement.sensorDeviceId = resolvedSensor.id;
               } else {
                 try {
                   const [newSensor] = await tx
                     .insert(sensorDevices)
                     .values({
+                      containerId: resolvedContainerId,
                       deviceUid: item.deviceUid,
                       installStatus: 'active',
                       lastSeenAt: resolvedItem.measurement.measuredAt,
@@ -103,20 +121,40 @@ export class IngestionRepository {
                     });
 
                   if (newSensor) {
+                    resolvedContainerId = resolvedContainerId ?? newSensor.containerId;
+                    resolvedSensor = {
+                      id: newSensor.id,
+                      deviceUid: item.deviceUid,
+                      containerId: resolvedContainerId,
+                    };
                     resolvedItem.measurement.sensorDeviceId = newSensor.id;
-                    resolvedItem.measurement.containerId = newSensor.containerId;
-                    sensorMap.set(item.deviceUid, { id: newSensor.id, deviceUid: item.deviceUid, containerId: newSensor.containerId });
+                    sensorMap.set(item.deviceUid, resolvedSensor);
                   }
-                } catch (err) {
-                  this.logger.warn(`Failed to create sensor for deviceUid: ${item.deviceUid}, error: ${err instanceof Error ? err.message : 'Unknown'}`);
+                } catch (error) {
+                  this.logger.warn(
+                    `Failed to create sensor for deviceUid ${item.deviceUid}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                  );
                 }
               }
             }
+
+            if (resolvedSensor) {
+              resolvedContainerId = resolvedContainerId ?? resolvedSensor.containerId;
+              resolvedItem.measurement.sensorDeviceId =
+                resolvedItem.measurement.sensorDeviceId ?? resolvedSensor.id;
+            }
+
+            resolvedItem.measurement.containerId = resolvedContainerId;
+
+            const thresholds = resolvedContainerId ? thresholdMap.get(resolvedContainerId) : undefined;
+            resolvedItem.warningThreshold = thresholds?.warningThreshold;
+            resolvedItem.criticalThreshold = thresholds?.criticalThreshold;
 
             if (resolvedItem.measurement.sensorDeviceId) {
               await tx
                 .update(sensorDevices)
                 .set({
+                  containerId: resolvedContainerId,
                   batteryPercent: resolvedItem.measurement.batteryPercent,
                   lastSeenAt: resolvedItem.measurement.measuredAt,
                   updatedAt: new Date(),
@@ -145,20 +183,31 @@ export class IngestionRepository {
             .values(measurementValues)
             .returning({
               id: measurements.id,
-              containerId: measurements.containerId,
-              fillLevelPercent: measurements.fillLevelPercent,
             });
 
-          const containerUpdates = new Map<string, { fillLevelPercent: number; warningThreshold: number; criticalThreshold: number }>();
+          const containerUpdates = new Map<
+            string,
+            {
+              fillLevelPercent: number;
+              warningThreshold: number;
+              criticalThreshold: number;
+              measuredAt: Date;
+            }
+          >();
 
-          for (const m of resolvedBatch) {
-            if (m.measurement.containerId && m.warningThreshold !== undefined && m.criticalThreshold !== undefined) {
-              const existing = containerUpdates.get(m.measurement.containerId);
-              if (!existing || m.measurement.measuredAt > new Date()) {
-                containerUpdates.set(m.measurement.containerId, {
-                  fillLevelPercent: m.measurement.fillLevelPercent,
-                  warningThreshold: m.warningThreshold,
-                  criticalThreshold: m.criticalThreshold,
+          for (const measurement of resolvedBatch) {
+            if (
+              measurement.measurement.containerId &&
+              measurement.warningThreshold !== undefined &&
+              measurement.criticalThreshold !== undefined
+            ) {
+              const existing = containerUpdates.get(measurement.measurement.containerId);
+              if (!existing || measurement.measurement.measuredAt > existing.measuredAt) {
+                containerUpdates.set(measurement.measurement.containerId, {
+                  fillLevelPercent: measurement.measurement.fillLevelPercent,
+                  warningThreshold: measurement.warningThreshold,
+                  criticalThreshold: measurement.criticalThreshold,
+                  measuredAt: measurement.measurement.measuredAt,
                 });
               }
             }
@@ -218,6 +267,14 @@ export class IngestionRepository {
       deviceUid: dto.deviceUid,
     };
 
+    if (dto.sensorDeviceId) {
+      sourcePayload.sensorDeviceId = dto.sensorDeviceId;
+    }
+
+    if (dto.containerId) {
+      sourcePayload.containerId = dto.containerId;
+    }
+
     if (dto.idempotencyKey) {
       sourcePayload.idempotencyKey = dto.idempotencyKey;
     }
@@ -230,10 +287,40 @@ export class IngestionRepository {
       temperatureC: dto.temperatureC ?? null,
       batteryPercent: dto.batteryPercent ?? null,
       signalStrength: dto.signalStrength ?? null,
-      measurementQuality: dto.measurementQuality ?? 'valid',
+      measurementQuality: dto.measurementQuality?.trim() ?? 'valid',
       sourcePayload,
       receivedAt: new Date(),
     };
+  }
+
+  private async loadThresholds(
+    tx: Parameters<DatabaseClient['transaction']>[0] extends (arg: infer T) => unknown ? T : never,
+    containerIds: string[],
+  ): Promise<Map<string, { warningThreshold: number; criticalThreshold: number }>> {
+    const uniqueContainerIds = [...new Set(containerIds)];
+    if (uniqueContainerIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await tx
+      .select({
+        id: containers.id,
+        warningThreshold: containerTypes.defaultFillAlertPercent,
+        criticalThreshold: containerTypes.defaultCriticalAlertPercent,
+      })
+      .from(containers)
+      .leftJoin(containerTypes, eq(containers.containerTypeId, containerTypes.id))
+      .where(inArray(containers.id, uniqueContainerIds));
+
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        {
+          warningThreshold: this.normalizeThreshold(row.warningThreshold, 80),
+          criticalThreshold: this.normalizeThreshold(row.criticalThreshold, 95),
+        },
+      ]),
+    );
   }
 
   private resolveOperationalStatus(
@@ -248,5 +335,9 @@ export class IngestionRepository {
       return 'attention_required';
     }
     return 'available';
+  }
+
+  private normalizeThreshold(value: number | null | undefined, fallback: number): number {
+    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   }
 }
