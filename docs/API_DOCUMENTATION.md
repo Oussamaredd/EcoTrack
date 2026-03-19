@@ -65,12 +65,23 @@ GET /containers/:id/telemetry
 POST /containers/:id/sensors
 POST /containers/:id/measurements
 PUT /containers/:id
+
+POST /iot/v1/measurements
+POST /iot/v1/measurements/batch
+GET /iot/v1/health
+
 GET /zones
 POST /zones
 PUT /zones/:id
 ```
 
 `GET /api/containers` returns mapped container summaries used by mobile reporting, including `code`, `label`, `zoneName`, coordinates, operational `status`, and optional `fillLevelPercent`.
+`POST /api/iot/v1/measurements` accepts one validated sensor measurement and returns `202 Accepted` after the raw payload is staged in `iot.ingestion_events` for async worker processing.
+`POST /api/iot/v1/measurements/batch` accepts a validated non-empty measurement array up to `IOT_MAX_BATCH_SIZE` and returns `202 Accepted` with a batch identifier after staging each raw event.
+The monolith processing worker then performs schema validation, business-rule validation, normalization, enrichment with sensor and container context, validated-event storage, and the current downstream `iot.measurements` / container-status writes.
+`deviceUid` plus `idempotencyKey` is treated as the staging deduplication key when `idempotencyKey` is provided.
+`GET /api/iot/v1/health` returns backlog health, backpressure state, pending staged-event counts, the rolling validated-event count for the last hour, and worker processing counters.
+When staged-event backlog reaches `IOT_BACKPRESSURE_THRESHOLD`, the ingestion endpoints respond with `503` until the backlog falls below the configured ceiling.
 
 ### Citizen Reporting and Engagement
 
@@ -115,6 +126,7 @@ Agent tour execution notes:
 - The current web workflow uses manual container confirmation plus optional browser geolocation. The optional `qrCode` field remains available for future mobile clients, but it is not required for the platform UI.
 - Route geometry is now stored in the database per tour (`tour_routes`) and returned as a GeoJSON `LineString`.
 - The API persists road-snapped route geometry against the configured routing service (`ROUTING_API_BASE_URL`) during tour creation/update flows; when routing is unavailable, it stores a straight stop-to-stop fallback `LineString`.
+- Routing lookups are protected by a circuit breaker configured with `ROUTING_TIMEOUT_MS`, `ROUTING_FAILURE_THRESHOLD`, and `ROUTING_RESET_WINDOW_MS`; when the breaker is open or a call times out, the service falls back immediately instead of cascading the outage into agent-route reads and rebuilds.
 - If an actionable tour is missing persisted route data, the API backfills it on the next `GET /api/tours/agent/me`.
 - If stored route geometry is present but no longer matches the current stop endpoints, `GET /api/tours/agent/me` automatically rebuilds and overwrites the stale route before returning the response.
 - Seed-generated fallback routes are also refreshed on `GET /api/tours/agent/me` so the active agent view can upgrade from demo geometry to a live road route as soon as routing is available.
@@ -262,6 +274,10 @@ Metrics notes:
 - RED families include `ecotrack_http_requests_total`, `ecotrack_http_request_errors_total`, and `ecotrack_http_request_duration_ms`.
 - Runtime / USE-style gauges include `ecotrack_http_requests_in_flight`, `ecotrack_process_uptime_seconds`, `ecotrack_process_resident_memory_bytes`, `ecotrack_process_heap_*`, and `ecotrack_process_cpu_*`.
 - Route labels are normalized (for example `/api/tickets/:id`) to avoid high-cardinality metrics from raw UUIDs or numeric IDs.
+
+IoT ingestion health notes:
+- `GET /api/iot/v1/health` includes `processing.retryCount`, `processing.processingCount`, `processing.failedCount`, `processing.rejectedCount`, and `processing.oldestPendingAgeMs`.
+- Health returns `healthy`, `degraded`, or `unhealthy` based on queue enablement, backlog pressure, and worker retry or failure state.
 
 ## OpenAPI References
 

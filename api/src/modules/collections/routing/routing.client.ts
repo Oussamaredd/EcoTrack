@@ -43,6 +43,7 @@ export class RoutingClient {
 
   private readonly baseUrl: string;
   private readonly circuitBreakerConfig: CircuitBreakerConfig;
+  private probeInFlight = false;
 
   private metrics: CircuitBreakerMetrics = {
     state: 'closed',
@@ -52,14 +53,13 @@ export class RoutingClient {
     consecutiveSuccesses: 0,
   };
 
-  constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
-  ) {
+  constructor(@Inject(ConfigService) private readonly configService: ConfigService) {
     this.baseUrl = this.configService.get<string>('routing.baseUrl') ?? 'https://router.project-osrm.org';
     this.circuitBreakerConfig = {
-      timeoutMs: (this.configService.get<number>('routing.circuitBreaker.timeoutMs') ?? 10_000),
-      failureThreshold: (this.configService.get<number>('routing.circuitBreaker.failureThreshold') ?? 5),
-      resetWindowMs: (this.configService.get<number>('routing.circuitBreaker.resetWindowMs') ?? 30_000),
+      timeoutMs: this.configService.get<number>('routing.circuitBreaker.timeoutMs') ?? 10_000,
+      failureThreshold:
+        this.configService.get<number>('routing.circuitBreaker.failureThreshold') ?? 5,
+      resetWindowMs: this.configService.get<number>('routing.circuitBreaker.resetWindowMs') ?? 30_000,
     };
 
     this.logger.log(
@@ -69,12 +69,20 @@ export class RoutingClient {
     );
   }
 
-  async fetchRoute(coordinates: Array<{ longitude: number; latitude: number }>): Promise<RouteResult | null> {
-    if (this.isCircuitOpen()) {
+  async fetchRoute(
+    coordinates: Array<{ longitude: number; latitude: number }>,
+  ): Promise<RouteResult | null> {
+    const state = this.getCircuitState();
+    if (state === 'open') {
       this.logger.warn(
         `Circuit breaker is open, skipping remote call. State: ${this.metrics.state}, ` +
           `failures: ${this.metrics.failures}, lastFailure: ${this.metrics.lastFailureTime}`,
       );
+      return null;
+    }
+
+    if (state === 'half-open' && this.probeInFlight) {
+      this.logger.warn('Circuit breaker probe already in flight, using fallback.');
       return null;
     }
 
@@ -83,6 +91,7 @@ export class RoutingClient {
       .join(';');
 
     const url = this.buildRouteUrl(routeCoordinates);
+    this.probeInFlight = state === 'half-open';
 
     try {
       const result = await this.executeWithTimeout(url.toString());
@@ -91,67 +100,34 @@ export class RoutingClient {
     } catch (error) {
       this.recordFailure(error instanceof Error ? error.message : String(error));
       return null;
+    } finally {
+      this.probeInFlight = false;
     }
   }
 
   getCircuitState(): CircuitBreakerState {
-    this.updateState();
-    this.isCircuitOpen();
+    this.refreshState();
     return this.metrics.state;
   }
 
   getMetrics(): CircuitBreakerMetrics {
-    this.updateState();
+    this.refreshState();
     return { ...this.metrics };
   }
 
-  private isCircuitOpen(): boolean {
-    this.updateState();
-
-    if (this.metrics.state === 'open') {
-      const now = Date.now();
-      const timeSinceLastFailure = this.metrics.lastFailureTime
-        ? now - this.metrics.lastFailureTime
-        : Infinity;
-
-      if (timeSinceLastFailure >= this.circuitBreakerConfig.resetWindowMs) {
-        this.logger.log(
-          `Circuit breaker resetting to half-open after ${timeSinceLastFailure}ms ` +
-            `(resetWindow: ${this.circuitBreakerConfig.resetWindowMs}ms)`,
-        );
-        this.metrics.state = 'half-open';
-        return false;
-      }
-
-      return true;
+  private refreshState(): void {
+    if (this.metrics.state !== 'open' || this.metrics.lastFailureTime == null) {
+      return;
     }
 
-    if (this.metrics.state === 'half-open') {
-      return false;
-    }
-
-    return false;
-  }
-
-  private updateState(): void {
-    if (this.metrics.state === 'closed') {
-      if (this.metrics.failures >= this.circuitBreakerConfig.failureThreshold) {
-        this.logger.warn(
-          `Circuit breaker opening after ${this.metrics.failures} failures ` +
-            `(threshold: ${this.circuitBreakerConfig.failureThreshold})`,
-        );
-        this.metrics.state = 'open';
-      }
-    } else if (this.metrics.state === 'half-open') {
-      const successThreshold = Math.ceil(this.circuitBreakerConfig.failureThreshold / 2);
-      if (this.metrics.consecutiveSuccesses >= successThreshold) {
-        this.logger.log(
-          `Circuit breaker closing after ${this.metrics.consecutiveSuccesses} consecutive successes`,
-        );
-        this.metrics.state = 'closed';
-        this.metrics.failures = 0;
-        this.metrics.consecutiveSuccesses = 0;
-      }
+    const timeSinceLastFailure = Date.now() - this.metrics.lastFailureTime;
+    if (timeSinceLastFailure >= this.circuitBreakerConfig.resetWindowMs) {
+      this.logger.log(
+        `Circuit breaker resetting to half-open after ${timeSinceLastFailure}ms ` +
+          `(resetWindow: ${this.circuitBreakerConfig.resetWindowMs}ms)`,
+      );
+      this.metrics.state = 'half-open';
+      this.metrics.consecutiveSuccesses = 0;
     }
   }
 
@@ -235,9 +211,24 @@ export class RoutingClient {
   }
 
   private recordSuccess(): void {
-    const now = Date.now();
-    this.metrics.lastSuccessTime = now;
-    this.metrics.consecutiveSuccesses += 1;
+    this.metrics.lastSuccessTime = Date.now();
+
+    if (this.metrics.state === 'half-open') {
+      this.metrics.consecutiveSuccesses += 1;
+      const successThreshold = Math.ceil(this.circuitBreakerConfig.failureThreshold / 2);
+
+      if (this.metrics.consecutiveSuccesses >= successThreshold) {
+        this.logger.log(
+          `Circuit breaker closing after ${this.metrics.consecutiveSuccesses} consecutive successes`,
+        );
+        this.metrics.state = 'closed';
+        this.metrics.failures = 0;
+        this.metrics.consecutiveSuccesses = 0;
+      }
+    } else {
+      this.metrics.failures = 0;
+      this.metrics.consecutiveSuccesses = 0;
+    }
 
     this.logger.debug(
       `Request succeeded. State: ${this.metrics.state}, consecutiveSuccesses: ${this.metrics.consecutiveSuccesses}`,
@@ -245,10 +236,27 @@ export class RoutingClient {
   }
 
   private recordFailure(errorMessage: string): void {
-    const now = Date.now();
-    this.metrics.failures += 1;
-    this.metrics.lastFailureTime = now;
+    this.metrics.lastFailureTime = Date.now();
     this.metrics.consecutiveSuccesses = 0;
+
+    if (this.metrics.state === 'half-open') {
+      this.metrics.state = 'open';
+      this.metrics.failures = Math.max(1, this.metrics.failures + 1);
+      this.logger.warn(
+        `Half-open probe failed: ${errorMessage}. Circuit breaker reopened immediately.`,
+      );
+      return;
+    }
+
+    this.metrics.failures += 1;
+
+    if (this.metrics.failures >= this.circuitBreakerConfig.failureThreshold) {
+      this.metrics.state = 'open';
+      this.logger.warn(
+        `Circuit breaker opening after ${this.metrics.failures} consecutive failures ` +
+          `(threshold: ${this.circuitBreakerConfig.failureThreshold})`,
+      );
+    }
 
     this.logger.warn(
       `Request failed: ${errorMessage}. State: ${this.metrics.state}, failures: ${this.metrics.failures}`,

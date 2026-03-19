@@ -1,22 +1,27 @@
 import { randomUUID } from 'node:crypto';
 
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-
-import type { ProcessedMeasurement } from './ingestion.repository.js';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 export interface MeasurementJob {
   id: string;
-  measurements: ProcessedMeasurement[];
+  eventIds: string[];
   createdAt: Date;
 }
 
 export interface IngestionQueue {
-  enqueue(measurements: ProcessedMeasurement[]): Promise<string>;
+  enqueue(eventIds: string[]): Promise<string>;
   getPendingCount(): Promise<number>;
+  getProcessedLastHour(): number;
   pause(): void;
   resume(): void;
   isPaused(): boolean;
-  startProcessor(handler: (jobs: MeasurementJob[]) => Promise<void>): void;
+  startProcessor(
+    handler: (jobs: MeasurementJob[]) => Promise<void>,
+    options?: {
+      concurrency?: number;
+      maxBatchMeasurements?: number;
+    },
+  ): void;
   stopProcessor(): void;
 }
 
@@ -24,43 +29,51 @@ export interface IngestionQueue {
 export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(InMemoryIngestionQueue.name);
   private readonly queue: MeasurementJob[] = [];
-  private processing = false;
-  private paused = false;
-  private processorHandler: ((jobs: MeasurementJob[]) => Promise<void>) | null = null;
-  private processInterval: ReturnType<typeof setInterval> | null = null;
-  private readonly processIntervalMs = 1000;
-  private processedCount = 0;
-  private lastHourProcessed = 0;
-  private lastHourReset = new Date();
+  private readonly processedEvents: Array<{ processedAt: number; count: number }> = [];
 
-  async onModuleInit() {
-    this.startProcessorLoop();
+  private pendingEvents = 0;
+  private activeWorkers = 0;
+  private paused = false;
+  private stopped = true;
+  private drainScheduled = false;
+  private concurrency = 1;
+  private maxBatchMeasurements = 500;
+  private processorHandler: ((jobs: MeasurementJob[]) => Promise<void>) | null = null;
+
+  onModuleInit() {
     this.logger.log('In-memory ingestion queue initialized');
   }
 
-  async onModuleDestroy() {
+  onModuleDestroy() {
     this.stopProcessor();
     this.logger.log('In-memory ingestion queue stopped');
   }
 
-  async enqueue(measurements: ProcessedMeasurement[]): Promise<string> {
+  async enqueue(eventIds: string[]): Promise<string> {
     if (this.paused) {
       throw new Error('Queue is paused due to backpressure');
     }
 
     const job: MeasurementJob = {
       id: randomUUID(),
-      measurements,
+      eventIds,
       createdAt: new Date(),
     };
 
     this.queue.push(job);
+    this.pendingEvents += eventIds.length;
+    this.scheduleDrain();
+
     return job.id;
   }
 
   async getPendingCount(): Promise<number> {
-    this.resetHourlyCountIfNeeded();
-    return this.queue.length;
+    return this.pendingEvents;
+  }
+
+  getProcessedLastHour(): number {
+    this.pruneProcessedEvents();
+    return this.processedEvents.reduce((total, event) => total + event.count, 0);
   }
 
   pause(): void {
@@ -71,58 +84,119 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
   resume(): void {
     this.paused = false;
     this.logger.log('Queue resumed');
+    this.scheduleDrain();
   }
 
   isPaused(): boolean {
     return this.paused;
   }
 
-  startProcessor(handler: (jobs: MeasurementJob[]) => Promise<void>): void {
+  startProcessor(
+    handler: (jobs: MeasurementJob[]) => Promise<void>,
+    options?: {
+      concurrency?: number;
+      maxBatchMeasurements?: number;
+    },
+  ): void {
     this.processorHandler = handler;
-    this.processing = true;
+    this.stopped = false;
+    this.concurrency = Math.max(1, Math.trunc(options?.concurrency ?? 1));
+    this.maxBatchMeasurements = Math.max(1, Math.trunc(options?.maxBatchMeasurements ?? 500));
     this.logger.log('Queue processor started');
+    this.scheduleDrain();
   }
 
   stopProcessor(): void {
-    this.processing = false;
-    if (this.processInterval) {
-      clearInterval(this.processInterval);
-      this.processInterval = null;
-    }
+    this.stopped = true;
+    this.activeWorkers = 0;
+    this.drainScheduled = false;
     this.processorHandler = null;
     this.logger.log('Queue processor stopped');
   }
 
-  getProcessedLastHour(): number {
-    this.resetHourlyCountIfNeeded();
-    return this.lastHourProcessed;
+  private scheduleDrain(): void {
+    if (this.drainScheduled || this.stopped) {
+      return;
+    }
+
+    this.drainScheduled = true;
+    setImmediate(() => {
+      this.drainScheduled = false;
+      void this.drainQueue();
+    });
   }
 
-  private startProcessorLoop(): void {
-    this.processInterval = setInterval(async () => {
-      if (!this.processing || this.paused || !this.processorHandler || this.queue.length === 0) {
-        return;
-      }
-
-      const batch = this.queue.splice(0, 100);
-
-      try {
-        await this.processorHandler(batch);
-        this.processedCount += batch.length;
-        this.lastHourProcessed += batch.length;
-      } catch (error) {
-        this.logger.error(`Failed to process batch: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        this.queue.unshift(...batch);
-      }
-    }, this.processIntervalMs);
+  private async drainQueue(): Promise<void> {
+    while (
+      !this.stopped &&
+      !this.paused &&
+      this.processorHandler &&
+      this.activeWorkers < this.concurrency &&
+      this.queue.length > 0
+    ) {
+      const batch = this.dequeueBatch();
+      this.activeWorkers += 1;
+      void this.processBatch(batch.jobs, batch.measurementCount);
+    }
   }
 
-  private resetHourlyCountIfNeeded(): void {
-    const now = new Date();
-    const hoursDiff = (now.getTime() - this.lastHourReset.getTime()) / (1000 * 60 * 60);
-    if (hoursDiff >= 1) {
-      this.lastHourProcessed = 0;
-      this.lastHourReset = now;
+  private dequeueBatch(): { jobs: MeasurementJob[]; measurementCount: number } {
+    const jobs: MeasurementJob[] = [];
+    let eventCount = 0;
+
+    while (this.queue.length > 0) {
+      const nextJob = this.queue[0];
+      const nextEventCount = nextJob.eventIds.length;
+
+      if (jobs.length > 0 && eventCount + nextEventCount > this.maxBatchMeasurements) {
+        break;
+      }
+
+      jobs.push(this.queue.shift()!);
+      eventCount += nextEventCount;
+    }
+
+    this.pendingEvents = Math.max(0, this.pendingEvents - eventCount);
+
+    return {
+      jobs,
+      measurementCount: eventCount,
+    };
+  }
+
+  private async processBatch(jobs: MeasurementJob[], measurementCount: number): Promise<void> {
+    try {
+      await this.processorHandler?.(jobs);
+      this.recordProcessed(measurementCount);
+    } catch (error) {
+      this.pendingEvents += measurementCount;
+      this.queue.unshift(...jobs);
+      this.logger.error(
+        `Failed to process batch: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    } finally {
+      this.activeWorkers = Math.max(0, this.activeWorkers - 1);
+      this.scheduleDrain();
+    }
+  }
+
+  private recordProcessed(count: number): void {
+    if (count <= 0) {
+      return;
+    }
+
+    this.pruneProcessedEvents();
+    this.processedEvents.push({
+      processedAt: Date.now(),
+      count,
+    });
+  }
+
+  private pruneProcessedEvents(): void {
+    const threshold = Date.now() - 60 * 60 * 1000;
+
+    while (this.processedEvents.length > 0 && this.processedEvents[0].processedAt < threshold) {
+      this.processedEvents.shift();
     }
   }
 }
