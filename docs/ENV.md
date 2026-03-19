@@ -37,6 +37,14 @@ Neon managed baseline note:
 - `API_PORT` for API listen port
 - `API_BASE_URL` for backend-generated public API URLs (for example OAuth callback URLs at the frontend edge)
 - `ROUTING_API_BASE_URL` for backend road-routing service lookups
+- `ROUTING_TIMEOUT_MS` for routing-call timeout before the circuit breaker records a failure
+- `ROUTING_FAILURE_THRESHOLD` for consecutive routing failures required to open the circuit breaker
+- `ROUTING_RESET_WINDOW_MS` for the open-state cooldown before the routing circuit allows a probe request
+- `IOT_INGESTION_ENABLED` to enable the async IoT ingestion worker and HTTP ingestion endpoints
+- `IOT_QUEUE_CONCURRENCY` for the number of concurrent ingestion workers
+- `IOT_QUEUE_BATCH_SIZE` for the maximum measurements drained per worker batch and DB insert chunk
+- `IOT_BACKPRESSURE_THRESHOLD` for the queued-measurement ceiling that activates ingestion backpressure
+- `IOT_MAX_BATCH_SIZE` for the maximum measurements accepted in one HTTP batch request
 - `VITE_API_BASE_URL` for the browser-facing API base URL (normally the frontend origin in proxied runtimes)
 - `EXPO_PUBLIC_API_BASE_URL` for the native mobile API base URL (must resolve to a device/simulator reachable API origin)
 - `VITE_MAP_TILE_URL_TEMPLATE` for the frontend Leaflet tile source template
@@ -44,6 +52,8 @@ Neon managed baseline note:
 
 Agent tour mapping note:
 - `ROUTING_API_BASE_URL` is used by the API to build and persist `tour_routes` records; the frontend does not call the routing provider directly.
+- `ROUTING_TIMEOUT_MS`, `ROUTING_FAILURE_THRESHOLD`, and `ROUTING_RESET_WINDOW_MS` tune the tour-routing circuit breaker so agent-route rebuilds fall back cleanly during upstream routing outages.
+- `IOT_INGESTION_ENABLED`, `IOT_QUEUE_CONCURRENCY`, `IOT_QUEUE_BATCH_SIZE`, `IOT_BACKPRESSURE_THRESHOLD`, and `IOT_MAX_BATCH_SIZE` configure the monolith IoT ingestion worker used by `POST /api/iot/v1/measurements` and `POST /api/iot/v1/measurements/batch`.
 - `APP_BASE_URL` for backend-to-frontend auth callback redirects (fallbacks: `APP_URL`, `CLIENT_ORIGIN`)
 - `JWT_ACCESS_SECRET` for local access-token signing (Bearer JWT)
 - `JWT_ACCESS_EXPIRES_IN` for local access-token TTL (for example `15m`)
@@ -74,6 +84,20 @@ Agent tour mapping note:
 - `RATE_LIMIT_MAX_REQUESTS` for global throttling ceiling (default `120`)
 - `LOG_LEVEL` for API logger level (`fatal|error|warn|info|debug|trace|silent`); in non-production, `debug|trace` also enables verbose Nest startup logs
 - `LOG_FORMAT` for API log output format (`json` or `pretty`); defaults to `pretty` outside production and `json` in production
+
+## Optional Routing Resilience Keys
+
+- `ROUTING_TIMEOUT_MS` for the maximum duration of one routing-provider call before it is treated as a failure (default `10000`)
+- `ROUTING_FAILURE_THRESHOLD` for the number of consecutive routing failures that opens the circuit breaker (default `5`)
+- `ROUTING_RESET_WINDOW_MS` for the open-state cooldown before a half-open recovery probe is allowed (default `30000`)
+
+## Optional IoT Ingestion Keys
+
+- `IOT_INGESTION_ENABLED` to expose the async IoT ingestion endpoints and worker (default `true`)
+- `IOT_QUEUE_CONCURRENCY` for the number of concurrent queue workers draining buffered measurements (default `50`)
+- `IOT_QUEUE_BATCH_SIZE` for the maximum measurements processed per worker batch and DB write chunk (default `500`)
+- `IOT_BACKPRESSURE_THRESHOLD` for the queued-measurement ceiling that pauses new ingestion requests with `503` responses (default `100000`)
+- `IOT_MAX_BATCH_SIZE` for the maximum measurements allowed in one HTTP batch request (default `1000`)
 
 ## Optional CI Quality Keys
 

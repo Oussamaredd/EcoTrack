@@ -28,7 +28,8 @@ Status legend:
 - Workbook expected outcome: Code du service; Preuve de performance (benchmark) validant la charge; Implémentation du modèle de concurrence.
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through `POST /api/iot/v1/measurements`, `POST /api/iot/v1/measurements/batch`, a concurrent in-memory worker with backpressure, sensor auto-registration, container fill-state refresh, benchmark coverage, and validation tests.
 
 ### M2.2 - Implémentation du Pattern Circuit Breaker (Hystrix/Resilience4j)
 
@@ -36,7 +37,8 @@ Status legend:
 - Workbook expected outcome: Code du Circuit Breaker (configuration seuil/timeout); Test simulant une panne et validant le déclenchement du Fallback.
 - Monolith adaptation: Implement as internal API modules with shared resilience, health, logging, tracing, and metrics support.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through the routing client circuit breaker for tour-route resolution, configurable timeout/failure/reset thresholds, immediate fallback to internal route geometry, and failure/recovery tests.
 
 ### M2.4 - Implémentation du Health Check K8s (Liveness/Readiness)
 

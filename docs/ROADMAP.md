@@ -1001,16 +1001,16 @@ Mapping rules used in this backlog:
 
 Status: `PARTIAL`
 Lane: `Dev Core`
-Open task IDs: `M2.1`, `M2.2`, `M2.5`, `M2.7`, `M2.12`, `M2.14`
-Completed task IDs: `M2.4`, `M2.6`, `M2.10`, `M2.11`, `M2.13`
+Open task IDs: `M2.5`, `M2.7`, `M2.12`, `M2.14`
+Completed task IDs: `M2.1`, `M2.2`, `M2.4`, `M2.6`, `M2.10`, `M2.11`, `M2.13`
 
 Description: Deliver the remaining runtime service hardening inside the modular monolith through `api` and `infrastructure`.
 
-Progress: The monolith now exposes root and `/api` health probes, structured trace-aware request logging, JWT/OAuth token separation, rate limiting with stricter auth abuse ceilings, and Prometheus RED/USE metrics for HTTP/runtime visibility.
+Progress: The monolith now exposes root and `/api` health probes, structured trace-aware request logging, JWT/OAuth token separation, rate limiting with stricter auth abuse ceilings, Prometheus RED/USE metrics for HTTP/runtime visibility, a concurrent IoT ingestion worker with benchmark coverage, and a routing circuit breaker with fallback tests.
 
 Checklist:
-- [ ] Complete the remaining modular-monolith service, controller, and repository work.
-- [ ] Add shared resilience middleware.
+- [x] Complete the IoT ingestion controller, service, repository, health, and benchmark work.
+- [x] Add the routing circuit breaker with timeout, threshold, reset, and fallback coverage.
 - [x] Add health and readiness endpoints, centralized logging, tracing, metrics, and gateway guards.
 
 ### M3 - Event Workflow Hardening

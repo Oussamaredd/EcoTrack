@@ -20,6 +20,15 @@ describe('IngestionService', () => {
   let service: IngestionService;
   let mockRepository: IngestionRepository;
   let mockQueue: InMemoryIngestionQueue;
+  const iotConfig = {
+    IOT_INGESTION_ENABLED: true,
+    IOT_MQTT_ENABLED: false,
+    IOT_MQTT_TOPIC: 'ecotrack/measurements',
+    IOT_QUEUE_CONCURRENCY: 50,
+    IOT_QUEUE_BATCH_SIZE: 500,
+    IOT_BACKPRESSURE_THRESHOLD: 100000,
+    IOT_MAX_BATCH_SIZE: 1000,
+  };
 
   beforeEach(() => {
     mockRepository = {
@@ -36,24 +45,17 @@ describe('IngestionService', () => {
         receivedAt: new Date(),
       }),
       batchInsertMeasurements: vi.fn().mockResolvedValue({ inserted: 10, failed: 0 }),
-      getPendingCount: vi.fn().mockResolvedValue(0),
-      getProcessedLastHour: vi.fn().mockResolvedValue(100),
     } as unknown as IngestionRepository;
 
     mockQueue = new InMemoryIngestionQueue();
     service = new IngestionService(
       {
         get: vi.fn().mockImplementation((key: string) => {
-          const config: Record<string, unknown> = {
-            IOT_INGESTION_ENABLED: true,
-            IOT_MQTT_ENABLED: false,
-            IOT_MQTT_TOPIC: 'ecotrack/measurements',
-            IOT_QUEUE_CONCURRENCY: 50,
-            IOT_QUEUE_BATCH_SIZE: 500,
-            IOT_BACKPRESSURE_THRESHOLD: 100000,
-            IOT_MAX_BATCH_SIZE: 1000,
-          };
-          return config[key];
+          if (key === 'iotIngestion') {
+            return iotConfig;
+          }
+
+          return undefined;
         }),
       } as any,
       mockRepository,
@@ -109,6 +111,11 @@ describe('IngestionService', () => {
 
     await service.onModuleInit();
     await expect(service.ingestBatch(measurements)).rejects.toThrow('Batch size exceeds maximum');
+  });
+
+  it('should reject an empty batch', async () => {
+    await service.onModuleInit();
+    await expect(service.ingestBatch([])).rejects.toThrow('At least one measurement is required');
   });
 
   it('should return health status', async () => {

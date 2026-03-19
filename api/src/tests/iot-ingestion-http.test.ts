@@ -1,4 +1,6 @@
-import { INestApplication } from '@nestjs/common';
+import 'reflect-metadata';
+
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
@@ -23,6 +25,15 @@ vi.mock('../config/iot-ingestion.js', () => ({
 describe('IngestionController (HTTP)', () => {
   let app: INestApplication;
   let mockQueue: InMemoryIngestionQueue;
+  const iotConfig = {
+    IOT_INGESTION_ENABLED: true,
+    IOT_MQTT_ENABLED: false,
+    IOT_MQTT_TOPIC: 'ecotrack/measurements',
+    IOT_QUEUE_CONCURRENCY: 50,
+    IOT_QUEUE_BATCH_SIZE: 500,
+    IOT_BACKPRESSURE_THRESHOLD: 100000,
+    IOT_MAX_BATCH_SIZE: 1000,
+  };
 
   beforeEach(async () => {
     const mockRepository = {
@@ -46,16 +57,11 @@ describe('IngestionController (HTTP)', () => {
     const mockIngestionService = new IngestionService(
       {
         get: vi.fn().mockImplementation((key: string) => {
-          const config: Record<string, unknown> = {
-            IOT_INGESTION_ENABLED: true,
-            IOT_MQTT_ENABLED: false,
-            IOT_MQTT_TOPIC: 'ecotrack/measurements',
-            IOT_QUEUE_CONCURRENCY: 50,
-            IOT_QUEUE_BATCH_SIZE: 500,
-            IOT_BACKPRESSURE_THRESHOLD: 100000,
-            IOT_MAX_BATCH_SIZE: 1000,
-          };
-          return config[key];
+          if (key === 'iotIngestion') {
+            return iotConfig;
+          }
+
+          return undefined;
         }),
       } as any,
       mockRepository,
@@ -72,6 +78,13 @@ describe('IngestionController (HTTP)', () => {
     }).compile();
 
     app = module.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
     await app.init();
   });
 
@@ -96,16 +109,6 @@ describe('IngestionController (HTTP)', () => {
       expect(response.body.messageId).toBeDefined();
     });
 
-    it('should accept payload even with validation issues in test context', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/iot/v1/measurements')
-        .send({
-          deviceUid: 'sensor-001',
-          fillLevelPercent: 'invalid',
-        });
-      
-      expect(response.status).toBeGreaterThanOrEqual(200);
-    });
   });
 
   describe('POST /iot/v1/measurements/batch', () => {
@@ -123,6 +126,15 @@ describe('IngestionController (HTTP)', () => {
       expect(response.body.accepted).toBe(2);
       expect(response.body.processing).toBe(true);
       expect(response.body.batchId).toBeDefined();
+    });
+
+    it('rejects empty batches', async () => {
+      await request(app.getHttpServer())
+        .post('/iot/v1/measurements/batch')
+        .send({
+          measurements: [],
+        })
+        .expect(400);
     });
   });
 

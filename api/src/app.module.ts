@@ -30,6 +30,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { GamificationModule } from './modules/gamification/gamification.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { ContainersModule } from './modules/iot/containers.module.js';
+import { IngestionModule } from './modules/iot/ingestion/ingestion.module.js';
 import { MonitoringModule } from './modules/monitoring/monitoring.module.js';
 import { CitizenReportsModule } from './modules/reports/citizen-reports.module.js';
 import { PlanningModule } from './modules/routes/planning.module.js';
@@ -289,6 +290,7 @@ const getTraceFields = (request: Request) => {
     PlanningModule,
     ZonesModule,
     ContainersModule,
+    IngestionModule,
     ToursModule,
     CitizenModule,
     CitizenReportsModule,

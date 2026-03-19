@@ -1,3 +1,5 @@
+import { loadIotIngestionConfig, type IotIngestionConfig } from './iot-ingestion.js';
+
 function requireEnv(name: keyof NodeJS.ProcessEnv): string {
   const value = process.env[name];
   if (!value) {
@@ -68,6 +70,7 @@ export type AppConfig = {
       resetWindowMs: number;
     };
   };
+  iotIngestion: IotIngestionConfig;
 };
 
 export default (): AppConfig => ({
@@ -94,4 +97,5 @@ export default (): AppConfig => ({
       resetWindowMs: toPositiveInt(process.env.ROUTING_RESET_WINDOW_MS, DEFAULT_ROUTING_RESET_WINDOW_MS),
     },
   },
+  iotIngestion: loadIotIngestionConfig(process.env as Record<string, unknown>),
 });

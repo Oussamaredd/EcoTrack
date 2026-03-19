@@ -102,7 +102,8 @@ describe('RoutingClient circuit breaker', () => {
       const metrics = client.getMetrics();
       expect(metrics.state).toBe('closed');
       expect(metrics.failures).toBe(0);
-      expect(metrics.consecutiveSuccesses).toBeGreaterThan(0);
+      expect(metrics.lastSuccessTime).not.toBeNull();
+      expect(metrics.consecutiveSuccesses).toBe(0);
     });
   });
 
@@ -335,8 +336,47 @@ describe('RoutingClient circuit breaker', () => {
         { longitude: 2.354, latitude: 48.8589 },
       ]);
 
-      expect(client.getCircuitState()).toBe('half-open');
+      expect(client.getCircuitState()).toBe('open');
       expect(client.getMetrics().failures).toBe(4);
     });
+  });
+
+  it('resets the failure counter after a successful closed-state call', async () => {
+    fetchMock
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          routes: [
+            {
+              distance: 1000,
+              duration: 300,
+              geometry: {
+                type: 'LineString',
+                coordinates: [
+                  [2.3522, 48.8566],
+                  [2.354, 48.8589],
+                ],
+              },
+            },
+          ],
+        }),
+      });
+
+    const client = createRoutingClientMock();
+
+    await client.fetchRoute([
+      { longitude: 2.3522, latitude: 48.8566 },
+      { longitude: 2.354, latitude: 48.8589 },
+    ]);
+    expect(client.getMetrics().failures).toBe(1);
+
+    await client.fetchRoute([
+      { longitude: 2.3522, latitude: 48.8566 },
+      { longitude: 2.354, latitude: 48.8589 },
+    ]);
+
+    expect(client.getMetrics().failures).toBe(0);
+    expect(client.getCircuitState()).toBe('closed');
   });
 });
