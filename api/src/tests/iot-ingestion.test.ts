@@ -116,7 +116,13 @@ describe('IngestionService', () => {
         deviceUid: 'sensor-001',
         measurementQuality: 'valid',
         idempotencyKey: 'key-1',
+        producerName: 'iot_ingestion_http',
+        producerTransactionId: expect.any(String),
         rawPayload: expect.objectContaining({
+          producer: {
+            name: 'iot_ingestion_http',
+            transactionId: expect.any(String),
+          },
           measurement: expect.objectContaining({
             deviceUid: 'sensor-001',
             measurementQuality: 'valid',
@@ -159,6 +165,31 @@ describe('IngestionService', () => {
     expect(result.accepted).toBe(2);
     expect(result.processing).toBe(true);
     expect(result.batchId).toBeTruthy();
+    expect(repository.stageMeasurements).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          producerName: 'iot_ingestion_http',
+          producerTransactionId: result.batchId,
+          idempotencyKey: expect.any(String),
+        }),
+      ]),
+    );
+  });
+
+  it('derives a deterministic idempotency key when the client omits one', async () => {
+    service.onModuleInit();
+
+    await service.ingestSingle({
+      deviceUid: 'sensor-001',
+      measuredAt: '2026-03-20T10:00:00.000Z',
+      fillLevelPercent: 50,
+    });
+
+    expect(repository.stageMeasurements).toHaveBeenCalledWith([
+      expect.objectContaining({
+        idempotencyKey: expect.stringMatching(/^derived:/),
+      }),
+    ]);
   });
 
   it('rejects an oversized batch before staging events', async () => {
@@ -289,6 +320,27 @@ describe('IngestionService', () => {
     service.onModuleInit();
 
     await expect(service.ingestBatch([])).rejects.toThrow('At least one measurement is required.');
+    expect(repository.stageMeasurements).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate logical measurements within the same batch', async () => {
+    service.onModuleInit();
+
+    await expect(
+      service.ingestBatch([
+        {
+          deviceUid: 'sensor-001',
+          measuredAt: '2026-03-20T10:00:00.000Z',
+          fillLevelPercent: 50,
+        },
+        {
+          deviceUid: 'sensor-001',
+          measuredAt: '2026-03-20T10:00:00.000Z',
+          fillLevelPercent: 50,
+        },
+      ]),
+    ).rejects.toThrow('Batch contains duplicate measurement identity');
+
     expect(repository.stageMeasurements).not.toHaveBeenCalled();
   });
 

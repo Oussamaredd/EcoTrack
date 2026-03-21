@@ -1016,17 +1016,19 @@ Checklist:
 
 Status: `IN_PROGRESS`
 Lane: `Dev Core`
-Open task IDs: `M3.1`, `M3.2`, `M3.4`, `M3.6` to `M3.15`
-Completed task IDs: `M3.3`
+Open task IDs: `M3.4`, `M3.6` to `M3.15`
+Completed task IDs: `M3.1`, `M3.2`, `M3.3`
 
 Description: Replace broker-cluster assumptions with a monolith event pipeline based on outbox and inbox patterns, workers, and replay-safe controls.
 
-Progress: IoT ingestion now stages raw events in PostgreSQL, processes them through an internal worker with validation, normalization, enrichment, retry handling, and observability, records validated events, creates durable downstream delivery rows, and projects time-series measurements plus container-status updates through a dedicated idempotent consumer.
+Progress: IoT ingestion now stages raw events in PostgreSQL inside one transaction per request or batch, derives or normalizes the canonical idempotency key for every accepted measurement, records producer metadata on staged rows, processes them through an internal worker with validation, normalization, enrichment, retry handling, and observability, records validated events with an internal event-envelope contract (`event_name`, `routing_key`, `schema_version`, worker producer identity), creates durable downstream delivery rows with lease-owner tracking, and projects time-series measurements plus container-status updates through a dedicated idempotent consumer.
 
 Checklist:
 - [x] Implement DB inbox-style staging and validated-event storage where required for the IoT flow.
 - [x] Add background worker behavior with retry controls for the IoT processing path.
 - [x] Add event schema versioning and backlog observability for the IoT processing path.
+- [x] Add monolith-compatible internal event transport metadata and lease-owner tracking for HA-style worker recovery.
+- [x] Add exactly-once producer staging semantics for critical IoT ingestion through deterministic idempotency and transactional batch staging.
 
 ### M4 - Platform and Deployment Baseline
 

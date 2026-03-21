@@ -46,6 +46,7 @@ export class ValidatedConsumerRepository {
       .set({
         processingStatus: 'retry',
         nextAttemptAt: new Date(),
+        claimedByInstanceId: null,
         lastError: 'Recovered stale validated-event delivery lease.',
         updatedAt: new Date(),
       })
@@ -61,6 +62,7 @@ export class ValidatedConsumerRepository {
   async claimDeliveryForProcessing(
     deliveryId: string,
     consumerName: string,
+    claimedByInstanceId: string,
   ): Promise<ClaimedValidatedEventDelivery | null> {
     const [claimed] = await this.db
       .update(validatedEventDeliveries)
@@ -68,6 +70,7 @@ export class ValidatedConsumerRepository {
         processingStatus: 'processing',
         attemptCount: sql`${validatedEventDeliveries.attemptCount} + 1`,
         processingStartedAt: new Date(),
+        claimedByInstanceId,
         updatedAt: new Date(),
       })
       .where(
@@ -84,6 +87,9 @@ export class ValidatedConsumerRepository {
         id: validatedEventDeliveries.id,
         consumerName: validatedEventDeliveries.consumerName,
         validatedEventId: validatedEventDeliveries.validatedEventId,
+        eventName: validatedEventDeliveries.eventName,
+        routingKey: validatedEventDeliveries.routingKey,
+        claimedByInstanceId: validatedEventDeliveries.claimedByInstanceId,
         attemptCount: validatedEventDeliveries.attemptCount,
         traceparent: validatedEventDeliveries.traceparent,
         tracestate: validatedEventDeliveries.tracestate,
@@ -105,6 +111,7 @@ export class ValidatedConsumerRepository {
         measurementQuality: validatedMeasurementEvents.measurementQuality,
         warningThreshold: validatedMeasurementEvents.warningThreshold,
         criticalThreshold: validatedMeasurementEvents.criticalThreshold,
+        schemaVersion: validatedMeasurementEvents.schemaVersion,
         normalizedPayload: validatedMeasurementEvents.normalizedPayload,
         emittedAt: validatedMeasurementEvents.emittedAt,
       })
@@ -120,6 +127,10 @@ export class ValidatedConsumerRepository {
       id: claimed.id,
       consumerName: claimed.consumerName,
       validatedEventId: claimed.validatedEventId,
+      eventName: claimed.eventName,
+      routingKey: claimed.routingKey,
+      claimedByInstanceId: claimed.claimedByInstanceId,
+      schemaVersion: event.schemaVersion,
       attemptCount: claimed.attemptCount,
       traceparent: claimed.traceparent,
       tracestate: claimed.tracestate,
@@ -192,6 +203,7 @@ export class ValidatedConsumerRepository {
       .update(validatedEventDeliveries)
       .set({
         processingStatus: 'completed',
+        claimedByInstanceId: null,
         processedAt: new Date(),
         lastError: null,
         updatedAt: new Date(),
@@ -209,6 +221,7 @@ export class ValidatedConsumerRepository {
         processingStatus: failed ? 'failed' : 'retry',
         nextAttemptAt,
         lastError: errorMessage,
+        claimedByInstanceId: null,
         failedAt: failed ? now : null,
         updatedAt: now,
       })
