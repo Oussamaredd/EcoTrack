@@ -54,8 +54,15 @@ describe('IngestionProcessorService', () => {
     const validatedConsumerService = {
       enqueueValidatedDeliveryIds: vi.fn().mockResolvedValue(undefined),
     } as unknown as ValidatedConsumerService;
+    const internalEventRuntime = {
+      getInstanceId: vi.fn().mockReturnValue('worker-a'),
+    };
 
-    service = new IngestionProcessorService(repository, validatedConsumerService);
+    service = new IngestionProcessorService(
+      repository,
+      validatedConsumerService,
+      internalEventRuntime as any,
+    );
   });
 
   it('normalizes and persists valid staged events', async () => {
@@ -64,6 +71,7 @@ describe('IngestionProcessorService', () => {
     const result = await service.processStagedEvent(EVENT_ID);
 
     expect(result).toEqual({ status: 'validated' });
+    expect(repository.claimEventForProcessing).toHaveBeenCalledWith(EVENT_ID, 'worker-a');
     expect(repository.persistValidatedEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceEventId: EVENT_ID,
@@ -72,6 +80,12 @@ describe('IngestionProcessorService', () => {
         validationSummary: expect.objectContaining({
           schemaValidation: 'passed',
         }),
+      }),
+      expect.objectContaining({
+        eventName: 'iot.measurement.validated',
+        routingKey: 'sensor-001',
+        producerName: 'iot_ingestion_worker',
+        producerTransactionId: EVENT_ID,
       }),
     );
     expect(repository.markRejected).not.toHaveBeenCalled();

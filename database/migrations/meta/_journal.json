@@ -134,6 +134,13 @@
       "when": 1774022400000,
       "tag": "0018_priority_observability_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1774111564321,
+      "tag": "0019_strong_bulldozer",
+      "breakpoints": true
     }
   ]
 }

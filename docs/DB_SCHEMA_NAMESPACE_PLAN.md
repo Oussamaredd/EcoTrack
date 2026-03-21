@@ -145,11 +145,13 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 5. `sensor_device_id`: optional explicit sensor reference from the request.
 6. `container_id`: optional explicit container reference from the request.
 7. `idempotency_key`: optional deduplication key scoped by `device_uid`.
-8. `measured_at`: device-provided measurement timestamp.
-9. `processing_status`: pending, processing, retry, failed, rejected, or validated state.
-10. `attempt_count`: worker retry counter.
-11. `next_attempt_at`: next eligible retry time.
-12. `raw_payload`: stored request envelope for replay-safe processing and auditability.
+8. `producer_name` and `producer_transaction_id`: monolith equivalents of producer identity and transaction tracking for exactly-once staging.
+9. `measured_at`: device-provided measurement timestamp.
+10. `processing_status`: pending, processing, retry, failed, rejected, or validated state.
+11. `attempt_count`: worker retry counter.
+12. `next_attempt_at`: next eligible retry time.
+13. `claimed_by_instance_id`: active worker lease owner for restart-safe recovery visibility.
+14. `raw_payload`: stored request envelope for replay-safe processing and auditability.
 
 ### `iot.validated_measurement_events`
 
@@ -163,8 +165,10 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 8. `measurement_quality`: worker-approved quality flag.
 9. `warning_threshold`: resolved warning threshold captured at validation time.
 10. `critical_threshold`: resolved critical threshold captured at validation time.
-11. `validation_summary`: schema and business-rule validation outcome summary.
-12. `normalized_payload`: normalized event envelope ready for later consumers.
+11. `event_name`, `routing_key`, and `schema_version`: durable internal event-envelope contract for later broker externalization.
+12. `producer_name` and `producer_transaction_id`: logical worker producer identity for the validated event.
+13. `validation_summary`: schema and business-rule validation outcome summary.
+14. `normalized_payload`: normalized event envelope ready for later consumers.
 
 ### `iot.validated_event_deliveries`
 
@@ -175,7 +179,9 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 5. `processing_status`: pending, processing, retry, failed, or completed state.
 6. `attempt_count`: consumer retry counter.
 7. `next_attempt_at`: next eligible retry time.
-8. `processing_started_at`: lease timestamp for stale-processing recovery.
+8. `event_name` and `routing_key`: copied internal event-envelope metadata for delivery and observability.
+9. `processing_started_at`: lease timestamp for stale-processing recovery.
+10. `claimed_by_instance_id`: active consumer lease owner for failover diagnostics.
 9. `processed_at`: successful projection completion timestamp.
 10. `failed_at`: terminal failure timestamp when retries are exhausted.
 11. `last_error`: compact failure message for diagnosis and replay planning.

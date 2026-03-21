@@ -5,6 +5,7 @@ import {
   extractContextFromTraceCarrier,
   withActiveSpan,
 } from '../../../observability/tracing.helpers.js';
+import { InternalEventRuntimeService } from '../../events/internal-events.runtime.js';
 
 import {
   VALIDATED_EVENT_CONSUMER_MAX_RETRIES,
@@ -16,10 +17,17 @@ import { ValidatedConsumerRepository } from './validated-consumer.repository.js'
 export class ValidatedConsumerProcessorService {
   private readonly logger = new Logger(ValidatedConsumerProcessorService.name);
 
-  constructor(private readonly repository: ValidatedConsumerRepository) {}
+  constructor(
+    private readonly repository: ValidatedConsumerRepository,
+    private readonly internalEventRuntime: InternalEventRuntimeService,
+  ) {}
 
   async processDelivery(deliveryId: string, consumerName: string) {
-    const claimedDelivery = await this.repository.claimDeliveryForProcessing(deliveryId, consumerName);
+    const claimedDelivery = await this.repository.claimDeliveryForProcessing(
+      deliveryId,
+      consumerName,
+      this.internalEventRuntime.getInstanceId(),
+    );
     if (!claimedDelivery) {
       return { status: 'skipped' as const };
     }

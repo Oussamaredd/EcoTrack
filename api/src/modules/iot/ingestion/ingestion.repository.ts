@@ -11,6 +11,8 @@ import {
 } from 'ecotrack-database';
 
 import { DRIZZLE } from '../../../database/database.constants.js';
+import { VALIDATED_EVENT_TIMESERIES_CONSUMER } from '../../events/internal-events.catalog.js';
+import type { InternalEventEnvelope } from '../../events/internal-events.contracts.js';
 
 import {
   type ClaimedIngestionEvent,
@@ -40,59 +42,47 @@ export class IngestionRepository {
   async stageMeasurements(
     measurementsToStage: StagedMeasurementInput[],
   ): Promise<StagedMeasurementEventRef[]> {
-    const stagedRefs: StagedMeasurementEventRef[] = [];
+    return this.db.transaction(async (tx) => {
+      const stagedRefs: StagedMeasurementEventRef[] = [];
 
-    for (const measurement of measurementsToStage) {
-      const [created] = await this.db
-        .insert(ingestionEvents)
-        .values({
-          batchId: measurement.batchId,
-          deviceUid: measurement.deviceUid,
-          sensorDeviceId: measurement.sensorDeviceId,
-          containerId: measurement.containerId,
-          idempotencyKey: measurement.idempotencyKey,
-          measuredAt: measurement.measuredAt,
-          fillLevelPercent: measurement.fillLevelPercent,
-          temperatureC: measurement.temperatureC,
-          batteryPercent: measurement.batteryPercent,
-          signalStrength: measurement.signalStrength,
-          measurementQuality: measurement.measurementQuality,
-          traceparent: measurement.traceparent,
-          tracestate: measurement.tracestate,
-          rawPayload: measurement.rawPayload as any,
-          receivedAt: measurement.receivedAt,
-        })
-        .onConflictDoNothing()
-        .returning({
-          id: ingestionEvents.id,
-          deviceUid: ingestionEvents.deviceUid,
-          idempotencyKey: ingestionEvents.idempotencyKey,
-        });
-
-      if (created) {
-        stagedRefs.push({
-          ...created,
-          newlyStaged: true,
-        });
-        continue;
-      }
-
-      if (measurement.idempotencyKey) {
-        const [existing] = await this.db
-          .select({
+      for (const measurement of measurementsToStage) {
+        const [created] = await tx
+          .insert(ingestionEvents)
+          .values({
+            batchId: measurement.batchId,
+            deviceUid: measurement.deviceUid,
+            sensorDeviceId: measurement.sensorDeviceId,
+            containerId: measurement.containerId,
+            idempotencyKey: measurement.idempotencyKey,
+            measuredAt: measurement.measuredAt,
+            fillLevelPercent: measurement.fillLevelPercent,
+            temperatureC: measurement.temperatureC,
+            batteryPercent: measurement.batteryPercent,
+            signalStrength: measurement.signalStrength,
+            measurementQuality: measurement.measurementQuality,
+            producerName: measurement.producerName,
+            producerTransactionId: measurement.producerTransactionId,
+            traceparent: measurement.traceparent,
+            tracestate: measurement.tracestate,
+            rawPayload: measurement.rawPayload as any,
+            receivedAt: measurement.receivedAt,
+          })
+          .onConflictDoNothing()
+          .returning({
             id: ingestionEvents.id,
             deviceUid: ingestionEvents.deviceUid,
             idempotencyKey: ingestionEvents.idempotencyKey,
-          })
-          .from(ingestionEvents)
-          .where(
-            and(
-              eq(ingestionEvents.deviceUid, measurement.deviceUid),
-              eq(ingestionEvents.idempotencyKey, measurement.idempotencyKey),
-            ),
-          )
-          .limit(1);
+          });
 
+        if (created) {
+          stagedRefs.push({
+            ...created,
+            newlyStaged: true,
+          });
+          continue;
+        }
+
+        const existing = await this.findExistingStagedEvent(tx, measurement);
         if (existing) {
           stagedRefs.push({
             ...existing,
@@ -100,12 +90,12 @@ export class IngestionRepository {
           });
           continue;
         }
+
+        throw new BadRequestException('Unable to stage measurement event.');
       }
 
-      throw new BadRequestException('Unable to stage measurement event.');
-    }
-
-    return stagedRefs;
+      return stagedRefs;
+    });
   }
 
   async listRunnableEventIds(limit: number): Promise<string[]> {
@@ -133,6 +123,7 @@ export class IngestionRepository {
       .set({
         processingStatus: 'retry',
         nextAttemptAt: new Date(),
+        claimedByInstanceId: null,
         lastError: 'Recovered stale processing lease.',
         updatedAt: new Date(),
       })
@@ -144,13 +135,17 @@ export class IngestionRepository {
       );
   }
 
-  async claimEventForProcessing(eventId: string): Promise<ClaimedIngestionEvent | null> {
+  async claimEventForProcessing(
+    eventId: string,
+    claimedByInstanceId: string,
+  ): Promise<ClaimedIngestionEvent | null> {
     const [claimed] = await this.db
       .update(ingestionEvents)
       .set({
         processingStatus: 'processing',
         attemptCount: sql`${ingestionEvents.attemptCount} + 1`,
         processingStartedAt: new Date(),
+        claimedByInstanceId,
         updatedAt: new Date(),
       })
       .where(
@@ -177,6 +172,9 @@ export class IngestionRepository {
         measurementQuality: ingestionEvents.measurementQuality,
         processingStatus: ingestionEvents.processingStatus,
         attemptCount: ingestionEvents.attemptCount,
+        producerName: ingestionEvents.producerName,
+        producerTransactionId: ingestionEvents.producerTransactionId,
+        claimedByInstanceId: ingestionEvents.claimedByInstanceId,
         traceparent: ingestionEvents.traceparent,
         tracestate: ingestionEvents.tracestate,
         rawPayload: ingestionEvents.rawPayload,
@@ -202,6 +200,7 @@ export class IngestionRepository {
         processingStatus: 'rejected',
         rejectionReason: reason,
         normalizedPayload,
+        claimedByInstanceId: null,
         processedAt: now,
         failedAt: now,
         processingLatencyMs: sql`extract(epoch from (${now} - ${ingestionEvents.receivedAt})) * 1000`,
@@ -220,6 +219,7 @@ export class IngestionRepository {
         processingStatus: failed ? 'failed' : 'retry',
         nextAttemptAt,
         lastError: errorMessage,
+        claimedByInstanceId: null,
         failedAt: failed ? now : null,
         processingLatencyMs: sql`extract(epoch from (${now} - ${ingestionEvents.receivedAt})) * 1000`,
         updatedAt: now,
@@ -227,7 +227,7 @@ export class IngestionRepository {
       .where(eq(ingestionEvents.id, eventId));
   }
 
-  async persistValidatedEvent(event: NormalizedMeasurementEvent) {
+  async persistValidatedEvent(event: NormalizedMeasurementEvent, envelope: InternalEventEnvelope) {
     return this.db.transaction(async (tx) => {
       const resolvedSensor = await this.resolveSensorContext(tx, event);
       const resolvedContainerId = resolvedSensor.containerId ?? event.containerId ?? null;
@@ -250,7 +250,11 @@ export class IngestionRepository {
       const processedAt = new Date();
       const normalizedPayload = {
         sourceEventId: event.sourceEventId,
-        schemaVersion: 'v1',
+        eventName: envelope.eventName,
+        schemaVersion: envelope.schemaVersion,
+        routingKey: envelope.routingKey,
+        producerName: envelope.producerName,
+        producerTransactionId: envelope.producerTransactionId,
         deviceUid: event.deviceUid,
         sensorDeviceId: resolvedSensor.id,
         containerId: resolvedContainerId,
@@ -282,6 +286,11 @@ export class IngestionRepository {
           warningThreshold: thresholds.warningThreshold,
           criticalThreshold: thresholds.criticalThreshold,
           validationSummary: event.validationSummary,
+          eventName: envelope.eventName,
+          routingKey: envelope.routingKey,
+          schemaVersion: envelope.schemaVersion,
+          producerName: envelope.producerName,
+          producerTransactionId: envelope.producerTransactionId,
           traceparent: event.traceparent,
           tracestate: event.tracestate,
           normalizedPayload,
@@ -297,8 +306,10 @@ export class IngestionRepository {
       const [createdDelivery] = await tx
         .insert(validatedEventDeliveries)
         .values({
-          consumerName: 'timeseries_projection',
+          consumerName: VALIDATED_EVENT_TIMESERIES_CONSUMER,
           validatedEventId: validatedEvent.id,
+          eventName: envelope.eventName,
+          routingKey: envelope.routingKey,
           traceparent: event.traceparent,
           tracestate: event.tracestate,
         })
@@ -315,6 +326,7 @@ export class IngestionRepository {
           normalizedPayload,
           rejectionReason: null,
           lastError: null,
+          claimedByInstanceId: null,
           processedAt,
           processingLatencyMs: sql`extract(epoch from (${processedAt} - ${ingestionEvents.receivedAt})) * 1000`,
           updatedAt: processedAt,
@@ -326,6 +338,32 @@ export class IngestionRepository {
         deliveryIds: createdDelivery ? [createdDelivery.id] : [],
       };
     });
+  }
+
+  private async findExistingStagedEvent(
+    tx: TransactionClient,
+    measurement: StagedMeasurementInput,
+  ): Promise<Omit<StagedMeasurementEventRef, 'newlyStaged'> | null> {
+    if (!measurement.idempotencyKey) {
+      return null;
+    }
+
+    const [existing] = await tx
+      .select({
+        id: ingestionEvents.id,
+        deviceUid: ingestionEvents.deviceUid,
+        idempotencyKey: ingestionEvents.idempotencyKey,
+      })
+      .from(ingestionEvents)
+      .where(
+        and(
+          eq(ingestionEvents.deviceUid, measurement.deviceUid),
+          eq(ingestionEvents.idempotencyKey, measurement.idempotencyKey),
+        ),
+      )
+      .limit(1);
+
+    return existing ?? null;
   }
 
   async getHealthStats(): Promise<IngestionHealthStats> {

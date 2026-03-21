@@ -78,9 +78,12 @@ PUT /zones/:id
 `GET /api/containers` returns mapped container summaries used by mobile reporting, including `code`, `label`, `zoneName`, coordinates, operational `status`, and optional `fillLevelPercent`.
 `POST /api/iot/v1/measurements` accepts one validated sensor measurement and returns `202 Accepted` after the raw payload is staged in `iot.ingestion_events` for async worker processing.
 `POST /api/iot/v1/measurements/batch` accepts a validated non-empty measurement array up to `IOT_MAX_BATCH_SIZE` and returns `202 Accepted` with a batch identifier after staging each raw event.
+The ingestion repository stages each request or batch in one database transaction and persists producer metadata (`producer_name`, `producer_transaction_id`) on every staged row so ambiguous client retries resolve to one logical message path.
+If `idempotencyKey` is omitted, the API derives a deterministic key from the normalized measurement payload before staging; duplicate logical measurements inside the same batch are rejected with `400 Bad Request`.
 The monolith processing worker then performs schema validation, business-rule validation, normalization, enrichment with sensor and container context, validated-event storage, and durable delivery creation in `iot.validated_event_deliveries`.
+Validated events now carry internal event-envelope metadata (`event_name`, `routing_key`, `schema_version`, worker producer identity) and both worker phases record `claimed_by_instance_id` while a lease is active so recovery remains visible and replay-safe across process restarts.
 The downstream validated-event consumer projects those durable deliveries into `iot.measurements` and container-status updates with idempotent retry handling.
-`deviceUid` plus `idempotencyKey` is treated as the staging deduplication key when `idempotencyKey` is provided.
+`deviceUid` plus the explicit or server-derived `idempotencyKey` is the canonical staging deduplication key.
 `GET /api/iot/v1/health` returns backlog health, backpressure state, pending staged-event counts, the rolling validated-event count for the last hour, worker processing counters, and downstream consumer counters.
 When staged-event backlog reaches `IOT_BACKPRESSURE_THRESHOLD`, the ingestion endpoints respond with `503` until the backlog falls below the configured ceiling.
 

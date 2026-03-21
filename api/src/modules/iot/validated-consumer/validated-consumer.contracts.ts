@@ -1,4 +1,5 @@
-export const VALIDATED_EVENT_TIMESERIES_CONSUMER = 'timeseries_projection';
+export { VALIDATED_EVENT_TIMESERIES_CONSUMER } from '../../events/internal-events.catalog.js';
+
 export const VALIDATED_EVENT_CONSUMER_MAX_RETRIES = 3;
 export const VALIDATED_EVENT_CONSUMER_RECOVERY_INTERVAL_MS = 1_000;
 export const VALIDATED_EVENT_CONSUMER_STALE_LEASE_WINDOW_MS = 5 * 60 * 1000;
@@ -14,6 +15,10 @@ export type ClaimedValidatedEventDelivery = {
   id: string;
   validatedEventId: string;
   consumerName: string;
+  eventName: string;
+  routingKey: string;
+  schemaVersion: string;
+  claimedByInstanceId: string | null;
   traceparent: string | null;
   tracestate: string | null;
   attemptCount: number;

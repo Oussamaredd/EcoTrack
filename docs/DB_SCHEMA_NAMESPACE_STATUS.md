@@ -141,6 +141,7 @@ Checklist:
 - [x] Add `iot.ingestion_events` for durable raw-event staging.
 - [x] Add `iot.validated_measurement_events` for worker-produced validated results.
 - [x] Add `iot.validated_event_deliveries` for durable downstream consumer delivery state.
+- [x] Add producer metadata, internal event-envelope metadata, and worker-claim tracking to the IoT event workflow tables for workbook tasks `M3.1` and `M3.2`.
 - [x] Keep the workflow monolith-compatible and Development-owned.
 - [x] Replace the direct validated-event projection write with a dedicated downstream consumer that updates `iot.measurements` and container status idempotently.
 - [x] Avoid external Kafka, warehouse, or specialty-track schema additions.
