@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { IngestionRepository } from '../modules/iot/ingestion/ingestion.repository.js';
 
+const createTransactionDbMock = <TTransaction>(tx: TTransaction) => ({
+  transaction: vi.fn(async (callback: (trx: TTransaction) => Promise<unknown>) => callback(tx)),
+});
+
 const createMeasurementInput = (overrides: Record<string, unknown> = {}) => ({
   batchId: null,
   sensorDeviceId: null,
@@ -15,11 +19,17 @@ const createMeasurementInput = (overrides: Record<string, unknown> = {}) => ({
   signalStrength: null,
   measurementQuality: 'valid',
   idempotencyKey: 'dup-key',
+  producerName: 'iot_ingestion_http',
+  producerTransactionId: '11111111-1111-4111-8111-111111111111',
   traceparent: null,
   tracestate: null,
   receivedAt: new Date('2026-03-19T10:00:01.000Z'),
   rawPayload: {
     source: 'iot-ingestion-api',
+    producer: {
+      name: 'iot_ingestion_http',
+      transactionId: '11111111-1111-4111-8111-111111111111',
+    },
   },
   ...overrides,
 });
@@ -49,6 +59,16 @@ const createNormalizedEvent = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const validatedEnvelope = {
+  eventName: 'iot.measurement.validated',
+  routingKey: 'sensor-001',
+  schemaVersion: 'v1' as const,
+  producerName: 'iot_ingestion_worker',
+  producerTransactionId: 'event-1',
+  traceparent: null,
+  tracestate: null,
+};
+
 const createLimitedSelectQuery = <TRow>(rows: TRow[]) => ({
   from: vi.fn().mockReturnValue({
     where: vi.fn().mockReturnValue({
@@ -65,7 +85,7 @@ const createAggregateSelectQuery = <TRow>(row?: TRow) => ({
 
 describe('IngestionRepository', () => {
   it('returns a newly staged event ref when insertion succeeds', async () => {
-    const dbMock = {
+    const tx = {
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnValue({
           onConflictDoNothing: vi.fn().mockReturnValue({
@@ -81,7 +101,7 @@ describe('IngestionRepository', () => {
       }),
     };
 
-    const repository = new IngestionRepository(dbMock as any);
+    const repository = new IngestionRepository(createTransactionDbMock(tx) as any);
     const staged = await repository.stageMeasurements([createMeasurementInput()]);
 
     expect(staged).toEqual([
@@ -95,7 +115,7 @@ describe('IngestionRepository', () => {
   });
 
   it('reuses an existing staged event when the same idempotency key is received again', async () => {
-    const dbMock = {
+    const tx = {
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnValue({
           onConflictDoNothing: vi.fn().mockReturnValue({
@@ -118,7 +138,7 @@ describe('IngestionRepository', () => {
       }),
     };
 
-    const repository = new IngestionRepository(dbMock as any);
+    const repository = new IngestionRepository(createTransactionDbMock(tx) as any);
     const staged = await repository.stageMeasurements([createMeasurementInput()]);
 
     expect(staged).toEqual([
@@ -132,7 +152,7 @@ describe('IngestionRepository', () => {
   });
 
   it('throws when a staged measurement conflict cannot be reconciled', async () => {
-    const dbMock = {
+    const tx = {
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnValue({
           onConflictDoNothing: vi.fn().mockReturnValue({
@@ -149,7 +169,7 @@ describe('IngestionRepository', () => {
       }),
     };
 
-    const repository = new IngestionRepository(dbMock as any);
+    const repository = new IngestionRepository(createTransactionDbMock(tx) as any);
 
     await expect(repository.stageMeasurements([createMeasurementInput()])).rejects.toBeInstanceOf(
       BadRequestException,
@@ -219,6 +239,9 @@ describe('IngestionRepository', () => {
                 measurementQuality: 'valid',
                 processingStatus: 'processing',
                 attemptCount: 2,
+                producerName: 'iot_ingestion_http',
+                producerTransactionId: '11111111-1111-4111-8111-111111111111',
+                claimedByInstanceId: 'worker-a',
                 rawPayload: {
                   source: 'iot-ingestion-api',
                 },
@@ -231,7 +254,7 @@ describe('IngestionRepository', () => {
     };
 
     const repository = new IngestionRepository(dbMock as any);
-    const claimedEvent = await repository.claimEventForProcessing('event-1');
+    const claimedEvent = await repository.claimEventForProcessing('event-1', 'worker-a');
 
     expect(claimedEvent).toEqual(
       expect.objectContaining({
@@ -257,7 +280,7 @@ describe('IngestionRepository', () => {
 
     const repository = new IngestionRepository(dbMock as any);
 
-    await expect(repository.claimEventForProcessing('event-1')).resolves.toBeNull();
+    await expect(repository.claimEventForProcessing('event-1', 'worker-a')).resolves.toBeNull();
   });
 
   it('marks rejected events with normalized payload metadata', async () => {
@@ -409,7 +432,7 @@ describe('IngestionRepository', () => {
     };
 
     const repository = new IngestionRepository(dbMock as any);
-    const result = await repository.persistValidatedEvent(createNormalizedEvent() as any);
+    const result = await repository.persistValidatedEvent(createNormalizedEvent() as any, validatedEnvelope);
 
     expect(result).toEqual({
       validatedEventId: 'validated-1',

@@ -24,6 +24,8 @@ export type StagedMeasurementInput = {
   signalStrength: number | null;
   measurementQuality: string;
   idempotencyKey: string | null;
+  producerName: string;
+  producerTransactionId: string;
   traceparent: string | null;
   tracestate: string | null;
   receivedAt: Date;
@@ -52,6 +54,9 @@ export type ClaimedIngestionEvent = {
   measurementQuality: string;
   processingStatus: IngestionProcessingStatus;
   attemptCount: number;
+  producerName: string;
+  producerTransactionId: string;
+  claimedByInstanceId: string | null;
   traceparent: string | null;
   tracestate: string | null;
   rawPayload: Record<string, unknown>;

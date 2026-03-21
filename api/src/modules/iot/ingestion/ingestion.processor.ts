@@ -6,6 +6,12 @@ import {
   extractContextFromTraceCarrier,
   withActiveSpan,
 } from '../../../observability/tracing.helpers.js';
+import {
+  INTERNAL_EVENT_SCHEMA_VERSION_V1,
+  IOT_INGESTION_WORKER_PRODUCER,
+  IOT_MEASUREMENT_VALIDATED_EVENT,
+} from '../../events/internal-events.catalog.js';
+import { InternalEventRuntimeService } from '../../events/internal-events.runtime.js';
 import { ValidatedConsumerService } from '../validated-consumer/validated-consumer.service.js';
 
 import {
@@ -42,10 +48,14 @@ export class IngestionProcessorService {
   constructor(
     private readonly repository: IngestionRepository,
     private readonly validatedConsumerService: ValidatedConsumerService,
+    private readonly internalEventRuntime: InternalEventRuntimeService,
   ) {}
 
   async processStagedEvent(eventId: string) {
-    const claimedEvent = await this.repository.claimEventForProcessing(eventId);
+    const claimedEvent = await this.repository.claimEventForProcessing(
+      eventId,
+      this.internalEventRuntime.getInstanceId(),
+    );
     if (!claimedEvent) {
       return { status: 'skipped' as const };
     }
@@ -60,7 +70,15 @@ export class IngestionProcessorService {
       async () => {
         try {
           const normalizedEvent = this.normalizeEvent(claimedEvent);
-          const persistResult = await this.repository.persistValidatedEvent(normalizedEvent);
+          const persistResult = await this.repository.persistValidatedEvent(normalizedEvent, {
+            eventName: IOT_MEASUREMENT_VALIDATED_EVENT,
+            routingKey: normalizedEvent.deviceUid,
+            schemaVersion: INTERNAL_EVENT_SCHEMA_VERSION_V1,
+            producerName: IOT_INGESTION_WORKER_PRODUCER,
+            producerTransactionId: normalizedEvent.sourceEventId,
+            traceparent: normalizedEvent.traceparent,
+            tracestate: normalizedEvent.tracestate,
+          });
           await this.validatedConsumerService.enqueueValidatedDeliveryIds(persistResult.deliveryIds);
           return { status: 'validated' as const };
         } catch (error) {

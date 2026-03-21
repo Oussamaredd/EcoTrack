@@ -12,6 +12,7 @@ import { ToursController } from '../modules/collections/tours.controller.js';
 import { ToursModule } from '../modules/collections/tours.module.js';
 import { ToursRepository } from '../modules/collections/tours.repository.js';
 import { ToursService } from '../modules/collections/tours.service.js';
+import { InternalEventsModule } from '../modules/events/internal-events.module.js';
 import { ContainersController } from '../modules/iot/containers.controller.js';
 import { ContainersModule } from '../modules/iot/containers.module.js';
 import { ContainersRepository } from '../modules/iot/containers.repository.js';
@@ -50,7 +51,7 @@ describe('IoT module wiring', () => {
 
   it('registers the ingestion module dependencies and worker services', () => {
     expect(readModuleMetadata(MODULE_METADATA.IMPORTS, IngestionModule)).toEqual(
-      expect.arrayContaining([ConfigModule, DatabaseModule]),
+      expect.arrayContaining([ConfigModule, DatabaseModule, InternalEventsModule]),
     );
     expect(readModuleMetadata(MODULE_METADATA.CONTROLLERS, IngestionModule)).toEqual([
       IngestionController,
