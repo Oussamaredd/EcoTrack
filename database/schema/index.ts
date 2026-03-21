@@ -22,6 +22,10 @@ type IotRawMeasurementPayload = {
   source: 'iot-ingestion-api';
   schemaVersion: 'v1';
   batchId: string | null;
+  producer: {
+    name: string;
+    transactionId: string;
+  };
   measurement: {
     sensorDeviceId: string | null;
     containerId: string | null;
@@ -38,7 +42,11 @@ type IotRawMeasurementPayload = {
 
 type IotValidatedMeasurementPayload = {
   sourceEventId: string;
+  eventName: string;
   schemaVersion: 'v1';
+  routingKey: string;
+  producerName: string;
+  producerTransactionId: string | null;
   deviceUid: string;
   sensorDeviceId: string | null;
   containerId: string | null;
@@ -261,6 +269,9 @@ export const ingestionEvents = iotSchema.table(
     processingLatencyMs: integer('processing_latency_ms'),
     rawPayload: jsonb('raw_payload').$type<IotRawMeasurementPayload>().default(sql`'{}'::jsonb`).notNull(),
     normalizedPayload: jsonb('normalized_payload').$type<Record<string, unknown>>(),
+    producerName: text('producer_name').default('iot_ingestion_http').notNull(),
+    producerTransactionId: uuid('producer_transaction_id').defaultRandom().notNull(),
+    claimedByInstanceId: text('claimed_by_instance_id'),
     traceparent: text('traceparent'),
     tracestate: text('tracestate'),
     receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
@@ -304,6 +315,11 @@ export const validatedMeasurementEvents = iotSchema.table(
     criticalThreshold: integer('critical_threshold'),
     validationSummary: jsonb('validation_summary').$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
     normalizedPayload: jsonb('normalized_payload').$type<IotValidatedMeasurementPayload>().default(sql`'{}'::jsonb`).notNull(),
+    eventName: text('event_name').default('iot.measurement.validated').notNull(),
+    routingKey: text('routing_key').default('').notNull(),
+    schemaVersion: text('schema_version').default('v1').notNull(),
+    producerName: text('producer_name').default('iot_ingestion_worker').notNull(),
+    producerTransactionId: uuid('producer_transaction_id'),
     traceparent: text('traceparent'),
     tracestate: text('tracestate'),
     emittedAt: timestamp('emitted_at', { withTimezone: true }).defaultNow().notNull(),
@@ -336,6 +352,9 @@ export const validatedEventDeliveries = iotSchema.table(
     processedAt: timestamp('processed_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     lastError: text('last_error'),
+    eventName: text('event_name').default('iot.measurement.validated').notNull(),
+    routingKey: text('routing_key').default('').notNull(),
+    claimedByInstanceId: text('claimed_by_instance_id'),
     traceparent: text('traceparent'),
     tracestate: text('tracestate'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

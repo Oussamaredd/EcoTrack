@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import {
   BadRequestException,
@@ -13,6 +13,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { DEFAULT_IOT_CONFIG, type IotIngestionConfig } from '../../../config/iot-ingestion.js';
 import { getPersistedTraceCarrier, withActiveSpan } from '../../../observability/tracing.helpers.js';
+import { IOT_INGESTION_HTTP_PRODUCER } from '../../events/internal-events.catalog.js';
 import { ValidatedConsumerService } from '../validated-consumer/validated-consumer.service.js';
 
 import type { IngestMeasurementDto } from './dto/ingest-measurement.dto.js';
@@ -87,7 +88,9 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         this.ensureInitialized();
         await this.checkBackpressure();
 
-        const staged = await this.repository.stageMeasurements([this.toStagedMeasurement(dto, null)]);
+        const producerTransactionId = randomUUID();
+        const stagedMeasurement = this.toStagedMeasurement(dto, null, producerTransactionId);
+        const staged = await this.repository.stageMeasurements([stagedMeasurement]);
         await this.enqueueStagedEvents(staged);
 
         return {
@@ -123,9 +126,9 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         await this.checkBackpressure();
 
         const batchId = randomUUID();
-        const staged = await this.repository.stageMeasurements(
-          dtos.map((dto) => this.toStagedMeasurement(dto, batchId)),
-        );
+        const stagedMeasurements = dtos.map((dto) => this.toStagedMeasurement(dto, batchId, batchId));
+        this.assertUniqueBatchDedupeKeys(stagedMeasurements);
+        const staged = await this.repository.stageMeasurements(stagedMeasurements);
 
         await this.enqueueStagedEvents(staged);
 
@@ -310,25 +313,44 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private toStagedMeasurement(dto: IngestMeasurementDto, batchId: string | null): StagedMeasurementInput {
+  private toStagedMeasurement(
+    dto: IngestMeasurementDto,
+    batchId: string | null,
+    producerTransactionId: string,
+  ): StagedMeasurementInput {
     const receivedAt = new Date();
     const traceCarrier = getPersistedTraceCarrier();
     const normalizedDeviceUid = dto.deviceUid.trim();
     const normalizedMeasurementQuality = dto.measurementQuality?.trim().toLowerCase() ?? 'valid';
-    const normalizedIdempotencyKey = dto.idempotencyKey?.trim() || null;
+    const measuredAt = new Date(dto.measuredAt);
+    const normalizedIdempotencyKey =
+      dto.idempotencyKey?.trim() ||
+      this.deriveIdempotencyKey({
+        sensorDeviceId: dto.sensorDeviceId ?? null,
+        containerId: dto.containerId ?? null,
+        deviceUid: normalizedDeviceUid,
+        measuredAt,
+        fillLevelPercent: dto.fillLevelPercent,
+        temperatureC: dto.temperatureC ?? null,
+        batteryPercent: dto.batteryPercent ?? null,
+        signalStrength: dto.signalStrength ?? null,
+        measurementQuality: normalizedMeasurementQuality,
+      });
 
     return {
       batchId,
       sensorDeviceId: dto.sensorDeviceId ?? null,
       containerId: dto.containerId ?? null,
       deviceUid: normalizedDeviceUid,
-      measuredAt: new Date(dto.measuredAt),
+      measuredAt,
       fillLevelPercent: dto.fillLevelPercent,
       temperatureC: dto.temperatureC ?? null,
       batteryPercent: dto.batteryPercent ?? null,
       signalStrength: dto.signalStrength ?? null,
       measurementQuality: normalizedMeasurementQuality,
       idempotencyKey: normalizedIdempotencyKey,
+      producerName: IOT_INGESTION_HTTP_PRODUCER,
+      producerTransactionId,
       traceparent: traceCarrier.traceparent,
       tracestate: traceCarrier.tracestate,
       receivedAt,
@@ -336,6 +358,10 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         source: 'iot-ingestion-api',
         schemaVersion: 'v1',
         batchId,
+        producer: {
+          name: IOT_INGESTION_HTTP_PRODUCER,
+          transactionId: producerTransactionId,
+        },
         measurement: {
           sensorDeviceId: dto.sensorDeviceId ?? null,
           containerId: dto.containerId ?? null,
@@ -350,5 +376,49 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         },
       },
     };
+  }
+
+  private assertUniqueBatchDedupeKeys(stagedMeasurements: StagedMeasurementInput[]) {
+    const seenKeys = new Set<string>();
+
+    for (const measurement of stagedMeasurements) {
+      const dedupeKey = `${measurement.deviceUid}::${measurement.idempotencyKey ?? ''}`;
+      if (seenKeys.has(dedupeKey)) {
+        throw new BadRequestException(
+          `Batch contains duplicate measurement identity for device ${measurement.deviceUid}.`,
+        );
+      }
+
+      seenKeys.add(dedupeKey);
+    }
+  }
+
+  private deriveIdempotencyKey(
+    measurement: Pick<
+      StagedMeasurementInput,
+      | 'sensorDeviceId'
+      | 'containerId'
+      | 'deviceUid'
+      | 'measuredAt'
+      | 'fillLevelPercent'
+      | 'temperatureC'
+      | 'batteryPercent'
+      | 'signalStrength'
+      | 'measurementQuality'
+    >,
+  ) {
+    const canonicalPayload = JSON.stringify({
+      sensorDeviceId: measurement.sensorDeviceId,
+      containerId: measurement.containerId,
+      deviceUid: measurement.deviceUid,
+      measuredAt: measurement.measuredAt.toISOString(),
+      fillLevelPercent: measurement.fillLevelPercent,
+      temperatureC: measurement.temperatureC,
+      batteryPercent: measurement.batteryPercent,
+      signalStrength: measurement.signalStrength,
+      measurementQuality: measurement.measurementQuality,
+    });
+
+    return `derived:${createHash('sha256').update(canonicalPayload).digest('hex')}`;
   }
 }

@@ -132,7 +132,8 @@ Status legend:
 - Workbook expected outcome: 1. Choisir une solution K8s pour Kafka. 2. Configurer le déploiement sur 3 Pods (Brokers). 3. Définir le facteur de réplication du topic de données IoT à 3. 4. Simuler la panne d'un Broker et valider le basculement.
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through a monolith-compatible internal event transport backed by PostgreSQL durable staging and delivery tables, reusable internal event-envelope metadata (`event_name`, `routing_key`, `schema_version`, producer identity), lease-owner tracking on worker claims, and restart-safe recovery loops that let any healthy app instance resume pending IoT workflow rows without data loss.
 
 ### M3.2 - Implémentation du Producer IoT (Exactly-Once Delivery)
 
@@ -140,7 +141,8 @@ Status legend:
 - Workbook expected outcome: 1. Configurer le Producer Kafka (enable.idempotence=true). 2. S'assurer que la Transaction ID est correctement générée. 3. Coder la logique qui englobe la production et la transaction. 4. Tester un scénario de retry du Producer.
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through transactional raw-event staging per request or batch, deterministic server-derived idempotency keys when the client omits one, duplicate-batch identity rejection before any row is staged, persisted producer metadata (`producer_name`, `producer_transaction_id`) on `iot.ingestion_events`, and retry-safe processing that preserves one logical business effect per accepted measurement.
 
 ### M3.3 - Dév. du Microservice de Traitement (Stream Processing)
 

@@ -6,6 +6,10 @@ const createClaimedDelivery = (overrides: Partial<Record<string, unknown>> = {})
   id: 'delivery-1',
   validatedEventId: 'validated-event-1',
   consumerName: 'timeseries_projection',
+  eventName: 'iot.measurement.validated',
+  routingKey: 'sensor-001',
+  schemaVersion: 'v1',
+  claimedByInstanceId: 'worker-b',
   traceparent: null,
   tracestate: null,
   attemptCount: 1,
@@ -36,7 +40,9 @@ describe('ValidatedConsumerProcessorService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new ValidatedConsumerProcessorService(repositoryMock as any);
+    service = new ValidatedConsumerProcessorService(repositoryMock as any, {
+      getInstanceId: vi.fn().mockReturnValue('worker-b'),
+    } as any);
     vi.spyOn((service as any).logger, 'error').mockImplementation(() => undefined);
   });
 
@@ -60,6 +66,11 @@ describe('ValidatedConsumerProcessorService', () => {
       status: 'completed',
     });
 
+    expect(repositoryMock.claimDeliveryForProcessing).toHaveBeenCalledWith(
+      'delivery-1',
+      'timeseries_projection',
+      'worker-b',
+    );
     expect(repositoryMock.projectValidatedEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'delivery-1',
