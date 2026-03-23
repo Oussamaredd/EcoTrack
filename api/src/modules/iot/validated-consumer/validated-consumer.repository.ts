@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, lte, or, sql } from 'drizzle-orm';
 import {
   containers,
   measurements,
@@ -16,13 +16,29 @@ import {
   type ValidatedEventConsumerHealthStats,
 } from './validated-consumer.contracts.js';
 
+const coerceTimestamp = (value: Date | string | null | undefined) => {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(normalized.getTime()) ? null : normalized;
+};
+
 @Injectable()
 export class ValidatedConsumerRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DatabaseClient) {}
 
-  async listRunnableDeliveryIds(consumerName: string, limit: number) {
+  async listRunnableDeliveryRefs(
+    consumerName: string,
+    limit: number,
+  ): Promise<Array<{ id: string; shardId: number; consumerName: string }>> {
     const rows = await this.db
-      .select({ id: validatedEventDeliveries.id })
+      .select({
+        id: validatedEventDeliveries.id,
+        shardId: validatedEventDeliveries.shardId,
+        consumerName: validatedEventDeliveries.consumerName,
+      })
       .from(validatedEventDeliveries)
       .where(
         and(
@@ -34,10 +50,10 @@ export class ValidatedConsumerRepository {
           lte(validatedEventDeliveries.nextAttemptAt, new Date()),
         ),
       )
-      .orderBy(asc(validatedEventDeliveries.createdAt))
+      .orderBy(asc(validatedEventDeliveries.shardId), asc(validatedEventDeliveries.createdAt))
       .limit(limit);
 
-    return rows.map((row) => row.id);
+    return rows;
   }
 
   async recoverStuckProcessing(consumerName: string, staleThreshold: Date) {
@@ -89,6 +105,7 @@ export class ValidatedConsumerRepository {
         validatedEventId: validatedEventDeliveries.validatedEventId,
         eventName: validatedEventDeliveries.eventName,
         routingKey: validatedEventDeliveries.routingKey,
+        shardId: validatedEventDeliveries.shardId,
         claimedByInstanceId: validatedEventDeliveries.claimedByInstanceId,
         attemptCount: validatedEventDeliveries.attemptCount,
         traceparent: validatedEventDeliveries.traceparent,
@@ -101,6 +118,7 @@ export class ValidatedConsumerRepository {
 
     const [event] = await this.db
       .select({
+        deviceUid: validatedMeasurementEvents.deviceUid,
         measuredAt: validatedMeasurementEvents.measuredAt,
         sensorDeviceId: validatedMeasurementEvents.sensorDeviceId,
         containerId: validatedMeasurementEvents.containerId,
@@ -128,7 +146,9 @@ export class ValidatedConsumerRepository {
       consumerName: claimed.consumerName,
       validatedEventId: claimed.validatedEventId,
       eventName: claimed.eventName,
+      deviceUid: event.deviceUid,
       routingKey: claimed.routingKey,
+      shardId: claimed.shardId,
       claimedByInstanceId: claimed.claimedByInstanceId,
       schemaVersion: event.schemaVersion,
       attemptCount: claimed.attemptCount,
@@ -178,18 +198,33 @@ export class ValidatedConsumerRepository {
         delivery.warningThreshold !== null &&
         delivery.criticalThreshold !== null
       ) {
-        await tx
-          .update(containers)
-          .set({
-            fillLevelPercent: delivery.fillLevelPercent,
-            status: this.resolveOperationalStatus(
-              delivery.fillLevelPercent,
-              delivery.warningThreshold,
-              delivery.criticalThreshold,
-            ),
-            updatedAt: new Date(),
+        const [newerMeasurement] = await tx
+          .select({
+            id: measurements.id,
           })
-          .where(eq(containers.id, delivery.containerId));
+          .from(measurements)
+          .where(
+            and(
+              eq(measurements.containerId, delivery.containerId),
+              gt(measurements.measuredAt, delivery.measuredAt),
+            ),
+          )
+          .limit(1);
+
+        if (!newerMeasurement) {
+          await tx
+            .update(containers)
+            .set({
+              fillLevelPercent: delivery.fillLevelPercent,
+              status: this.resolveOperationalStatus(
+                delivery.fillLevelPercent,
+                delivery.warningThreshold,
+                delivery.criticalThreshold,
+              ),
+              updatedAt: new Date(),
+            })
+            .where(eq(containers.id, delivery.containerId));
+        }
       }
 
       return {
@@ -245,7 +280,10 @@ export class ValidatedConsumerRepository {
       processingCount,
       failedCount,
       completedLastHour,
-      oldestPendingAgeMs: oldestPending ? Math.max(0, Date.now() - oldestPending.getTime()) : null,
+      oldestPendingAgeMs: (() => {
+        const timestamp = coerceTimestamp(oldestPending);
+        return timestamp ? Math.max(0, Date.now() - timestamp.getTime()) : null;
+      })(),
     };
   }
 

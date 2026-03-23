@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Chip, Text } from "react-native-paper";
 
@@ -15,6 +16,7 @@ import {
 } from "@/lib/citizenReports";
 import { formatCoordinates, formatDateTime } from "@/lib/formatters";
 import { queryKeys } from "@/lib/queryKeys";
+import { useNotificationController } from "@/providers/NotificationProvider";
 import type { AppTheme } from "@/theme/theme";
 import { useThemedStyles } from "@/theme/useAppTheme";
 
@@ -82,6 +84,8 @@ const createStyles = (theme: AppTheme) =>
 
 export function HistoryScreen() {
   const styles = useThemedStyles(createStyles);
+  const params = useLocalSearchParams<{ notificationId?: string }>();
+  const { markNotificationRead } = useNotificationController();
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState<HistoryFilter>("all");
   const pageSize = 8;
@@ -89,6 +93,14 @@ export function HistoryScreen() {
     queryKey: queryKeys.citizenHistory(page, pageSize),
     queryFn: () => citizenApi.getHistory(page, pageSize)
   });
+
+  useEffect(() => {
+    if (typeof params.notificationId !== "string" || params.notificationId.length === 0) {
+      return;
+    }
+
+    void markNotificationRead(params.notificationId);
+  }, [markNotificationRead, params.notificationId]);
 
   if (historyQuery.isLoading) {
     return (
@@ -153,6 +165,15 @@ export function HistoryScreen() {
           ))}
         </View>
       </InfoCard>
+
+      {typeof params.notificationId === "string" && params.notificationId.length > 0 ? (
+        <InfoCard title="Opened from notification">
+          <Text variant="bodyMedium">
+            EcoTrack opened your report history from a push notification. The notification has
+            been marked as read.
+          </Text>
+        </InfoCard>
+      ) : null}
 
       {filteredHistory.length === 0 ? (
         <InfoCard

@@ -14,6 +14,12 @@ import { ConfigService } from '@nestjs/config';
 import { DEFAULT_IOT_CONFIG, type IotIngestionConfig } from '../../../config/iot-ingestion.js';
 import { getPersistedTraceCarrier, withActiveSpan } from '../../../observability/tracing.helpers.js';
 import { IOT_INGESTION_HTTP_PRODUCER } from '../../events/internal-events.catalog.js';
+import {
+  computeInternalEventShardId,
+  normalizeInternalEventRoutingKey,
+} from '../../events/internal-events.partitioning.js';
+import { MonitoringService } from '../../monitoring/monitoring.service.js';
+import { VALIDATED_EVENT_ROLLUP_CONSUMER } from '../validated-consumer/validated-consumer.contracts.js';
 import { ValidatedConsumerService } from '../validated-consumer/validated-consumer.service.js';
 
 import type { IngestMeasurementDto } from './dto/ingest-measurement.dto.js';
@@ -25,6 +31,7 @@ import type {
 import {
   IOT_PROCESSING_RECOVERY_INTERVAL_MS,
   IOT_PROCESSING_STALE_LEASE_WINDOW_MS,
+  type StagedMeasurementEventRef,
   type StagedMeasurementInput,
 } from './ingestion.contracts.js';
 import { IngestionProcessorService } from './ingestion.processor.js';
@@ -46,6 +53,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     @Inject(IngestionProcessorService)
     private readonly processorService: IngestionProcessorService,
     private readonly validatedConsumerService: ValidatedConsumerService,
+    private readonly monitoringService: MonitoringService,
   ) {
     this.config = this.configService.get<IotIngestionConfig>('iotIngestion') ?? DEFAULT_IOT_CONFIG;
   }
@@ -90,7 +98,13 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
         const producerTransactionId = randomUUID();
         const stagedMeasurement = this.toStagedMeasurement(dto, null, producerTransactionId);
+        const stagingStartedAt = Date.now();
         const staged = await this.repository.stageMeasurements([stagedMeasurement]);
+        this.monitoringService.recordServiceHop(
+          'ingest_http_to_staging',
+          'accepted',
+          Date.now() - stagingStartedAt,
+        );
         await this.enqueueStagedEvents(staged);
 
         return {
@@ -128,7 +142,13 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         const batchId = randomUUID();
         const stagedMeasurements = dtos.map((dto) => this.toStagedMeasurement(dto, batchId, batchId));
         this.assertUniqueBatchDedupeKeys(stagedMeasurements);
+        const stagingStartedAt = Date.now();
         const staged = await this.repository.stageMeasurements(stagedMeasurements);
+        this.monitoringService.recordServiceHop(
+          'ingest_http_to_staging',
+          'accepted',
+          Date.now() - stagingStartedAt,
+        );
 
         await this.enqueueStagedEvents(staged);
 
@@ -169,11 +189,22 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
           processedLastHour: 0,
           oldestPendingAgeMs: null,
         },
+        rollupConsumer: {
+          retryCount: 0,
+          processingCount: 0,
+          failedCount: 0,
+          pendingCount: 0,
+          processedLastHour: 0,
+          oldestPendingAgeMs: null,
+        },
       };
     }
 
     const stats = await this.repository.getHealthStats();
     const consumerStats = await this.validatedConsumerService.getHealthSnapshot();
+    const rollupConsumerStats = await this.validatedConsumerService.getHealthSnapshotForConsumer(
+      VALIDATED_EVENT_ROLLUP_CONSUMER,
+    );
     const pendingCount = stats.pendingCount + stats.retryCount + stats.processingCount;
     const backpressureActive = pendingCount >= this.config.IOT_BACKPRESSURE_THRESHOLD;
 
@@ -185,7 +216,15 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
 
     return {
       status:
-        backpressureActive || stats.retryCount > 0 || stats.failedCount > 0 ? 'degraded' : 'healthy',
+        backpressureActive ||
+        stats.retryCount > 0 ||
+        stats.failedCount > 0 ||
+        consumerStats.retryCount > 0 ||
+        consumerStats.failedCount > 0 ||
+        rollupConsumerStats.retryCount > 0 ||
+        rollupConsumerStats.failedCount > 0
+          ? 'degraded'
+          : 'healthy',
       queueEnabled: true,
       backpressureActive,
       pendingCount,
@@ -204,6 +243,14 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         pendingCount: consumerStats.pendingCount,
         processedLastHour: consumerStats.completedLastHour,
         oldestPendingAgeMs: consumerStats.oldestPendingAgeMs,
+      },
+      rollupConsumer: {
+        retryCount: rollupConsumerStats.retryCount,
+        processingCount: rollupConsumerStats.processingCount,
+        failedCount: rollupConsumerStats.failedCount,
+        pendingCount: rollupConsumerStats.pendingCount,
+        processedLastHour: rollupConsumerStats.completedLastHour,
+        oldestPendingAgeMs: rollupConsumerStats.oldestPendingAgeMs,
       },
     };
   }
@@ -233,28 +280,44 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async enqueueStagedEvents(stagedEvents: Array<{ id: string; newlyStaged: boolean }>) {
-    const newEventIds = stagedEvents
+  private async enqueueStagedEvents(stagedEvents: StagedMeasurementEventRef[]) {
+    const newEvents = stagedEvents
       .filter((event) => event.newlyStaged)
-      .map((event) => event.id)
-      .filter((eventId) => !this.enqueuedEventIds.has(eventId));
+      .filter((event) => !this.enqueuedEventIds.has(event.id));
 
-    if (newEventIds.length === 0) {
+    if (newEvents.length === 0) {
       return;
     }
 
-    newEventIds.forEach((eventId) => {
-      this.enqueuedEventIds.add(eventId);
+    newEvents.forEach((event) => {
+      this.enqueuedEventIds.add(event.id);
     });
 
     try {
-      await this.queue.enqueue(newEventIds);
+      for (const [shardId, eventIds] of this.groupStagedEventIdsByShard(newEvents)) {
+        await this.queue.enqueue(eventIds, shardId);
+      }
     } catch (error) {
-      newEventIds.forEach((eventId) => {
-        this.enqueuedEventIds.delete(eventId);
+      newEvents.forEach((event) => {
+        this.enqueuedEventIds.delete(event.id);
       });
       throw error;
     }
+  }
+
+  async replayStagedEventRefs(
+    stagedEvents: Array<Pick<StagedMeasurementEventRef, 'id' | 'routingKey' | 'shardId'>>,
+  ) {
+    this.ensureInitialized();
+
+    await this.enqueueStagedEvents(
+      stagedEvents.map((event) => ({
+        ...event,
+        deviceUid: event.routingKey,
+        idempotencyKey: null,
+        newlyStaged: true,
+      })),
+    );
   }
 
   private async schedulePendingEventRecovery() {
@@ -267,24 +330,28 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
         new Date(Date.now() - IOT_PROCESSING_STALE_LEASE_WINDOW_MS),
       );
 
-      const runnableEventIds = await this.repository.listRunnableEventIds(
+      const runnableEventRefs = await this.repository.listRunnableEventRefs(
         this.config.IOT_QUEUE_CONCURRENCY * this.config.IOT_QUEUE_BATCH_SIZE,
       );
 
-      const eventIdsToQueue = runnableEventIds.filter((eventId) => !this.enqueuedEventIds.has(eventId));
-      if (eventIdsToQueue.length === 0) {
+      const eventRefsToQueue = runnableEventRefs.filter(
+        (eventRef) => !this.enqueuedEventIds.has(eventRef.id),
+      );
+      if (eventRefsToQueue.length === 0) {
         return;
       }
 
-      eventIdsToQueue.forEach((eventId) => {
-        this.enqueuedEventIds.add(eventId);
+      eventRefsToQueue.forEach((eventRef) => {
+        this.enqueuedEventIds.add(eventRef.id);
       });
 
       try {
-        await this.queue.enqueue(eventIdsToQueue);
+        for (const [shardId, eventIds] of this.groupStagedEventIdsByShard(eventRefsToQueue)) {
+          await this.queue.enqueue(eventIds, shardId);
+        }
       } catch (error) {
-        eventIdsToQueue.forEach((eventId) => {
-          this.enqueuedEventIds.delete(eventId);
+        eventRefsToQueue.forEach((eventRef) => {
+          this.enqueuedEventIds.delete(eventRef.id);
         });
         this.logger.error(
           `Failed to enqueue staged ingestion events: ${
@@ -321,6 +388,7 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     const receivedAt = new Date();
     const traceCarrier = getPersistedTraceCarrier();
     const normalizedDeviceUid = dto.deviceUid.trim();
+    const routingKey = normalizeInternalEventRoutingKey(normalizedDeviceUid);
     const normalizedMeasurementQuality = dto.measurementQuality?.trim().toLowerCase() ?? 'valid';
     const measuredAt = new Date(dto.measuredAt);
     const normalizedIdempotencyKey =
@@ -342,6 +410,8 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
       sensorDeviceId: dto.sensorDeviceId ?? null,
       containerId: dto.containerId ?? null,
       deviceUid: normalizedDeviceUid,
+      routingKey,
+      shardId: computeInternalEventShardId(routingKey, this.config.IOT_INGESTION_SHARD_COUNT),
       measuredAt,
       fillLevelPercent: dto.fillLevelPercent,
       temperatureC: dto.temperatureC ?? null,
@@ -420,5 +490,19 @@ export class IngestionService implements OnModuleInit, OnModuleDestroy {
     });
 
     return `derived:${createHash('sha256').update(canonicalPayload).digest('hex')}`;
+  }
+
+  private groupStagedEventIdsByShard(
+    stagedEvents: Array<Pick<StagedMeasurementEventRef, 'id' | 'shardId'>>,
+  ): Array<[number, string[]]> {
+    const grouped = new Map<number, string[]>();
+
+    for (const stagedEvent of stagedEvents) {
+      const eventIds = grouped.get(stagedEvent.shardId) ?? [];
+      eventIds.push(stagedEvent.id);
+      grouped.set(stagedEvent.shardId, eventIds);
+    }
+
+    return [...grouped.entries()].sort(([left], [right]) => left - right);
   }
 }

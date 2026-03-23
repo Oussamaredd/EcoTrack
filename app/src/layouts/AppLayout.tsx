@@ -19,6 +19,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useAuth";
 import LogoutButton from "../components/LogoutButton";
 import BrandLogo from "../components/branding/BrandLogo";
+import { useShellPreferences } from "../state/ShellPreferencesContext";
 import {
   hasAdminAccess,
   hasAgentAccess,
@@ -48,7 +49,6 @@ type PageMeta = {
 };
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 721px)";
-const SIDEBAR_COLLAPSED_STORAGE_KEY = "ecotrack.sidebar.collapsed";
 const SIDEBAR_ID = "app-sidebar-navigation";
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -105,6 +105,14 @@ const getFocusableElements = (container: HTMLElement): HTMLElement[] =>
 export default function AppLayout() {
   const { user } = useCurrentUser();
   const location = useLocation();
+  const {
+    isSidebarCollapsed,
+    isMobileSidebarOpen,
+    toggleSidebarCollapsed,
+    toggleMobileSidebar,
+    setMobileSidebarOpen,
+    closeMobileSidebar,
+  } = useShellPreferences();
   const sidebarRef = React.useRef<HTMLElement | null>(null);
   const toggleButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const wasMobileSidebarOpenRef = React.useRef(false);
@@ -113,17 +121,6 @@ export default function AppLayout() {
       ? true
       : window.matchMedia(DESKTOP_MEDIA_QUERY).matches
   );
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState<boolean>(
-    () => {
-      if (typeof window === "undefined") {
-        return false;
-      }
-      return (
-        window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "1"
-      );
-    }
-  );
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const canAccessAdmin = hasAdminAccess(user);
   const canAccessAgent = hasAgentAccess(user);
   const canAccessCitizen = hasCitizenAccess(user);
@@ -167,34 +164,20 @@ export default function AppLayout() {
   }, []);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    window.localStorage.setItem(
-      SIDEBAR_COLLAPSED_STORAGE_KEY,
-      isSidebarCollapsed ? "1" : "0"
-    );
-  }, [isSidebarCollapsed]);
-
-  React.useEffect(() => {
     setHasAvatarError(false);
   }, [profileImageUrl]);
 
   React.useEffect(() => {
     if (isDesktop) {
-      setIsMobileSidebarOpen(false);
+      setMobileSidebarOpen(false);
     }
-  }, [isDesktop]);
+  }, [isDesktop, setMobileSidebarOpen]);
 
   React.useEffect(() => {
     if (!isDesktop) {
-      setIsMobileSidebarOpen(false);
+      setMobileSidebarOpen(false);
     }
-  }, [location.pathname, isDesktop]);
-
-  const closeMobileSidebar = React.useCallback(() => {
-    setIsMobileSidebarOpen(false);
-  }, []);
+  }, [location.pathname, isDesktop, setMobileSidebarOpen]);
 
   React.useEffect(() => {
     if (isDesktop || !isMobileSidebarOpen || typeof document === "undefined") {
@@ -468,10 +451,10 @@ export default function AppLayout() {
 
   const handleSidebarToggle = () => {
     if (isDesktop) {
-      setIsSidebarCollapsed((current) => !current);
+      toggleSidebarCollapsed();
       return;
     }
-    setIsMobileSidebarOpen((current) => !current);
+    toggleMobileSidebar();
   };
 
   const closeSidebarAfterNavigation = () => {

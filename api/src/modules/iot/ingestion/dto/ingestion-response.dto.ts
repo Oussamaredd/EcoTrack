@@ -31,4 +31,12 @@ export class IngestionHealthDto {
     processedLastHour: number;
     oldestPendingAgeMs: number | null;
   };
+  rollupConsumer!: {
+    retryCount: number;
+    processingCount: number;
+    failedCount: number;
+    pendingCount: number;
+    processedLastHour: number;
+    oldestPendingAgeMs: number | null;
+  };
 }

@@ -1,5 +1,6 @@
 import "../../infrastructure/scripts/node-preload/disable-vite-net-use.cjs";
 
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { registerHooks } from "node:module";
@@ -37,4 +38,30 @@ if (process.env.ECOTRACK_VITE_SPAWN_RESTRICTED === "1") {
   });
 }
 
-await import("../../node_modules/vitest/vitest.mjs");
+const vitestEntrypoints = [
+  path.resolve(currentDir, "../node_modules/vitest/vitest.mjs"),
+  path.resolve(currentDir, "../../node_modules/vitest/vitest.mjs"),
+];
+
+const vitestEntrypoint = vitestEntrypoints.find((candidate) => fs.existsSync(candidate));
+
+if (!vitestEntrypoint) {
+  const exitCode = await new Promise((resolve) => {
+    const child = spawn(
+      "npx",
+      ["-y", "vitest@4.0.17", ...process.argv.slice(2)],
+      {
+        stdio: "inherit",
+        shell: true,
+      },
+    );
+
+    child.on("close", (code) => {
+      resolve(code ?? 1);
+    });
+  });
+
+  process.exit(exitCode);
+}
+
+await import(pathToFileURL(vitestEntrypoint).href);

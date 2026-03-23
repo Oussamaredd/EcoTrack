@@ -8,6 +8,7 @@ import {
 import { render, RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "../hooks/useAuth";
+import { AppStateProvider } from "../state/AppStateProvider";
 
 type RouterOptions = {
   route?: string;
@@ -56,7 +57,13 @@ export function renderWithRouter(
   const Wrapper = ({ children }: { children: ReactNode }) => {
     const content = withProviders && queryClient ? (
       <QueryClientProvider client={queryClient}>
-        {withAuthProvider ? <AuthProvider>{children}</AuthProvider> : children}
+        {withAuthProvider ? (
+          <AuthProvider>
+            <AppStateProvider>{children}</AppStateProvider>
+          </AuthProvider>
+        ) : (
+          <AppStateProvider>{children}</AppStateProvider>
+        )}
       </QueryClientProvider>
     ) : (
       children

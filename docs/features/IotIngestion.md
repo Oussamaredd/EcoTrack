@@ -2,7 +2,7 @@
 
 ## Overview
 
-The IoT ingestion service delivers workbook tasks `M2.1`, `M2.14`, `M3.1`, `M3.2`, and `M3.3` inside the modular monolith. It exposes async HTTP ingestion endpoints for sensor measurements, stages accepted raw events in PostgreSQL, validates them through an internal worker, and projects durable validated events through a dedicated downstream consumer while preserving the standard `controller -> service -> repository -> database` flow.
+The IoT ingestion service delivers workbook tasks `M2.1`, `M2.14`, `M3.1`, `M3.2`, `M3.3`, `M3.10`, `M3.11`, `M3.12`, `M3.14`, and the Development-owned portion of `M3.13` inside the modular monolith. It exposes async HTTP ingestion endpoints for sensor measurements, stages accepted raw events in PostgreSQL, validates them through an internal worker, projects durable validated events through dedicated downstream consumers, and preserves the standard `controller -> service -> repository -> database` flow.
 
 This implementation is optimized for the current Development scope:
 
@@ -12,9 +12,14 @@ This implementation is optimized for the current Development scope:
 - Internal queue workers drain staged event identifiers concurrently.
 - The processing worker validates, normalizes, enriches, retries, and records validated results.
 - A dedicated validated-event consumer projects the durable event stream into `iot.measurements` and container status.
-- Internal event envelopes are stored with event name, routing key, schema version, and active worker-claim metadata so the monolith remains compatible with later Kafka externalization.
+- A second durable consumer projects 10-minute rich-event rollups into `iot.measurement_rollups_10m`.
+- Internal event envelopes are stored with event name, routing key, schema version, explicit producer and consumer authorization policy, and active worker-claim metadata so the monolith remains compatible with later Kafka externalization.
+- A lightweight internal schema-registry catalog tracks the 5 future externalization subjects and compatibility rules without introducing Confluent or Apicurio infrastructure in the Development phase.
+- Queue and recovery scheduling are shard-aware so same-device events stay ordered while different devices can scale in parallel.
+- Admin-only replay endpoints can requeue failed or retryable staged events and validated-event deliveries without bypassing durable state.
 - Backpressure protects the API during sustained spikes.
 - Sensor devices are auto-registered on first contact.
+- Service-hop metrics, per-consumer lag gauges, shard-skew gauges, Grafana dashboards, and chaos scripts now cover the full monolith event pipeline.
 
 Direct MQTT transport and external brokers remain future extensions. The current delivery is a monolith-compatible staged-event pipeline with exactly-once staging semantics, lease-based worker recovery, and observability.
 
@@ -22,12 +27,12 @@ Direct MQTT transport and external brokers remain future extensions. The current
 
 1. `POST /api/iot/v1/measurements` or `POST /api/iot/v1/measurements/batch` validates the payload and returns `202 Accepted`.
 2. The ingestion service stages each raw payload in `iot.ingestion_events` inside one database transaction per request or batch, including the normalized request envelope, producer identity, producer transaction ID, timestamps, and the explicit or derived idempotency key.
-3. The in-memory scheduler queues staged event IDs and the recovery loop re-enqueues runnable or stale leased rows.
+3. The in-memory scheduler queues staged event IDs by virtual shard and the recovery loop re-enqueues runnable or stale leased rows using the same shard ordering.
 4. The processing worker claims staged rows, re-validates schema, enforces business rules, normalizes values, and enriches them with `sensor_devices`, `containers`, and container-type thresholds.
-5. Validated results are written to `iot.validated_measurement_events` with internal event-envelope metadata, and a durable delivery row is created in `iot.validated_event_deliveries`.
-6. The validated-event consumer claims runnable deliveries, continues the originating trace context, and projects the event into `iot.measurements` plus container fill-state updates.
+5. Validated results are written to `iot.validated_measurement_events` with internal event-envelope metadata, and one durable delivery row is created in `iot.validated_event_deliveries` for each authorized consumer.
+6. The validated-event consumers claim runnable deliveries, continue the originating trace context, and project the event into `iot.measurements`, container fill-state updates, and `iot.measurement_rollups_10m`.
 7. Rejected, retryable, failed, and validated states are stored back on `iot.ingestion_events`, while consumer completion and retry state live on `iot.validated_event_deliveries`.
-8. `GET /api/iot/v1/health` reports both ingestion-worker and validated-consumer backlog, retry/failure state, and processed-volume visibility.
+8. `GET /api/iot/v1/health` reports ingestion-worker backlog plus separate timeseries-consumer and rollup-consumer backlog, retry/failure state, and processed-volume visibility.
 
 ## Validation Contract
 
@@ -64,14 +69,21 @@ Worker-side business rules add:
 - `claimed_by_instance_id` is recorded on staged rows and durable deliveries while a worker lease is active, then cleared on completion, retry, or stale-lease recovery.
 - The in-memory queue carries staged event IDs only; it does not replace durable staging.
 - Queue workers run concurrently according to `IOT_QUEUE_CONCURRENCY` and drain jobs up to `IOT_QUEUE_BATCH_SIZE`.
+- Virtual partitions are computed from the normalized routing key so a given device keeps ordered processing while other devices can drain on separate shards.
 - The worker uses processing leases, retry state, and stale-lease recovery so interrupted events return to the runnable pool.
 - Status transitions are `pending -> processing -> validated|retry|failed|rejected`.
 - Durable downstream delivery rows are stored in `iot.validated_event_deliveries` and follow `pending -> processing -> completed|retry|failed`.
+- Two consumers currently own each validated event: `timeseries_projection` and `measurement_rollup_projection`.
 - Validated events and durable deliveries persist `event_name`, `routing_key`, and `schema_version` so the internal contract can later be externalized behind a broker adapter without rewriting the IoT domain flow.
+- Internal event policy checks restrict which producers can emit and which consumers can project the durable event types currently owned by the monolith.
 - The validated-event consumer uses `validatedEventId + measuredAt` idempotency when projecting into `iot.measurements`.
+- The rollup consumer uses `validatedEventId` idempotency when projecting into `iot.measurement_rollups_10m`.
+- Container operational state is only updated when no newer measurement already exists for the same container, preventing stale shard completion from regressing fill state.
 - Retry backoff is exponential with a Development-owned ceiling of 3 attempts.
+- Replay metadata (`replay_count`, `last_replayed_at`, `last_replayed_by_user_id`, `last_replay_reason`) is stored on both staged events and validated-event deliveries.
 - When backlog reaches `IOT_BACKPRESSURE_THRESHOLD`, the queue is paused and the API returns `503` until the backlog drops.
 - `traceparent` and `tracestate` are persisted on staged events, validated events, and delivery rows so the API request trace continues through both worker phases.
+- Grafana dashboards cover 6 logical hop graphs, per-consumer lag, oldest-pending age, and shard skew; Prometheus alerts cover backlog age, consumer imbalance, shard skew, and Development-owned security signals.
 
 ## API Endpoints
 
@@ -124,11 +136,54 @@ Returns:
     "pendingCount": 7,
     "processedLastHour": 44000,
     "oldestPendingAgeMs": 340
+  },
+  "rollupConsumer": {
+    "retryCount": 0,
+    "processingCount": 2,
+    "failedCount": 0,
+    "pendingCount": 6,
+    "processedLastHour": 43880,
+    "oldestPendingAgeMs": 355
   }
 }
 ```
 
 If ingestion is disabled, the endpoint reports `status: "unhealthy"` and `queueEnabled: false`. When retries or failures exist, health degrades even if the HTTP service remains available.
+
+### Admin Replay Endpoints
+
+Admin-only replay controls are exposed under `admin/event-workflow`:
+
+- `GET /api/admin/event-workflow/replay/staged`
+- `POST /api/admin/event-workflow/replay/staged`
+- `GET /api/admin/event-workflow/replay/deliveries`
+- `POST /api/admin/event-workflow/replay/deliveries`
+
+The staged-event replay endpoints list and requeue failed or retryable rows. `rejected` rows are excluded by default and require `allowRejectedReplay=true`.
+
+The delivery replay endpoints list and requeue failed or retryable durable deliveries. Replay operations are audited through the admin audit log and preserve durable replay counters on the source rows.
+
+### `GET /api/iot/v1/rollups/latest`
+
+Returns the latest 10-minute rollups, optionally filtered by `containerId`, `deviceUid`, and `limit`.
+
+```json
+[
+  {
+    "validatedEventId": "uuid-of-validated-event",
+    "deviceUid": "sensor-001",
+    "containerId": "uuid-of-container",
+    "sensorDeviceId": "uuid-of-sensor",
+    "windowStart": "2026-03-23T10:00:00.000Z",
+    "windowEnd": "2026-03-23T10:10:00.000Z",
+    "measurementCount": 8,
+    "averageFillLevelPercent": 71,
+    "fillLevelDeltaPercent": 12,
+    "sensorHealthScore": 86,
+    "schemaVersion": "v1"
+  }
+]
+```
 
 ## Configuration
 
@@ -141,12 +196,56 @@ If ingestion is disabled, the endpoint reports `status: "unhealthy"` and `queueE
 | `IOT_MAX_BATCH_SIZE` | `1000` | Max measurements allowed in one batch request |
 | `IOT_VALIDATED_CONSUMER_CONCURRENCY` | `20` | Concurrent validated-event consumer workers |
 | `IOT_VALIDATED_CONSUMER_BATCH_SIZE` | `250` | Max validated-event delivery IDs drained per worker batch |
+| `IOT_INGESTION_SHARD_COUNT` | `12` | Virtual shard count for staged-ingestion queueing and recovery |
+| `IOT_VALIDATED_CONSUMER_SHARD_COUNT` | `12` | Virtual shard count for validated-delivery queueing and recovery |
 
 Worker safeguards currently use fixed in-code defaults:
 
 - `IOT_PROCESSING_MAX_RETRIES = 3`
 - `IOT_PROCESSING_STALE_LEASE_WINDOW_MS = 300000`
 - `IOT_PROCESSING_RECOVERY_INTERVAL_MS = 1000`
+
+## Internal Schema Registry
+
+The Development-owned internal schema registry keeps 5 future broker subjects versioned inside the `events` boundary:
+
+- `iot.ingestion.request`
+- `iot.ingestion.staged`
+- `iot.measurement.validated`
+- `iot.validated.delivery`
+- `iot.measurement.rollup.10m`
+
+Current compatibility coverage:
+
+- `iot.measurement.validated` includes `v1` and `v1.1`, where `v1.1` adds only an optional field and remains backward-compatible with the current consumers.
+- Producer authorization checks still enforce the current runtime envelope version, while registry compatibility tests protect future externalization paths.
+
+## Observability and Resilience
+
+Local operator surfaces now include:
+
+- Grafana dashboard `EcoTrack IoT Event Pipeline`
+- Grafana dashboard `EcoTrack Security Signals Baseline`
+- Prometheus lag metrics per consumer: `ecotrack_internal_consumer_lag_messages`, `ecotrack_internal_consumer_lag_oldest_pending_age_ms`, and `ecotrack_internal_consumer_lag_shard_skew`
+- Service-hop metrics: `ecotrack_service_hop_events_total` and `ecotrack_service_hop_duration_ms`
+- Security-signal metrics: `ecotrack_http_request_status_total` and `ecotrack_security_signals_total`
+
+The chaos harness for `M3.15` lives at:
+
+```bash
+infrastructure/scripts/iot-chaos-harness.mjs
+```
+
+Example runs:
+
+```bash
+npm run obs:up --workspace=ecotrack-infrastructure
+npm run chaos:iot --workspace=ecotrack-infrastructure -- --scenario api-restart
+npm run chaos:iot --workspace=ecotrack-infrastructure -- --scenario api-restart --api-transport docker
+npm run chaos:iot --workspace=ecotrack-infrastructure -- --scenario replay-recovery --admin-token <admin-jwt>
+```
+
+Each run writes a markdown report under `tmp/chaos` with per-scenario RTO and RPO-gap measurements. The harness defaults to `--api-transport auto`, which falls back to Docker-internal API calls when the backend is not published to the host.
 
 ## Benchmark
 
@@ -179,6 +278,7 @@ Processing-path tests also cover worker latency and validation behavior in:
 - `api/src/tests/iot-ingestion.processor.test.ts`
 - `api/src/tests/iot-ingestion.repository.test.ts`
 - `api/src/tests/iot-ingestion-http.test.ts`
+- `api/src/tests/internal-events.test.ts`
 
 ## Verification
 
@@ -192,6 +292,6 @@ Processing-path tests also cover worker latency and validation behavior in:
 ## Future Extensions
 
 - MQTT transport adapter
-- replay and DLQ controls for later event-workflow tasks
 - future Kafka adapter points when service extraction becomes necessary
-- time-series aggregation and rollup workers
+- external broker adapters for the existing internal schema-registry subjects
+- specialized Security-owned SIEM correlation and alert-routing integrations after the scope freeze is lifted

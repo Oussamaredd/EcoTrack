@@ -1,6 +1,7 @@
 // client/src/components/ErrorHandlingSetup.jsx
 import React from 'react';
 import { ErrorBoundary, ErrorFallback, useErrorHandler as useGlobalErrorHandler } from '../utils/errorHandlers';
+import { initializeWebVitalsTracking } from "../monitoring/webVitals";
 
 // Wrapper component for comprehensive error handling
 export const ErrorHandlingSetup = ({ children }) => {
@@ -21,6 +22,8 @@ export const ErrorHandlingSetup = ({ children }) => {
 
   // Global error handler
   React.useEffect(() => {
+    const disposeWebVitals = initializeWebVitalsTracking();
+
     const handleGlobalError = (event) => {
       handleError(event.error, 'Global error');
     };
@@ -32,6 +35,7 @@ export const ErrorHandlingSetup = ({ children }) => {
     window.addEventListener('unhandledrejection', handleRejection);
 
     return () => {
+      disposeWebVitals();
       window.removeEventListener('error', handleGlobalError);
       window.removeEventListener('unhandledrejection', handleRejection);
     };

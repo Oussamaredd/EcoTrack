@@ -1,27 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   useCreatePlannedTour,
   useOptimizeTourPlan,
   usePlanningAgents,
-  useRebuildTourRoute,
   usePlanningZones,
+  useRebuildTourRoute,
 } from "../hooks/usePlanning";
+import { usePlanningDraftState } from "../state/PlanningDraftContext";
+import type { RoutePoint } from "../state/planningDraft";
 import "../styles/OperationsPages.css";
 
 type Zone = { id: string; name: string };
 type Agent = { id: string; displayName?: string | null; email: string };
-type RoutePoint = {
-  id: string;
-  code: string;
-  label: string;
-  fillLevelPercent: number;
-  order: number;
-};
-
-const toLocalDateTimeInputValue = (date: Date) => {
-  const offsetInMilliseconds = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offsetInMilliseconds).toISOString().slice(0, 16);
-};
 
 const toScheduledIsoString = (value: string) => {
   if (value.trim().length === 0) {
@@ -42,21 +32,22 @@ const getErrorMessage = (error: unknown, fallbackMessage: string) =>
     : fallbackMessage;
 
 export default function ManagerPlanningPage() {
-  const [name, setName] = useState("Daily Optimized Tour");
-  const [zoneId, setZoneId] = useState("");
-  const [scheduledFor, setScheduledFor] = useState(() =>
-    toLocalDateTimeInputValue(new Date()),
-  );
-  const [fillThresholdPercent, setFillThresholdPercent] = useState(70);
-  const [assignedAgentId, setAssignedAgentId] = useState("");
-  const [orderedRoute, setOrderedRoute] = useState<RoutePoint[]>([]);
-  const [lastCreatedTourId, setLastCreatedTourId] = useState<string | null>(null);
-  const [planCreated, setPlanCreated] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [statusTone, setStatusTone] = useState<"success" | "error" | "info">(
-    "success",
-  );
-
+  const {
+    draft,
+    setName,
+    setZoneId,
+    setScheduledFor,
+    setFillThresholdPercent,
+    setAssignedAgentId,
+    setOrderedRoute,
+    moveRouteItem,
+    setCreatedTourId,
+    setPlanCreated,
+    setStatus,
+    clearStatus,
+    resetOptimization,
+    setOptimizationMetrics,
+  } = usePlanningDraftState();
   const zonesQuery = usePlanningZones();
   const agentsQuery = usePlanningAgents();
   const optimizeMutation = useOptimizeTourPlan();
@@ -66,15 +57,16 @@ export default function ManagerPlanningPage() {
   const zones = ((zonesQuery.data as { zones?: Zone[] } | undefined)?.zones ?? []);
   const agents = ((agentsQuery.data as { agents?: Agent[] } | undefined)?.agents ?? []);
 
-  const optimizationMetrics = useMemo(() => {
-    return (
-      (optimizeMutation.data as {
+  const optimizationMetrics = useMemo(
+    () =>
+      draft.optimizationMetrics ??
+      ((optimizeMutation.data as {
         metrics?: { totalDistanceKm?: number; estimatedDurationMinutes?: number };
-      } | undefined)?.metrics
-    );
-  }, [optimizeMutation.data]);
+      } | undefined)?.metrics ?? null),
+    [draft.optimizationMetrics, optimizeMutation.data],
+  );
 
-  const scheduledForIsoString = toScheduledIsoString(scheduledFor);
+  const scheduledForIsoString = toScheduledIsoString(draft.scheduledFor);
   const zonePlaceholderLabel = zonesQuery.isLoading
     ? "Loading zones..."
     : zonesQuery.isError
@@ -87,58 +79,58 @@ export default function ManagerPlanningPage() {
       : "Unassigned";
 
   const resetOptimizationState = () => {
-    setOrderedRoute([]);
-    setPlanCreated(false);
+    resetOptimization();
     optimizeMutation.reset?.();
   };
 
-  const clearStatus = () => {
-    setStatusMessage("");
-  };
-
   const optimizeRoute = async () => {
-    if (!zoneId) {
-      setStatusTone("error");
-      setStatusMessage("Select a zone before optimizing.");
+    if (!draft.zoneId) {
+      setStatus("Select a zone before optimizing.", "error");
       return;
     }
 
     if (!scheduledForIsoString) {
-      setStatusTone("error");
-      setStatusMessage("Enter a valid schedule before optimizing.");
+      setStatus("Enter a valid schedule before optimizing.", "error");
       return;
     }
 
     clearStatus();
     setPlanCreated(false);
-    setLastCreatedTourId(null);
+    setCreatedTourId(null);
 
     try {
       const response = (await optimizeMutation.mutateAsync({
-        zoneId,
+        zoneId: draft.zoneId,
         scheduledFor: scheduledForIsoString,
-        fillThresholdPercent,
+        fillThresholdPercent: draft.fillThresholdPercent,
       })) as {
         route?: RoutePoint[];
-        metrics?: { deferredForNearbyTours?: number };
+        metrics?: {
+          totalDistanceKm?: number;
+          estimatedDurationMinutes?: number;
+          deferredForNearbyTours?: number;
+        };
       };
 
       const nextRoute = Array.isArray(response.route) ? response.route : [];
       const deferredForNearbyTours = response.metrics?.deferredForNearbyTours ?? 0;
       setOrderedRoute(nextRoute);
+      setOptimizationMetrics({
+        totalDistanceKm: response.metrics?.totalDistanceKm,
+        estimatedDurationMinutes: response.metrics?.estimatedDurationMinutes,
+      });
 
       if (nextRoute.length === 0) {
-        setStatusTone("info");
-        setStatusMessage(
+        setStatus(
           deferredForNearbyTours > 0
             ? "All matching containers are already planned on nearby tours for this schedule. Pick another time or adjust the threshold."
             : "No containers match this zone and fill threshold yet.",
+          "info",
         );
         return;
       }
 
-      setStatusTone("success");
-      setStatusMessage(
+      setStatus(
         deferredForNearbyTours > 0
           ? `Route generated. ${deferredForNearbyTours} matching container${
               deferredForNearbyTours === 1 ? " was" : "s were"
@@ -146,46 +138,28 @@ export default function ManagerPlanningPage() {
               deferredForNearbyTours === 1 ? "it is" : "they are"
             } already planned on nearby tours.`
           : "Route generated. Review the stop order, then create the tour.",
+        "success",
       );
     } catch (error) {
       setOrderedRoute([]);
-      setStatusTone("error");
-      setStatusMessage(getErrorMessage(error, "Failed to optimize the route."));
+      setOptimizationMetrics(null);
+      setStatus(getErrorMessage(error, "Failed to optimize the route."), "error");
     }
-  };
-
-  const moveRouteItem = (index: number, direction: -1 | 1) => {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= orderedRoute.length) {
-      return;
-    }
-
-    clearStatus();
-    setPlanCreated(false);
-    setOrderedRoute((current) => {
-      const next = [...current];
-      const [item] = next.splice(index, 1);
-      next.splice(nextIndex, 0, item);
-      return next.map((entry, orderIndex) => ({ ...entry, order: orderIndex + 1 }));
-    });
   };
 
   const submitTour = async () => {
-    if (orderedRoute.length === 0 || !zoneId) {
-      setStatusTone("error");
-      setStatusMessage("Optimize route first before creating tour.");
+    if (draft.orderedRoute.length === 0 || !draft.zoneId) {
+      setStatus("Optimize route first before creating tour.", "error");
       return;
     }
 
-    if (name.trim().length === 0) {
-      setStatusTone("error");
-      setStatusMessage("Enter a tour name before creating the tour.");
+    if (draft.name.trim().length === 0) {
+      setStatus("Enter a tour name before creating the tour.", "error");
       return;
     }
 
     if (!scheduledForIsoString) {
-      setStatusTone("error");
-      setStatusMessage("Enter a valid schedule before creating the tour.");
+      setStatus("Enter a valid schedule before creating the tour.", "error");
       return;
     }
 
@@ -193,50 +167,47 @@ export default function ManagerPlanningPage() {
 
     try {
       const createdTour = (await createMutation.mutateAsync({
-        name: name.trim(),
-        zoneId,
+        name: draft.name.trim(),
+        zoneId: draft.zoneId,
         scheduledFor: scheduledForIsoString,
-        assignedAgentId: assignedAgentId || undefined,
-        orderedContainerIds: orderedRoute.map((item) => item.id),
+        assignedAgentId: draft.assignedAgentId || undefined,
+        orderedContainerIds: draft.orderedRoute.map((item) => item.id),
       })) as { id?: string };
 
       setPlanCreated(true);
-      setLastCreatedTourId(typeof createdTour?.id === "string" ? createdTour.id : null);
-      setStatusTone("success");
-      setStatusMessage(
-        assignedAgentId
+      setCreatedTourId(typeof createdTour?.id === "string" ? createdTour.id : null);
+      setStatus(
+        draft.assignedAgentId
           ? "Planned tour created and assigned successfully."
           : "Planned tour created successfully.",
+        "success",
       );
     } catch (error) {
       setPlanCreated(false);
-      setStatusTone("error");
-      setStatusMessage(
-        getErrorMessage(error, "Failed to create planned tour."),
-      );
+      setStatus(getErrorMessage(error, "Failed to create planned tour."), "error");
     }
   };
 
   const rebuildStoredRoute = async () => {
-    if (!lastCreatedTourId) {
-      setStatusTone("error");
-      setStatusMessage("Create a tour first before rebuilding its stored route.");
+    if (!draft.lastCreatedTourId) {
+      setStatus("Create a tour first before rebuilding its stored route.", "error");
       return;
     }
 
     clearStatus();
 
     try {
-      const response = (await rebuildRouteMutation.mutateAsync(lastCreatedTourId)) as {
+      const response = (await rebuildRouteMutation.mutateAsync(draft.lastCreatedTourId)) as {
         routeGeometry?: { source?: string };
       };
       const routeSource = response.routeGeometry?.source === "live" ? "road route" : "fallback route";
 
-      setStatusTone("success");
-      setStatusMessage(`Stored route rebuilt successfully. Latest persisted result is a ${routeSource}.`);
+      setStatus(
+        `Stored route rebuilt successfully. Latest persisted result is a ${routeSource}.`,
+        "success",
+      );
     } catch (error) {
-      setStatusTone("error");
-      setStatusMessage(getErrorMessage(error, "Failed to rebuild the stored route."));
+      setStatus(getErrorMessage(error, "Failed to rebuild the stored route."), "error");
     }
   };
 
@@ -259,10 +230,10 @@ export default function ManagerPlanningPage() {
             <input
               id="manager-planning-tour-name"
               className="ops-input"
-              value={name}
+              value={draft.name}
               onChange={(event) => {
                 clearStatus();
-                setPlanCreated(false);
+                optimizeMutation.reset?.();
                 setName(event.target.value);
               }}
             />
@@ -277,7 +248,7 @@ export default function ManagerPlanningPage() {
               type="datetime-local"
               className="ops-input"
               aria-describedby="manager-planning-scheduled-for-help"
-              value={scheduledFor}
+              value={draft.scheduledFor}
               onChange={(event) => {
                 clearStatus();
                 setScheduledFor(event.target.value);
@@ -297,7 +268,7 @@ export default function ManagerPlanningPage() {
             <select
               id="manager-planning-zone"
               className="ops-select"
-              value={zoneId}
+              value={draft.zoneId}
               disabled={zonesQuery.isLoading || zonesQuery.isError}
               onChange={(event) => {
                 clearStatus();
@@ -332,7 +303,7 @@ export default function ManagerPlanningPage() {
               min={0}
               max={100}
               className="ops-input"
-              value={fillThresholdPercent}
+              value={draft.fillThresholdPercent}
               onChange={(event) => {
                 clearStatus();
                 setFillThresholdPercent(Number(event.target.value) || 0);
@@ -348,11 +319,10 @@ export default function ManagerPlanningPage() {
             <select
               id="manager-planning-assigned-agent"
               className="ops-select"
-              value={assignedAgentId}
+              value={draft.assignedAgentId}
               disabled={agentsQuery.isLoading}
               onChange={(event) => {
                 clearStatus();
-                setPlanCreated(false);
                 setAssignedAgentId(event.target.value);
               }}
             >
@@ -395,29 +365,29 @@ export default function ManagerPlanningPage() {
             className="ops-btn ops-btn-success"
             onClick={submitTour}
             disabled={
-              createMutation.isPending || orderedRoute.length === 0 || planCreated
+              createMutation.isPending || draft.orderedRoute.length === 0 || draft.planCreated
             }
           >
             {createMutation.isPending
               ? "Creating..."
-              : planCreated
+              : draft.planCreated
                 ? "Tour Created"
-              : "Create Planned Tour"}
+                : "Create Planned Tour"}
           </button>
 
           <button
             type="button"
             className="ops-btn ops-btn-outline"
             onClick={rebuildStoredRoute}
-            disabled={!lastCreatedTourId || rebuildRouteMutation.isPending}
+            disabled={!draft.lastCreatedTourId || rebuildRouteMutation.isPending}
           >
             {rebuildRouteMutation.isPending ? "Rebuilding..." : "Rebuild Stored Route"}
           </button>
         </div>
 
-        {lastCreatedTourId ? (
+        {draft.lastCreatedTourId ? (
           <p className="ops-subtle">
-            Last created tour: {lastCreatedTourId}. Use the rebuild action to refresh the persisted route
+            Last created tour: {draft.lastCreatedTourId}. Use the rebuild action to refresh the persisted route
             without editing the stops.
           </p>
         ) : null}
@@ -432,13 +402,13 @@ export default function ManagerPlanningPage() {
           </p>
         ) : null}
 
-        {orderedRoute.length === 0 ? (
+        {draft.orderedRoute.length === 0 ? (
           <p className="ops-empty ops-mt-sm">
             Run optimization to generate candidate route order.
           </p>
         ) : (
           <ul className="ops-list ops-mt-sm">
-            {orderedRoute.map((item, index) => (
+            {draft.orderedRoute.map((item, index) => (
               <li key={item.id} className="ops-list-item">
                 <p>
                   <strong>#{index + 1}</strong> - {item.code} - {item.label}
@@ -449,7 +419,10 @@ export default function ManagerPlanningPage() {
                   <button
                     type="button"
                     className="ops-btn ops-btn-outline"
-                    onClick={() => moveRouteItem(index, -1)}
+                    onClick={() => {
+                      clearStatus();
+                      moveRouteItem(index, -1);
+                    }}
                     disabled={index === 0}
                   >
                     Up
@@ -457,8 +430,11 @@ export default function ManagerPlanningPage() {
                   <button
                     type="button"
                     className="ops-btn ops-btn-outline"
-                    onClick={() => moveRouteItem(index, 1)}
-                    disabled={index === orderedRoute.length - 1}
+                    onClick={() => {
+                      clearStatus();
+                      moveRouteItem(index, 1);
+                    }}
+                    disabled={index === draft.orderedRoute.length - 1}
                   >
                     Down
                   </button>
@@ -469,19 +445,19 @@ export default function ManagerPlanningPage() {
         )}
       </article>
 
-      {statusMessage ? (
+      {draft.statusMessage ? (
         <p
           className={
-            statusTone === "success"
+            draft.statusTone === "success"
               ? "ops-status ops-status-success"
-              : statusTone === "info"
+              : draft.statusTone === "info"
                 ? "ops-status ops-status-info"
                 : "ops-status ops-status-error"
           }
           role="status"
           aria-live="polite"
         >
-          {statusMessage}
+          {draft.statusMessage}
         </p>
       ) : null}
     </section>

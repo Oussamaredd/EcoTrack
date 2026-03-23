@@ -24,7 +24,7 @@ describe('ValidatedConsumerService', () => {
     };
     const repositoryMock = {
       recoverStuckProcessing: vi.fn().mockResolvedValue(undefined),
-      listRunnableDeliveryIds: vi.fn().mockResolvedValue([]),
+      listRunnableDeliveryRefs: vi.fn().mockResolvedValue([]),
       getHealthStats: vi.fn().mockResolvedValue({
         pendingCount: 0,
         retryCount: 0,
@@ -69,7 +69,10 @@ describe('ValidatedConsumerService', () => {
 
   it('starts the queue processor and schedules recovery when ingestion is enabled', async () => {
     const { service, repositoryMock, queueMock } = createSubject();
-    repositoryMock.listRunnableDeliveryIds.mockResolvedValueOnce(['delivery-1', 'delivery-2']);
+    repositoryMock.listRunnableDeliveryRefs.mockResolvedValueOnce([
+      { id: 'delivery-1', shardId: 2, consumerName: 'timeseries_projection' },
+      { id: 'delivery-2', shardId: 2, consumerName: 'timeseries_projection' },
+    ]);
 
     service.onModuleInit();
     await flushPromises();
@@ -79,8 +82,12 @@ describe('ValidatedConsumerService', () => {
       maxBatchDeliveries: 2,
     });
     expect(repositoryMock.recoverStuckProcessing).toHaveBeenCalled();
-    expect(repositoryMock.listRunnableDeliveryIds).toHaveBeenCalledWith('timeseries_projection', 8);
-    expect(queueMock.enqueue).toHaveBeenCalledWith(['delivery-1', 'delivery-2']);
+    expect(repositoryMock.listRunnableDeliveryRefs).toHaveBeenCalledWith('timeseries_projection', 8);
+    expect(queueMock.enqueue).toHaveBeenCalledWith(
+      'timeseries_projection',
+      ['delivery-1', 'delivery-2'],
+      2,
+    );
 
     service.onModuleDestroy();
     expect(queueMock.stopProcessor).toHaveBeenCalled();
@@ -107,8 +114,18 @@ describe('ValidatedConsumerService', () => {
     await service.enqueueValidatedDeliveryIds(['delivery-1']);
     await service.enqueueValidatedDeliveryIds(['delivery-1', 'delivery-2']);
 
-    expect(queueMock.enqueue).toHaveBeenNthCalledWith(1, ['delivery-1']);
-    expect(queueMock.enqueue).toHaveBeenNthCalledWith(2, ['delivery-2']);
+    expect(queueMock.enqueue).toHaveBeenNthCalledWith(
+      1,
+      'timeseries_projection',
+      ['delivery-1'],
+      0,
+    );
+    expect(queueMock.enqueue).toHaveBeenNthCalledWith(
+      2,
+      'timeseries_projection',
+      ['delivery-2'],
+      0,
+    );
 
     queueMock.enqueue.mockRejectedValueOnce(new Error('queue unavailable'));
 
@@ -116,6 +133,30 @@ describe('ValidatedConsumerService', () => {
     expect((service as any).enqueuedDeliveryIds.has('delivery-3')).toBe(false);
 
     service.onModuleDestroy();
+  });
+
+  it('queues delivery refs independently by consumer and shard', async () => {
+    const { service, queueMock } = createSubject();
+
+    service.onModuleInit();
+    await flushPromises();
+    queueMock.enqueue.mockClear();
+
+    await service.enqueueValidatedDeliveryRefs([
+      { id: 'delivery-1', shardId: 2, consumerName: 'timeseries_projection' },
+      { id: 'delivery-2', shardId: 2, consumerName: 'measurement_rollup_projection' },
+    ]);
+
+    expect(queueMock.enqueue).toHaveBeenCalledWith(
+      'timeseries_projection',
+      ['delivery-1'],
+      2,
+    );
+    expect(queueMock.enqueue).toHaveBeenCalledWith(
+      'measurement_rollup_projection',
+      ['delivery-2'],
+      2,
+    );
   });
 
   it('returns health diagnostics from the repository', async () => {
@@ -141,6 +182,7 @@ describe('ValidatedConsumerService', () => {
       (service as any).processJobs([
         {
           id: 'job-1',
+          consumerName: 'timeseries_projection',
           deliveryIds: ['delivery-9'],
           createdAt: new Date('2026-03-20T10:00:00.000Z'),
         },
@@ -148,5 +190,27 @@ describe('ValidatedConsumerService', () => {
     ).rejects.toThrow('processor failure');
 
     expect((service as any).enqueuedDeliveryIds.has('delivery-9')).toBe(false);
+  });
+
+  it('returns consumer-specific health diagnostics', async () => {
+    const { service, repositoryMock } = createSubject();
+    repositoryMock.getHealthStats.mockResolvedValueOnce({
+      pendingCount: 1,
+      retryCount: 0,
+      processingCount: 0,
+      failedCount: 0,
+      completedLastHour: 4,
+      oldestPendingAgeMs: 50,
+    });
+
+    await expect(service.getHealthSnapshotForConsumer('measurement_rollup_projection')).resolves.toEqual({
+      pendingCount: 1,
+      retryCount: 0,
+      processingCount: 0,
+      failedCount: 0,
+      completedLastHour: 4,
+      oldestPendingAgeMs: 50,
+    });
+    expect(repositoryMock.getHealthStats).toHaveBeenCalledWith('measurement_rollup_projection');
   });
 });

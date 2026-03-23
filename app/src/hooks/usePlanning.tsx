@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../services/api';
+import { invalidatePlanningQueries } from '../state/invalidation';
+import { queryKeys } from '../state/queryKeys';
 
 const PLANNING_METADATA_REFETCH_INTERVAL_MS = 30_000;
 const PLANNING_DASHBOARD_REFETCH_INTERVAL_MS = 20_000;
 
 export const usePlanningZones = () =>
   useQuery({
-    queryKey: ['planning-zones'],
+    queryKey: queryKeys.planningZones,
     queryFn: async () => apiClient.get('/api/planning/zones'),
     staleTime: 5 * 60 * 1000,
     refetchInterval: PLANNING_METADATA_REFETCH_INTERVAL_MS,
@@ -16,11 +18,46 @@ export const usePlanningZones = () =>
 
 export const usePlanningAgents = () =>
   useQuery({
-    queryKey: ['planning-agents'],
+    queryKey: queryKeys.planningAgents,
     queryFn: async () => apiClient.get('/api/planning/agents'),
     staleTime: 60_000,
     refetchInterval: PLANNING_METADATA_REFETCH_INTERVAL_MS,
     refetchIntervalInBackground: false,
+  });
+
+export const usePlanningHeatmap = (
+  zoneId?: string | null,
+  riskTier: 'all' | 'low' | 'medium' | 'high' = 'all',
+  enabled = true,
+) =>
+  useQuery({
+    queryKey: queryKeys.planningHeatmap(zoneId, riskTier),
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+
+      if (zoneId) {
+        searchParams.set('zoneId', zoneId);
+      }
+
+      if (riskTier !== 'all') {
+        searchParams.set('riskTier', riskTier);
+      }
+
+      const query = searchParams.toString();
+      return apiClient.get(`/api/planning/heatmap${query ? `?${query}` : ''}`);
+    },
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: enabled ? PLANNING_DASHBOARD_REFETCH_INTERVAL_MS : false,
+    refetchIntervalInBackground: false,
+  });
+
+export const usePlanningNotifications = (limit = 20, enabled = true) =>
+  useQuery({
+    queryKey: queryKeys.planningNotifications(limit),
+    queryFn: async () => apiClient.get(`/api/planning/notifications?limit=${limit}`),
+    enabled,
+    staleTime: 15_000,
   });
 
 export const useOptimizeTourPlan = () =>
@@ -44,9 +81,8 @@ export const useCreatePlannedTour = () => {
       assignedAgentId?: string;
       orderedContainerIds: string[];
     }) => apiClient.post('/api/planning/create-tour', payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agent-tour'] });
-      queryClient.invalidateQueries({ queryKey: ['planning-dashboard'] });
+    onSuccess: async () => {
+      await invalidatePlanningQueries(queryClient);
     },
   });
 };
@@ -56,17 +92,15 @@ export const useRebuildTourRoute = () => {
 
   return useMutation({
     mutationFn: async (tourId: string) => apiClient.post(`/api/tours/${tourId}/route/rebuild`, {}),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['agent-tour'] });
-      queryClient.invalidateQueries({ queryKey: ['planning-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['manager-tours'] });
+    onSuccess: async () => {
+      await invalidatePlanningQueries(queryClient);
     },
   });
 };
 
 export const useManagerToursList = (enabled = true) =>
   useQuery({
-    queryKey: ['manager-tours'],
+    queryKey: queryKeys.managerTours,
     queryFn: async () => apiClient.get('/api/tours?page=1&pageSize=50'),
     enabled,
     staleTime: 15_000,
@@ -74,7 +108,7 @@ export const useManagerToursList = (enabled = true) =>
 
 export const usePlanningDashboard = (enabled = true) =>
   useQuery({
-    queryKey: ['planning-dashboard'],
+    queryKey: queryKeys.planningDashboard,
     queryFn: async () => apiClient.get('/api/planning/dashboard'),
     enabled,
     staleTime: 30_000,
@@ -88,9 +122,8 @@ export const useEmergencyCollection = () => {
   return useMutation({
     mutationFn: async (payload: { containerId: string; reason: string; assignedAgentId?: string }) =>
       apiClient.post('/api/planning/emergency-collection', payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planning-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['agent-tour'] });
+    onSuccess: async () => {
+      await invalidatePlanningQueries(queryClient);
     },
   });
 };
@@ -108,14 +141,14 @@ export const useGenerateManagerReport = () => {
       format?: string;
     }) => apiClient.post('/api/planning/reports/generate', payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planning-report-history'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.planningReportHistory });
     },
   });
 };
 
 export const usePlanningReportHistory = () =>
   useQuery({
-    queryKey: ['planning-report-history'],
+    queryKey: queryKeys.planningReportHistory,
     queryFn: async () => apiClient.get('/api/planning/reports/history'),
     staleTime: 15_000,
   });
@@ -126,7 +159,7 @@ export const useRegenerateManagerReport = () => {
   return useMutation({
     mutationFn: async (reportId: string) => apiClient.post(`/api/planning/reports/${reportId}/regenerate`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planning-report-history'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.planningReportHistory });
     },
   });
 };

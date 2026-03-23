@@ -17,6 +17,8 @@ export type StagedMeasurementInput = {
   sensorDeviceId: string | null;
   containerId: string | null;
   deviceUid: string;
+  routingKey: string;
+  shardId: number;
   measuredAt: Date;
   fillLevelPercent: number;
   temperatureC: number | null;
@@ -35,6 +37,8 @@ export type StagedMeasurementInput = {
 export type StagedMeasurementEventRef = {
   id: string;
   deviceUid: string;
+  routingKey: string;
+  shardId: number;
   idempotencyKey: string | null;
   newlyStaged: boolean;
 };
@@ -43,6 +47,8 @@ export type ClaimedIngestionEvent = {
   id: string;
   batchId: string | null;
   deviceUid: string;
+  routingKey: string;
+  shardId: number;
   sensorDeviceId: string | null;
   containerId: string | null;
   idempotencyKey: string | null;
@@ -67,6 +73,8 @@ export type NormalizedMeasurementEvent = {
   sourceEventId: string;
   batchId: string | null;
   deviceUid: string;
+  routingKey: string;
+  shardId: number;
   sensorDeviceId: string | null;
   containerId: string | null;
   measuredAt: Date;

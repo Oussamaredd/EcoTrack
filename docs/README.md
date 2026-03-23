@@ -8,6 +8,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `../CHANGELOG.md` - canonical release history from the documented baseline forward
 - `ROADMAP.md` - development roadmap, sprint status, and canonical progress tracking
 - `ROADMAP.md` section "UI Completion Execution Plan (Live)" - agent-dispatch sprint plan for remaining UI gaps
+- `ADR-0002_FRONTEND_STATE_ARCHITECTURE.md` - accepted state-management boundary for shared frontend workflow state
 - `ARCHITECTURE_OVERVIEW.md` - layer boundaries, architecture contract, and Mermaid system views
 - `ENVIRONMENT_SETUP.md` - local/Docker/deploy environment setup
 - `RELEASE_VERSIONING.md` - semantic versioning and release bookkeeping process
@@ -45,6 +46,7 @@ Documentation is split by purpose so day-to-day navigation stays predictable.
 - `openapi/` - OpenAPI reference specs for roadmap phases
 - `guides/` - end-user quick guides (citizen/agent/manager)
 - `features/` - feature-level behavior notes
+- `features/DesignSystem.md` - cross-app UI primitive contract and reuse inventory
 - `specs/` - source requirement inputs and planning references
 - `specs/mobile-platform-integration-contract.md` - mobile/client integration contract for the future Expo layer
 - `specs/mobile-layer-rollout-plan.md` - architecture-first rollout plan for adapting `poemapp` into EcoTrack

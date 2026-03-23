@@ -13,6 +13,8 @@ const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
 const DEFAULT_RATE_LIMIT_MAX_REQUESTS = 120;
 const DEFAULT_LOG_LEVEL = 'info';
 const DEFAULT_LOG_FORMAT: AppConfig['logging']['format'] = 'json';
+const DEFAULT_LOGSTASH_HOST = 'logstash';
+const DEFAULT_LOGSTASH_PORT = 5001;
 const DEFAULT_ROUTING_API_BASE_URL = 'https://router.project-osrm.org';
 const DEFAULT_ROUTING_TIMEOUT_MS = 10_000;
 const DEFAULT_ROUTING_FAILURE_THRESHOLD = 5;
@@ -64,6 +66,11 @@ export type AppConfig = {
   logging: {
     level: string;
     format: 'json' | 'pretty';
+    logstash: {
+      enabled: boolean;
+      host: string;
+      port: number;
+    };
   };
   observability: {
     tracing: {
@@ -99,6 +106,11 @@ export default (): AppConfig => ({
   logging: {
     level: normalizeLogLevel(process.env.LOG_LEVEL),
     format: normalizeLogFormat(process.env.LOG_FORMAT, process.env.NODE_ENV),
+    logstash: {
+      enabled: process.env.ENABLE_LOGSTASH?.trim().toLowerCase() === 'true',
+      host: process.env.LOGSTASH_HOST?.trim() || DEFAULT_LOGSTASH_HOST,
+      port: toPositiveInt(process.env.LOGSTASH_PORT, DEFAULT_LOGSTASH_PORT),
+    },
   },
   observability: {
     tracing: {

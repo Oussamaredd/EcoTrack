@@ -1,9 +1,11 @@
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { MonitoringModule } from '../modules/monitoring/monitoring.module.js';
+import { MonitoringController } from '../modules/monitoring/monitoring.controller.js';
+import { MonitoringRepository } from '../modules/monitoring/monitoring.repository.js';
 import { MonitoringService } from '../modules/monitoring/monitoring.service.js';
 
 describe('Monitoring endpoints', () => {
@@ -12,7 +14,64 @@ describe('Monitoring endpoints', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [MonitoringModule],
+      controllers: [MonitoringController],
+      providers: [
+        MonitoringService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string) => {
+              if (key === 'iotIngestion.IOT_BACKPRESSURE_THRESHOLD') {
+                return 100000;
+              }
+
+              if (key === 'iotIngestion.IOT_INGESTION_SHARD_COUNT') {
+                return 12;
+              }
+
+              if (key === 'iotIngestion.IOT_VALIDATED_CONSUMER_SHARD_COUNT') {
+                return 12;
+              }
+
+              return undefined;
+            },
+          },
+        },
+        {
+          provide: MonitoringRepository,
+          useValue: {
+            getOperationalMetricsSnapshot: async () => ({
+              ingestionByStatus: {
+                pending: 0,
+                retry: 0,
+                processing: 0,
+                failed: 0,
+                rejected: 0,
+                validated: 1,
+              },
+              deliveryByStatus: {
+                pending: 0,
+                retry: 0,
+                processing: 0,
+                failed: 0,
+                completed: 1,
+              },
+              ingestionOldestPendingAgeMs: null,
+              deliveryOldestPendingAgeMs: null,
+              validatedLastHour: 1,
+              completedLastHour: 1,
+              criticalContainers: 0,
+              attentionContainers: 0,
+              maxContainerFillLevel: 50,
+              openAlertsBySeverity: [],
+              ingestionBacklogByShard: [],
+              deliveryBacklogByShard: [],
+              deliveryLagByConsumer: [],
+              recentAuditActions: [],
+            }),
+          },
+        },
+      ],
     }).compile();
 
     app = moduleRef.createNestApplication();
@@ -95,6 +154,12 @@ describe('Monitoring endpoints', () => {
     expect(response.text).toContain('ecotrack_realtime_active_connections{transport="sse"} 2');
     expect(response.text).toContain('ecotrack_realtime_active_connections{transport="ws"} 1');
     expect(response.text).toContain('ecotrack_realtime_emitted_events_total 42');
+    expect(response.text).toContain(
+      'ecotrack_internal_consumer_lag_messages',
+    );
+    expect(response.text).toContain(
+      'ecotrack_internal_consumer_lag_shard_skew',
+    );
     expect(response.text).toContain(
       'ecotrack_realtime_last_event_name_info{event="planning.dashboard.snapshot"} 1',
     );

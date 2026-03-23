@@ -1,10 +1,21 @@
-import { Controller, Get, InternalServerErrorException } from '@nestjs/common';
-import type { INestApplication } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  InternalServerErrorException,
+  type INestApplication,
+  type MiddlewareConsumer,
+  Module,
+  type NestModule,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { MonitoringModule } from '../modules/monitoring/monitoring.module.js';
+import { HttpMetricsMiddleware } from '../modules/monitoring/http-metrics.middleware.js';
+import { MonitoringController } from '../modules/monitoring/monitoring.controller.js';
+import { MonitoringRepository } from '../modules/monitoring/monitoring.repository.js';
+import { MonitoringService } from '../modules/monitoring/monitoring.service.js';
 
 @Controller('tickets')
 class TicketMetricsTestController {
@@ -22,13 +33,79 @@ class FailingMetricsTestController {
   }
 }
 
+@Module({
+  controllers: [MonitoringController, TicketMetricsTestController, FailingMetricsTestController],
+  providers: [
+    MonitoringService,
+    HttpMetricsMiddleware,
+    {
+      provide: ConfigService,
+      useValue: {
+        get: (key: string) => {
+          if (key === 'iotIngestion.IOT_BACKPRESSURE_THRESHOLD') {
+            return 100000;
+          }
+
+          if (key === 'iotIngestion.IOT_INGESTION_SHARD_COUNT') {
+            return 12;
+          }
+
+          if (key === 'iotIngestion.IOT_VALIDATED_CONSUMER_SHARD_COUNT') {
+            return 12;
+          }
+
+          return undefined;
+        },
+      },
+    },
+    {
+      provide: MonitoringRepository,
+      useValue: {
+        getOperationalMetricsSnapshot: async () => ({
+          ingestionByStatus: {
+            pending: 0,
+            retry: 0,
+            processing: 0,
+            failed: 0,
+            rejected: 0,
+            validated: 1,
+          },
+          deliveryByStatus: {
+            pending: 0,
+            retry: 0,
+            processing: 0,
+            failed: 0,
+            completed: 1,
+          },
+          ingestionOldestPendingAgeMs: null,
+          deliveryOldestPendingAgeMs: null,
+          validatedLastHour: 1,
+          completedLastHour: 1,
+          criticalContainers: 0,
+          attentionContainers: 0,
+          maxContainerFillLevel: 50,
+          openAlertsBySeverity: [],
+          ingestionBacklogByShard: [],
+          deliveryBacklogByShard: [],
+          deliveryLagByConsumer: [],
+          recentAuditActions: [],
+        }),
+      },
+    },
+  ],
+})
+class TestMonitoringModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(HttpMetricsMiddleware).forRoutes('*');
+  }
+}
+
 describe('HTTP metrics middleware', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [MonitoringModule],
-      controllers: [TicketMetricsTestController, FailingMetricsTestController],
+      imports: [TestMonitoringModule],
     }).compile();
 
     app = moduleRef.createNestApplication();
@@ -56,10 +133,16 @@ describe('HTTP metrics middleware', () => {
       'ecotrack_http_request_errors_total{method="GET",path="/api/fail",status_class="5xx"} 1',
     );
     expect(response.text).toContain(
+      'ecotrack_http_request_status_total{method="GET",path="/api/fail",status_code="500"} 1',
+    );
+    expect(response.text).toContain(
       'ecotrack_http_request_duration_ms_bucket{method="GET",path="/api/tickets/:id",le="+Inf"} 2',
     );
     expect(response.text).toContain(
       'ecotrack_http_request_duration_ms_count{method="GET",path="/api/tickets/:id"} 2',
+    );
+    expect(response.text).toContain(
+      'ecotrack_security_signals_total{signal="server_error",severity="critical"} 1',
     );
     expect(response.text).toContain(
       'ecotrack_http_request_duration_ms_sum{method="GET",path="/api/tickets/:id"} ',

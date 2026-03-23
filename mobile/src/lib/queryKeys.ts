@@ -5,6 +5,8 @@ export const queryKeys = {
   citizenHistoryBase: ["citizen-history"] as const,
   citizenHistory: (page: number, pageSize: number) =>
     ["citizen-history", page, pageSize] as const,
+  citizenNotifications: (limit = 20) => ["citizen-notifications", limit] as const,
+  notificationDevice: ["notification-device"] as const,
   containers: (status?: string) => ["containers", status ?? "all"] as const,
   containerLookup: (status: string | undefined, search: string) =>
     ["containers", status ?? "all", "search", search] as const,

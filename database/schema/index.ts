@@ -43,8 +43,9 @@ type IotRawMeasurementPayload = {
 type IotValidatedMeasurementPayload = {
   sourceEventId: string;
   eventName: string;
-  schemaVersion: 'v1';
+  schemaVersion: string;
   routingKey: string;
+  shardId: number;
   producerName: string;
   producerTransactionId: string | null;
   deviceUid: string;
@@ -60,6 +61,19 @@ type IotValidatedMeasurementPayload = {
   criticalThreshold: number | null;
   receivedAt: string;
   processedAt: string;
+};
+
+type IotMeasurementRollupPayload = {
+  validatedEventId: string;
+  deviceUid: string;
+  containerId: string | null;
+  windowStart: string;
+  windowEnd: string;
+  measurementCount: number;
+  averageFillLevelPercent: number;
+  fillLevelDeltaPercent: number;
+  sensorHealthScore: number;
+  schemaVersion: string;
 };
 
 type BillingRateRuleFilters = {
@@ -251,6 +265,8 @@ export const ingestionEvents = iotSchema.table(
     deviceUid: text('device_uid').notNull(),
     sensorDeviceId: uuid('sensor_device_id').references(() => sensorDevices.id, { onDelete: 'set null' }),
     containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
+    routingKey: text('routing_key').default('').notNull(),
+    shardId: integer('shard_id').default(0).notNull(),
     idempotencyKey: text('idempotency_key'),
     measuredAt: timestamp('measured_at', { withTimezone: true }).notNull(),
     fillLevelPercent: integer('fill_level_percent').notNull(),
@@ -272,6 +288,12 @@ export const ingestionEvents = iotSchema.table(
     producerName: text('producer_name').default('iot_ingestion_http').notNull(),
     producerTransactionId: uuid('producer_transaction_id').defaultRandom().notNull(),
     claimedByInstanceId: text('claimed_by_instance_id'),
+    replayCount: integer('replay_count').default(0).notNull(),
+    lastReplayedAt: timestamp('last_replayed_at', { withTimezone: true }),
+    lastReplayedByUserId: uuid('last_replayed_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    lastReplayReason: text('last_replay_reason'),
     traceparent: text('traceparent'),
     tracestate: text('tracestate'),
     receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
@@ -288,6 +310,11 @@ export const ingestionEvents = iotSchema.table(
       table.measuredAt,
     ),
     batchIdx: index('ingestion_events_batch_idx').on(table.batchId),
+    shardStatusNextAttemptIdx: index('ingestion_events_shard_status_next_attempt_idx').on(
+      table.shardId,
+      table.processingStatus,
+      table.nextAttemptAt,
+    ),
     deviceIdempotencyIdx: uniqueIndex('ingestion_events_device_idempotency_idx').on(
       table.deviceUid,
       table.idempotencyKey,
@@ -317,6 +344,7 @@ export const validatedMeasurementEvents = iotSchema.table(
     normalizedPayload: jsonb('normalized_payload').$type<IotValidatedMeasurementPayload>().default(sql`'{}'::jsonb`).notNull(),
     eventName: text('event_name').default('iot.measurement.validated').notNull(),
     routingKey: text('routing_key').default('').notNull(),
+    shardId: integer('shard_id').default(0).notNull(),
     schemaVersion: text('schema_version').default('v1').notNull(),
     producerName: text('producer_name').default('iot_ingestion_worker').notNull(),
     producerTransactionId: uuid('producer_transaction_id'),
@@ -333,6 +361,44 @@ export const validatedMeasurementEvents = iotSchema.table(
     sensorMeasuredAtIdx: index('validated_measurement_events_sensor_measured_at_idx').on(
       table.sensorDeviceId,
       table.measuredAt,
+    ),
+    shardEmittedAtIdx: index('validated_measurement_events_shard_emitted_at_idx').on(
+      table.shardId,
+      table.emittedAt,
+    ),
+  }),
+);
+
+export const measurementRollups10m = iotSchema.table(
+  'measurement_rollups_10m',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    validatedEventId: uuid('validated_event_id')
+      .notNull()
+      .references(() => validatedMeasurementEvents.id, { onDelete: 'cascade' })
+      .unique(),
+    deviceUid: text('device_uid').notNull(),
+    sensorDeviceId: uuid('sensor_device_id').references(() => sensorDevices.id, { onDelete: 'set null' }),
+    containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
+    windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+    windowEnd: timestamp('window_end', { withTimezone: true }).notNull(),
+    measurementCount: integer('measurement_count').default(1).notNull(),
+    averageFillLevelPercent: integer('average_fill_level_percent').notNull(),
+    fillLevelDeltaPercent: integer('fill_level_delta_percent').notNull(),
+    sensorHealthScore: integer('sensor_health_score').notNull(),
+    schemaVersion: text('schema_version').default('v1').notNull(),
+    sourcePayload: jsonb('source_payload').$type<IotMeasurementRollupPayload>().default(sql`'{}'::jsonb`).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    containerWindowEndIdx: index('measurement_rollups_10m_container_window_end_idx').on(
+      table.containerId,
+      table.windowEnd,
+    ),
+    deviceWindowEndIdx: index('measurement_rollups_10m_device_window_end_idx').on(
+      table.deviceUid,
+      table.windowEnd,
     ),
   }),
 );
@@ -354,7 +420,14 @@ export const validatedEventDeliveries = iotSchema.table(
     lastError: text('last_error'),
     eventName: text('event_name').default('iot.measurement.validated').notNull(),
     routingKey: text('routing_key').default('').notNull(),
+    shardId: integer('shard_id').default(0).notNull(),
     claimedByInstanceId: text('claimed_by_instance_id'),
+    replayCount: integer('replay_count').default(0).notNull(),
+    lastReplayedAt: timestamp('last_replayed_at', { withTimezone: true }),
+    lastReplayedByUserId: uuid('last_replayed_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    lastReplayReason: text('last_replay_reason'),
     traceparent: text('traceparent'),
     tracestate: text('tracestate'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -366,6 +439,12 @@ export const validatedEventDeliveries = iotSchema.table(
       table.validatedEventId,
     ),
     statusNextAttemptIdx: index('validated_event_deliveries_status_next_attempt_idx').on(
+      table.processingStatus,
+      table.nextAttemptAt,
+    ),
+    consumerShardStatusNextAttemptIdx: index('validated_event_deliveries_consumer_shard_status_next_attempt_idx').on(
+      table.consumerName,
+      table.shardId,
       table.processingStatus,
       table.nextAttemptAt,
     ),
@@ -895,6 +974,69 @@ export const notificationDeliveries = notifySchema.table(
   }),
 );
 
+export const notificationDevices = notifySchema.table(
+  'notification_devices',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').default('expo').notNull(),
+    platform: text('platform').notNull(),
+    pushToken: text('push_token').notNull(),
+    status: text('status').default('active').notNull(),
+    appVersion: text('app_version'),
+    deviceLabel: text('device_label'),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+    lastRegisteredAt: timestamp('last_registered_at', { withTimezone: true }).defaultNow().notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    providerTokenIdx: uniqueIndex('notification_devices_provider_token_idx').on(
+      table.provider,
+      table.pushToken,
+    ),
+    userStatusIdx: index('notification_devices_user_status_idx').on(
+      table.userId,
+      table.status,
+      table.lastSeenAt,
+    ),
+  }),
+);
+
+export const notificationRecipients = notifySchema.table(
+  'notification_recipients',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    notificationId: uuid('notification_id')
+      .notNull()
+      .references(() => notifications.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    deliveryChannel: text('delivery_channel').default('inbox').notNull(),
+    deepLink: text('deep_link'),
+    payload: jsonb('payload').$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+    status: text('status').default('unread').notNull(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    notificationUserIdx: uniqueIndex('notification_recipients_notification_user_idx').on(
+      table.notificationId,
+      table.userId,
+    ),
+    userStatusCreatedIdx: index('notification_recipients_user_status_created_idx').on(
+      table.userId,
+      table.status,
+      table.createdAt,
+    ),
+  }),
+);
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   assignedTickets: many(tickets, {
     relationName: 'tickets_assigneeId_users_id',
@@ -918,6 +1060,8 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   acknowledgedAlerts: many(alertEvents, {
     relationName: 'alert_events_acknowledgedByUserId_users_id',
   }),
+  notificationDevices: many(notificationDevices),
+  notificationRecipients: many(notificationRecipients),
 }));
 
 export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
@@ -1289,12 +1433,31 @@ export const systemSettingsRelations = relations(systemSettings, ({ one }) => ({
 
 export const notificationsRelations = relations(notifications, ({ many }) => ({
   deliveries: many(notificationDeliveries),
+  recipients: many(notificationRecipients),
 }));
 
 export const notificationDeliveriesRelations = relations(notificationDeliveries, ({ one }) => ({
   notification: one(notifications, {
     fields: [notificationDeliveries.notificationId],
     references: [notifications.id],
+  }),
+}));
+
+export const notificationDevicesRelations = relations(notificationDevices, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationDevices.userId],
+    references: [users.id],
+  }),
+}));
+
+export const notificationRecipientsRelations = relations(notificationRecipients, ({ one }) => ({
+  notification: one(notifications, {
+    fields: [notificationRecipients.notificationId],
+    references: [notifications.id],
+  }),
+  user: one(users, {
+    fields: [notificationRecipients.userId],
+    references: [users.id],
   }),
 }));
 export type User = typeof users.$inferSelect;
@@ -1334,4 +1497,6 @@ export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 export type BillingSourceAllocation = typeof billingSourceAllocations.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type NotificationDelivery = typeof notificationDeliveries.$inferSelect;
+export type NotificationDevice = typeof notificationDevices.$inferSelect;
+export type NotificationRecipient = typeof notificationRecipients.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

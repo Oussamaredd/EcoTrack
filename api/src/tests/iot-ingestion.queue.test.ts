@@ -33,9 +33,9 @@ describe('InMemoryIngestionQueue', () => {
   it('tracks pending measurements and drains them with the configured concurrency', async () => {
     queue = new InMemoryIngestionQueue();
 
-    await queue.enqueue(['event-1']);
-    await queue.enqueue(['event-2']);
-    await queue.enqueue(['event-3']);
+    await queue.enqueue(['event-1'], 1);
+    await queue.enqueue(['event-2'], 2);
+    await queue.enqueue(['event-3'], 3);
 
     const deferredBatches = [createDeferred(), createDeferred(), createDeferred()];
     let observedActiveWorkers = 0;

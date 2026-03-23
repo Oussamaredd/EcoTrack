@@ -159,7 +159,8 @@ Status legend:
 - Workbook expected outcome: 1. Configuration de 10 règles d'alerte Prometheus. 2. Déploiement d'Alertmanager. 3. Test de notification (Slack/PagerDuty) fonctionnel.
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with 10+ Prometheus alert rules covering API availability, latency, 5xx rate, IoT backlog, queue age, failed ingestion events, failed validated-event deliveries, critical container fill state, and open critical alert events. The `obs` compose profile now includes Alertmanager plus a local webhook sink, Prometheus is wired to Alertmanager, and receiver routing, grouping, inhibition, and env-driven Slack/PagerDuty handoff values are documented and configurable.
 
 ### M3.6 - Mise en place de la Logique de Sécurité Kafka (ACL)
 
@@ -167,7 +168,8 @@ Status legend:
 - Workbook expected outcome: 1. 5 ACLs définies et implémentées (Producer/Consumer). 2. Test d'accès non autorisé au topic critique bloqué.
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as an internal event authorization registry for the monolith transport. Durable event contracts now define allowed producers, allowed consumers, replayability, schema version, routing-key policy, and future externalization metadata. The ingestion worker enforces authorized producers before durable event emission, the validated-event consumer enforces authorized consumers before projection, and unit tests now block unauthorized producer or consumer access.
 
 ### M3.7 - Configuration du Log Aggregator (Loki/Elasticsearch)
 
@@ -175,7 +177,8 @@ Status legend:
 - Workbook expected outcome: 1. Cluster Loki/ELK déployé et stable. 2. 5 Microservices configurés pour envoyer leurs logs. 3. Recherche de log par Trace ID fonctionnelle.
 - Monolith adaptation: Deliver event processing via DB outbox/inbox workers and retries instead of external broker-cluster operations.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through the existing ELK-first observability stack. The API runtime now supports Logstash TCP shipping, the `obs` compose profile keeps Elasticsearch, Logstash, and Kibana wired, Grafana no longer points at a missing Loki service, and worker processors emit structured searchable fields including `traceId`, `eventId`, `validatedEventId`, `deliveryId`, `producerName`, and `consumerName`.
 
 ### M3.8 - Implémentation du Mécanisme de Retraitement des Messages
 
@@ -183,7 +186,8 @@ Status legend:
 - Workbook expected outcome: 1. API de retraitement fonctionnelle. 2. Logique de filtrage des messages à rejouer. 3. Test de rejeu d'un message DLQ réussi.
 - Monolith adaptation: Deliver event processing via DB outbox/inbox workers and retries instead of external broker-cluster operations.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as admin-only replay controls backed by PostgreSQL state instead of DLQ topics. The monolith now exposes list and replay endpoints for failed or retryable staged ingestion rows and validated-event deliveries, stores replay metadata on durable rows, requeues replayed work through the shard-aware workers, and records replay actions in the admin audit log.
 
 ### M3.9 - Optimisation des Partitions Kafka
 
@@ -191,7 +195,8 @@ Status legend:
 - Workbook expected outcome: 1. Audit de la charge sur les Topics. 2. Nombre de partitions optimisé (Facteurs 3/6/9) pour équilibrer la charge. 3. Mesure de l'amélioration du débit.
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as virtual shard optimization for the monolith event pipeline. The staged-ingestion queue and validated-delivery queue now group work by deterministic shard derived from the routing key, configuration exposes shard-count knobs for both worker phases, DB indexes support shard-aware claiming, and container state projection guards against stale out-of-order completion overwriting newer measurements.
 
 ### M3.10 - Mise en place de l'Observabilité du Service Mesh (Istio/Linkerd)
 
@@ -199,7 +204,8 @@ Status legend:
 - Workbook expected outcome: 1. Dashboard Grafana spécifique pour le Service Mesh. 2. Métriques de Latence et Traffic entre 5 Microservices.
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as a monolith-equivalent service-hop observability surface. The API now emits hop throughput plus p95 and p99 latency histograms for HTTP ingestion, staged-event claim, validation, validated-delivery claim, timeseries projection, and rollup projection; Grafana includes the `EcoTrack IoT Event Pipeline` dashboard; Jaeger plus structured `traceId` logging enables trace-to-log pivots; and the `obs` Docker Compose profile brings Prometheus, Grafana, Jaeger, ELK, Alertmanager, backend, and database dependencies up together.
 
 ### M3.11 - Dév. du Microservice de Traitement d'Événements Riches
 
@@ -207,7 +213,8 @@ Status legend:
 - Workbook expected outcome: 1. Code du Stream Processor pour l'agrégation. 2. Test de latence du traitement < 1 seconde. 3. 3 indicateurs pré-calculés.
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as the `measurement_rollup_projection` consumer and `MeasurementRollupsModule`. Validated IoT events now fan out to a second durable consumer that writes `iot.measurement_rollups_10m` and exposes `GET /api/iot/v1/rollups/latest`. The rollup path precomputes 10-minute measurement count, average fill level, fill delta, and sensor-health score without re-aggregating raw measurements at query time.
 
 ### M3.12 - Déploiement du Schema Registry (Avantages Avro)
 
@@ -215,7 +222,8 @@ Status legend:
 - Workbook expected outcome: 1. Schema Registry opérationnel. 2. 5 schémas enregistrés (Backward/Forward Compatibility). 3. Test de mise à jour de schéma sans casser le Consumer.
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as an internal schema-registry service inside the `events` boundary. Five subjects are cataloged for future externalization, compatibility metadata is stored alongside the existing envelope contract, and tests cover a backward-compatible `v1.1` optional-field evolution for `iot.measurement.validated` without changing the active consumer path.
 
 ### M3.13 - Configuration du Dashboard de Sécurité (SIEM-like)
 
@@ -223,7 +231,8 @@ Status legend:
 - Workbook expected outcome: 1. Dashboard Grafana/Kibana pour la Sécurité. 2. 5 indicateurs de sécurité (Failures/s, 4xx/5xx). 3. Alertes configurées sur les pics d'erreurs d'autorisation (403).
 - Monolith adaptation: Deliver event processing via DB outbox/inbox workers and retries instead of external broker-cluster operations.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE_DEV_BASELINE`
+- Completion note: Delivered only as the Development-owned security-signal baseline permitted by the scope freeze. Grafana now includes `EcoTrack Security Signals Baseline`, Prometheus exposes exact-status and derived security-signal counters, alerting covers authorization-denial spikes and login failures, and audit plus WebSocket auth-failure signals are visible. Full SIEM, SOC, and specialty-run integrations remain explicitly deferred to Security handoff.
 
 ### M3.14 - Implémentation du Monitoring du Lag Kafka
 
@@ -231,7 +240,8 @@ Status legend:
 - Workbook expected outcome: 1. Alerte Prometheus si le Lag dépasse un seuil critique (ex: 5 minutes). 2. Visualisation du Lag sur Grafana.
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Kafka lag is adapted to the monolith queue model through per-consumer lag gauges, oldest-pending age, consumer imbalance, and shard-skew metrics. Grafana visualizes these in the IoT pipeline dashboard, and Prometheus alerts now detect sustained lag above 5 minutes plus one consumer falling materially behind its peers.
 
 ### M3.15 - Test de Résilience Kafka (Chaos Engineering)
 
@@ -239,7 +249,8 @@ Status legend:
 - Workbook expected outcome: 1. Script de simulation de panne (Chaos Mesh). 2. Rapport de test confirmant l'absence de perte de données. 3. Mesure du temps de reprise.
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as the Development-only chaos harness `infrastructure/scripts/iot-chaos-harness.mjs`. The harness seeds the IoT pipeline, injects backend restart, database outage, stale-lease recovery, and replay-recovery scenarios against Docker Compose, then writes markdown reports with baseline and final metrics snapshots, DB reconciliation counts, RTO measurements, and RPO gaps under `tmp/chaos`.
 
 ## Module M4
 
@@ -377,7 +388,8 @@ Status legend:
 - Workbook expected outcome: 1. ADR justifiant le choix du State Manager. 2. 5 stores/slices d'état définis (Auth, Données IoT, Tournées). 3. Connexion des composants à l'état global.
 - Monolith adaptation: Implement in `app` with responsive/accessibility constraints and stable API consumption from the monolith backend.
 - Lane: `Dev App`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with `docs/ADR-0002_FRONTEND_STATE_ARCHITECTURE.md`, centralized query keys and invalidation helpers in `app/src/state`, and shared auth/shell/planning/dashboard/notifications slices wired into the app provider tree.
 
 ### M5.7 - Développement de la Vue Carte Thermique (Heatmap)
 
@@ -385,7 +397,8 @@ Status legend:
 - Workbook expected outcome: 1. Code du composant de visualisation cartographique. 2. Connexion aux données agrégées (Time-Series DB). 3. 3 niveaux de couleur (Risque Faible, Moyen, Élevé) fonctionnels.
 - Monolith adaptation: Implement in `app` with responsive/accessibility constraints and stable API consumption from the monolith backend.
 - Lane: `Dev App`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with `GET /api/planning/heatmap`, a Leaflet manager heatmap panel, zone summaries, and deterministic low/medium/high risk tiers sourced from recent measurement rollups and container joins.
 
 ### M5.8 - Optimisation de la Performance Front-End (Web Vitals)
 
@@ -393,7 +406,8 @@ Status legend:
 - Workbook expected outcome: 1. Rapport d'audit Lighthouse Performance > 80. 2. Mise en place du Lazy Loading (5 composants non critiques). 3. Minification des assets Front-End.
 - Monolith adaptation: Implement in `app` with responsive/accessibility constraints and stable API consumption from the monolith backend.
 - Lane: `Dev App`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered by splitting the dashboard into lazy-loaded non-critical panels, keeping bundle-budget enforcement in place, and forwarding field Web Vitals to `/api/metrics/frontend`.
 
 ### M5.10 - Mise en place d'une Politique de Cache (Service Workers)
 
@@ -408,17 +422,19 @@ Status legend:
 
 - Workbook detailed description: Définir le workflow de réception et d'affichage des notifications Push pour l'App Citoyen (confirmation de signalement, alerte conteneur plein).
 - Workbook expected outcome: 1. Déploiement et configuration du service (FCM/APNS). 2. Logique de réception, permission et affichage dans l'App Mobile. 3. Test d'une notification Push reçue en temps réel.
-- Monolith adaptation: Implement in `app` with responsive/accessibility constraints and stable API consumption from the monolith backend.
+- Monolith adaptation: Implement in `mobile` and `api` with Expo notifications, citizen inbox/read-state endpoints, and stable API consumption from the monolith backend.
 - Lane: `Dev App`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with citizen device registration, inbox/read-state persistence, Expo push dispatch via the API, and mobile deep-link handling into the citizen history flow.
 
 ### M5.14 - Implémentation de la Gestion d'Erreur Utilisateur (Sentry/LogRocket)
 
 - Workbook detailed description: Configurer un outil de suivi des erreurs Front-End (erreurs JS non capturées, plantages Mobile) pour une détection rapide des bugs en production.
-- Workbook expected outcome: 1. Intégration de l'outil Sentry ou équivalent. 2. Configuration du suivi de 5 erreurs critiques (API 5xx, crash mobile). 3. Tableau de bord des erreurs Front-End (M3.12).
+- Workbook expected outcome: 1. Intégration de l'outil Sentry ou équivalent. 2. Configuration du suivi de 5 erreurs critiques (API 5xx, crash mobile). 3. Tableau de bord des erreurs Front-End (observability dashboard equivalent; the old `M3.12` workbook pointer is obsolete in the monolith roadmap).
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev App`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with optional Sentry SDK wiring for web and mobile, release/environment-tagged runtime crash capture, realtime/map/push failure reporting, and continued aggregation through `/api/errors` plus `/api/metrics/frontend`.
 
 ### M5.15 - Développement du Design System/Library de Composants
 
@@ -426,7 +442,8 @@ Status legend:
 - Workbook expected outcome: 1. 10 composants UI définis et implémentés (via Storybook ou équivalent). 2. Documentation des composants (props, usage). 3. Test de réutilisation sur 2 applications.
 - Monolith adaptation: Implement in `app` with responsive/accessibility constraints and stable API consumption from the monolith backend.
 - Lane: `Dev App`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as a cross-app contract documented in `docs/features/DesignSystem.md`, with reuse demonstrated across web dashboard/planning and mobile settings/history/report flows.
 
 ## Module M6
 

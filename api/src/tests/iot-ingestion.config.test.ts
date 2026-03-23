@@ -42,6 +42,8 @@ describe('IoT ingestion config parsing', () => {
       IOT_MAX_BATCH_SIZE: 500,
       IOT_VALIDATED_CONSUMER_CONCURRENCY: 12,
       IOT_VALIDATED_CONSUMER_BATCH_SIZE: 30,
+      IOT_INGESTION_SHARD_COUNT: 12,
+      IOT_VALIDATED_CONSUMER_SHARD_COUNT: 12,
       IOT_REDIS_URL: 'redis://cache.internal:6379',
     });
   });

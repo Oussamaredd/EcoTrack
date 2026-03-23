@@ -1,14 +1,16 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   Inject,
-  UnauthorizedException,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Post,
   Query,
   Req,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 
@@ -18,6 +20,7 @@ import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 
 import { CitizenService } from './citizen.service.js';
 import { CreateCitizenReportDto } from './dto/create-citizen-report.dto.js';
+import { RegisterNotificationDeviceDto } from './dto/register-notification-device.dto.js';
 import { UpdateChallengeProgressDto } from './dto/update-challenge-progress.dto.js';
 
 @Controller('citizen')
@@ -28,6 +31,35 @@ export class CitizenController {
   @Post('reports')
   async createReport(@Req() request: RequestWithAuthUser, @Body() dto: CreateCitizenReportDto) {
     return this.citizenService.createReport(this.requireUserId(request), dto);
+  }
+
+  @Post('notifications/devices')
+  async registerNotificationDevice(
+    @Req() request: RequestWithAuthUser,
+    @Body() dto: RegisterNotificationDeviceDto,
+  ) {
+    return this.citizenService.registerNotificationDevice(this.requireUserId(request), dto);
+  }
+
+  @Get('notifications')
+  async notifications(
+    @Req() request: RequestWithAuthUser,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+  ) {
+    return {
+      notifications: await this.citizenService.listNotifications(
+        this.requireUserId(request),
+        limit ?? 20,
+      ),
+    };
+  }
+
+  @Post('notifications/:id/read')
+  async markNotificationRead(
+    @Req() request: RequestWithAuthUser,
+    @Param('id', new ParseUUIDPipe()) notificationId: string,
+  ) {
+    return this.citizenService.markNotificationRead(this.requireUserId(request), notificationId);
   }
 
   @Get('profile')

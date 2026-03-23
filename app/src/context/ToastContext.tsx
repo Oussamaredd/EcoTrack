@@ -1,5 +1,6 @@
-// Enhanced Toast context for global notifications
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React from "react";
+
+type ToastType = "success" | "error" | "warning" | "info";
 
 interface ToastOptions {
   persistent?: boolean;
@@ -14,7 +15,7 @@ type ToastInput =
   | string
   | {
       message: string;
-      type?: string;
+      type?: ToastType;
       title?: string;
       options?: ToastOptions;
     };
@@ -22,52 +23,49 @@ type ToastInput =
 interface Toast {
   id: number;
   message: string;
-  type: string;
+  type: ToastType;
   persistent: boolean;
-  action: ToastOptions['action'] | null;
+  action: ToastOptions["action"] | null;
   duration: number;
 }
 
 interface ToastContextValue {
   toasts: Toast[];
-  addToast: (message: ToastInput, type?: string, options?: ToastOptions) => number;
+  addToast: (message: ToastInput, type?: ToastType, options?: ToastOptions) => number;
   removeToast: (id: number) => void;
   clearAllToasts: () => void;
   success: (message: string, options?: ToastOptions) => number;
   error: (message: string, options?: ToastOptions) => number;
   warning: (message: string, options?: ToastOptions) => number;
   info: (message: string, options?: ToastOptions) => number;
-  TOAST_TYPES: typeof TOAST_TYPES;
 }
 
-interface ToastProviderProps {
-  children: ReactNode;
-}
+const ToastContext = React.createContext<ToastContextValue | undefined>(undefined);
 
-const ToastContext = createContext<ToastContextValue | undefined>(undefined);
-
-// Toast types with different styles
-const TOAST_TYPES = {
-  SUCCESS: 'success',
-  ERROR: 'error',
-  WARNING: 'warning',
-  INFO: 'info',
+const TOAST_DURATIONS: Record<ToastType, number> = {
+  success: 3000,
+  error: 5000,
+  warning: 4000,
+  info: 3000,
 };
 
-// Default durations for different toast types
-const TOAST_DURATIONS = {
-  [TOAST_TYPES.SUCCESS]: 3000,
-  [TOAST_TYPES.ERROR]: 5000,
-  [TOAST_TYPES.WARNING]: 4000,
-  [TOAST_TYPES.INFO]: 3000,
+const TOAST_ICONS: Record<ToastType, string> = {
+  success: "OK",
+  error: "!",
+  warning: "!",
+  info: "i",
 };
 
-export const ToastProvider = ({ children }: ToastProviderProps) => {
-  const [toasts, setToasts] = useState([]);
+export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
+  const [toasts, setToasts] = React.useState<Toast[]>([]);
 
-  const resolveToastInput = useCallback(
-    (message: ToastInput, type: string, options: ToastOptions) => {
-      if (typeof message === 'string') {
+  const removeToast = React.useCallback((id: number) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  }, []);
+
+  const resolveToastInput = React.useCallback(
+    (message: ToastInput, type: ToastType, options: ToastOptions) => {
+      if (typeof message === "string") {
         return { message, type, options };
       }
 
@@ -79,65 +77,66 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
 
       return { message: resolvedMessage, type: resolvedType, options: resolvedOptions };
     },
-    []
+    [],
   );
 
-  const addToast = useCallback((message: ToastInput, type = TOAST_TYPES.INFO, options: ToastOptions = {}) => {
-    const resolved = resolveToastInput(message, type, options);
-    const id = Date.now() + Math.random(); // Ensure unique IDs
-    const toast = {
-      id,
-      message: resolved.message,
-      type: resolved.type,
-      persistent: resolved.options.persistent || false,
-      action: resolved.options.action || null,
-      duration: resolved.options.duration || TOAST_DURATIONS[resolved.type],
-    };
+  const addToast = React.useCallback(
+    (message: ToastInput, type: ToastType = "info", options: ToastOptions = {}) => {
+      const resolved = resolveToastInput(message, type, options);
+      const id = Date.now() + Math.random();
+      const toast: Toast = {
+        id,
+        message: resolved.message,
+        type: resolved.type,
+        persistent: resolved.options.persistent ?? false,
+        action: resolved.options.action ?? null,
+        duration: resolved.options.duration ?? TOAST_DURATIONS[resolved.type],
+      };
 
-    setToasts(prev => [...prev, toast]);
+      setToasts((current) => [...current, toast]);
 
-    // Auto-remove if not persistent
-    if (!toast.persistent) {
-      setTimeout(() => {
-        setToasts(prev => prev.filter(t => t.id !== id));
-      }, toast.duration);
-    }
+      if (!toast.persistent) {
+        window.setTimeout(() => {
+          removeToast(id);
+        }, toast.duration);
+      }
 
-    return id; // Return ID for manual removal
-  }, [resolveToastInput]);
+      return id;
+    },
+    [removeToast, resolveToastInput],
+  );
 
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
-
-  const clearAllToasts = useCallback(() => {
+  const clearAllToasts = React.useCallback(() => {
     setToasts([]);
   }, []);
 
-  // Convenience methods for different toast types
-  const success = useCallback((message, options) => 
-    addToast(message, TOAST_TYPES.SUCCESS, options), [addToast]);
-  
-  const error = useCallback((message, options) => 
-    addToast(message, TOAST_TYPES.ERROR, options), [addToast]);
-  
-  const warning = useCallback((message, options) => 
-    addToast(message, TOAST_TYPES.WARNING, options), [addToast]);
-  
-  const info = useCallback((message, options) => 
-    addToast(message, TOAST_TYPES.INFO, options), [addToast]);
+  const value = React.useMemo<ToastContextValue>(
+    () => ({
+      toasts,
+      addToast,
+      removeToast,
+      clearAllToasts,
+      success: (message, options) => addToast(message, "success", options),
+      error: (message, options) => addToast(message, "error", options),
+      warning: (message, options) => addToast(message, "warning", options),
+      info: (message, options) => addToast(message, "info", options),
+    }),
+    [addToast, clearAllToasts, removeToast, toasts],
+  );
 
-  const value = {
-    toasts,
-    addToast,
-    removeToast,
-    clearAllToasts,
-    success,
-    error,
-    warning,
-    info,
-    TOAST_TYPES,
-  };
+  React.useEffect(() => {
+    const toastWindow = window as Window & {
+      showToast?: (message: string, type?: ToastType) => void;
+    };
+
+    toastWindow.showToast = (message, type = "info") => {
+      addToast(message, type);
+    };
+
+    return () => {
+      delete toastWindow.showToast;
+    };
+  }, [addToast]);
 
   return (
     <ToastContext.Provider value={value}>
@@ -147,164 +146,53 @@ export const ToastProvider = ({ children }: ToastProviderProps) => {
   );
 };
 
-// Toast container component
-const ToastContainer = ({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: number) => void }) => {
-  if (toasts.length === 0) return null;
+const ToastContainer = ({
+  toasts,
+  onRemove,
+}: {
+  toasts: Toast[];
+  onRemove: (id: number) => void;
+}) => {
+  if (toasts.length === 0) {
+    return null;
+  }
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: '20px',
-      right: '20px',
-      zIndex: 9999,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '10px',
-      maxWidth: '400px',
-    }}>
-      {toasts.map(toast => (
-        <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
+    <div className="toast-container" role="status" aria-live="polite">
+      {toasts.map((toast) => (
+        <div key={toast.id} className={`toast-item toast-item-${toast.type}`}>
+          <span className="toast-icon" aria-hidden="true">
+            {TOAST_ICONS[toast.type]}
+          </span>
+          <div className="toast-body">
+            <span>{toast.message}</span>
+            {toast.action ? (
+              <button type="button" className="toast-action" onClick={toast.action.handler}>
+                {toast.action.label}
+              </button>
+            ) : null}
+          </div>
+          {!toast.persistent ? (
+            <button
+              type="button"
+              className="toast-dismiss"
+              onClick={() => onRemove(toast.id)}
+              aria-label="Dismiss notification"
+            >
+              x
+            </button>
+          ) : null}
+        </div>
       ))}
     </div>
   );
 };
 
-// Individual toast component
-const ToastItem = ({ toast, onRemove }: { toast: Toast; onRemove: (id: number) => void }) => {
-  const getToastStyle = (type) => {
-    const baseStyle = {
-      padding: '12px 16px',
-      borderRadius: '8px',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      minWidth: '300px',
-      animation: 'slideInRight 0.3s ease-out',
-      fontSize: '14px',
-      fontWeight: '500',
-    };
-
-    const typeStyles = {
-      [TOAST_TYPES.SUCCESS]: {
-        backgroundColor: '#d4edda',
-        color: '#155724',
-        border: '1px solid #c3e6cb',
-      },
-      [TOAST_TYPES.ERROR]: {
-        backgroundColor: '#f8d7da',
-        color: '#721c24',
-        border: '1px solid #f5c6cb',
-      },
-      [TOAST_TYPES.WARNING]: {
-        backgroundColor: '#fff3cd',
-        color: '#856404',
-        border: '1px solid #ffeaa7',
-      },
-      [TOAST_TYPES.INFO]: {
-        backgroundColor: '#d1ecf1',
-        color: '#0c5460',
-        border: '1px solid #bee5eb',
-      },
-    };
-
-    return { ...baseStyle, ...typeStyles[type] };
-  };
-
-  const getIcon = (type) => {
-    const icons = {
-      [TOAST_TYPES.SUCCESS]: '✓',
-      [TOAST_TYPES.ERROR]: '✕',
-      [TOAST_TYPES.WARNING]: '⚠',
-      [TOAST_TYPES.INFO]: 'ℹ',
-    };
-    return icons[type] || icons[TOAST_TYPES.INFO];
-  };
-
-  return (
-    <div style={getToastStyle(toast.type)}>
-      <span style={{ fontSize: '18px', flexShrink: 0 }}>
-        {getIcon(toast.type)}
-      </span>
-      <div style={{ flex: 1 }}>
-        {toast.message}
-        {toast.action && (
-          <button
-            onClick={toast.action.handler}
-            style={{
-              marginLeft: '8px',
-              padding: '2px 8px',
-              fontSize: '12px',
-              backgroundColor: 'rgba(0, 0, 0, 0.1)',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            {toast.action.label}
-          </button>
-        )}
-      </div>
-      {!toast.persistent && (
-        <button
-          onClick={() => onRemove(toast.id)}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '16px',
-            cursor: 'pointer',
-            opacity: 0.7,
-            padding: '0',
-            width: '20px',
-            height: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onMouseEnter={(e) => (e.target as HTMLElement).style.opacity = '1'}
-          onMouseLeave={(e) => (e.target as HTMLElement).style.opacity = '0.7'}
-        >
-          ×
-        </button>
-      )}
-    </div>
-  );
-};
-
 export const useToast = () => {
-  const context = useContext(ToastContext);
+  const context = React.useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within ToastProvider');
+    throw new Error("useToast must be used within ToastProvider");
   }
+
   return context;
 };
-
-// Add animation styles to head
-if (typeof document !== 'undefined') {
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes slideInRight {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    @keyframes slideOutRight {
-      from {
-        transform: translateX(0);
-        opacity: 1;
-      }
-      to {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-    }
-  `;
-  if (document.head) {
-    document.head.appendChild(style);
-  }
-}

@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { Platform, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { SegmentedButtons, Text } from "react-native-paper";
+import { Button, SegmentedButtons, Text } from "react-native-paper";
 
 import { InfoCard } from "@/components/InfoCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
@@ -11,6 +11,7 @@ import {
 } from "@/device/notifications";
 import { getMobileApiBaseLabel } from "@/lib/env";
 import { queryKeys } from "@/lib/queryKeys";
+import { useNotificationController } from "@/providers/NotificationProvider";
 import { useThemePreference } from "@/providers/ThemePreferenceProvider";
 import type { AppTheme } from "@/theme/theme";
 import type { ThemePreference } from "@/theme/themePreference";
@@ -71,10 +72,20 @@ const createStyles = (theme: AppTheme) =>
 export function SettingsScreen() {
   const styles = useThemedStyles(createStyles);
   const { preference, resolvedMode, setPreference } = useThemePreference();
+  const {
+    inbox,
+    lastNotification,
+    permissionState,
+    registrationError,
+    registrationState,
+    requestRegistration,
+  } = useNotificationController();
   const notificationQuery = useQuery({
     queryKey: queryKeys.notificationPermission,
     queryFn: () => getNotificationPermissionState()
   });
+  const resolvedNotificationState = permissionState ?? notificationQuery.data;
+  const latestInboxItem = inbox[0] ?? null;
 
   return (
     <ScreenContainer
@@ -163,9 +174,55 @@ export function SettingsScreen() {
               Status
             </Text>
             <Text variant="bodyMedium" style={styles.statusValue}>
-              {formatNotificationPermissionState(notificationQuery.data)}
+              {formatNotificationPermissionState(resolvedNotificationState)}
             </Text>
           </View>
+          <View style={styles.statusRow}>
+            <Text variant="bodyMedium" style={styles.statusLabel}>
+              Registration
+            </Text>
+            <Text variant="bodyMedium" style={styles.statusValue}>
+              {registrationState === "registered"
+                ? "Registered"
+                : registrationState === "registering"
+                  ? "Registering"
+                  : registrationState === "error"
+                    ? "Needs attention"
+                    : "Idle"}
+            </Text>
+          </View>
+          {registrationError ? (
+            <Text variant="bodySmall" style={styles.helperText}>
+              {registrationError}
+            </Text>
+          ) : null}
+          <Button
+            mode="contained"
+            loading={registrationState === "registering"}
+            onPress={() => {
+              void requestRegistration();
+            }}
+          >
+            {registrationState === "registered" ? "Refresh device registration" : "Enable push notifications"}
+          </Button>
+          {lastNotification ? (
+            <View style={styles.statusPanel}>
+              <Text variant="titleSmall">Foreground notification</Text>
+              <Text variant="bodyMedium">{lastNotification.title}</Text>
+              <Text variant="bodySmall" style={styles.helperText}>
+                {lastNotification.body}
+              </Text>
+            </View>
+          ) : null}
+          {latestInboxItem ? (
+            <View style={styles.statusPanel}>
+              <Text variant="titleSmall">Latest inbox item</Text>
+              <Text variant="bodyMedium">{latestInboxItem.title}</Text>
+              <Text variant="bodySmall" style={styles.helperText}>
+                {latestInboxItem.body}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </InfoCard>
     </ScreenContainer>

@@ -9,6 +9,8 @@ import {
   createApiHeaders,
   createApiRequestError,
 } from '../services/api';
+import { queryKeys } from '../state/queryKeys';
+import { reportRealtimeTransportError } from '../utils/errorHandlers';
 
 type PlanningSocketState = 'connected' | 'reconnecting' | 'fallback' | 'disabled';
 
@@ -81,13 +83,14 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
 
     const invalidateDashboardQueries = () => {
       setLastEventAt(Date.now());
-      queryClient.invalidateQueries({ queryKey: ['planning-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.planningDashboard });
+      queryClient.invalidateQueries({ queryKey: queryKeys.planningHeatmap() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
     };
 
     const invalidateTourQueries = () => {
       invalidateDashboardQueries();
-      queryClient.invalidateQueries({ queryKey: ['agent-tour'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agentTour });
     };
 
     const closeSocket = () => {
@@ -144,6 +147,7 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
           },
         });
       } catch (error) {
+        reportRealtimeTransportError(error, 'planning.realtime.websocket.session');
         if (error instanceof ApiRequestError && error.status === 401) {
           setConnectionState('fallback');
           return;
@@ -170,6 +174,7 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
       });
 
       socket.on('connect_error', () => {
+        reportRealtimeTransportError(new Error('WebSocket connect_error'), 'planning.realtime.websocket.connect');
         scheduleReconnect();
       });
 
@@ -178,6 +183,7 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
           return;
         }
 
+        reportRealtimeTransportError(new Error('WebSocket disconnected'), 'planning.realtime.websocket.disconnect');
         scheduleReconnect();
       });
 

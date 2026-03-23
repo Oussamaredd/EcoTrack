@@ -11,12 +11,17 @@ Execution policy:
 - `infrastructure/scripts/ci/run-mutation-gate.mjs` runs the focused Stryker mutation gate defined in `infrastructure/tooling/quality/stryker.config.mjs`.
 - `infrastructure/scripts/ci/run-visual-gate.mjs` runs Percy with either `CI_PERCY_COMMAND` or the default snapshot flow in `run-visual-snapshots.mjs`.
 - `infrastructure/scripts/ci/run-lighthouse-gate.mjs` builds the app, serves a local preview, and writes Lighthouse reports to `tmp/ci/lighthouse`.
+- `infrastructure/scripts/iot-chaos-harness.mjs` seeds the IoT event pipeline, injects restart and replay chaos scenarios against Docker Compose, and writes markdown reports under `tmp/chaos`.
+  The harness defaults to `--api-transport auto`, which tries host HTTP first and then falls back to `docker compose exec` against the `backend` container when the API is only reachable on the internal Docker network.
 
 Common host commands:
 - `npm run dev:doctor`
 - `npm run validate-doc-sync`
 - `npm run hooks:install`
 - `npm run health --workspace=ecotrack-infrastructure`
+- `npm run obs:up --workspace=ecotrack-infrastructure`
+- `npm run chaos:iot --workspace=ecotrack-infrastructure -- --scenario api-restart`
+- `npm run chaos:iot --workspace=ecotrack-infrastructure -- --scenario api-restart --api-transport docker`
 - `npm run verify:docker --workspace=ecotrack-infrastructure`
 - `npm run ci:quality:k6`
 - `npm run ci:quality:visual:snapshots`

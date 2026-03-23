@@ -4,7 +4,9 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 
 export interface ValidatedDeliveryJob {
   id: string;
+  consumerName: string;
   deliveryIds: string[];
+  shardId: number;
   createdAt: Date;
 }
 
@@ -12,6 +14,7 @@ export interface ValidatedDeliveryJob {
 export class InMemoryValidatedDeliveryQueue implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(InMemoryValidatedDeliveryQueue.name);
   private readonly queue: ValidatedDeliveryJob[] = [];
+  private readonly activeConsumerShards = new Set<string>();
 
   private pendingDeliveries = 0;
   private activeWorkers = 0;
@@ -30,10 +33,12 @@ export class InMemoryValidatedDeliveryQueue implements OnModuleInit, OnModuleDes
     this.logger.log('Validated-delivery queue stopped');
   }
 
-  async enqueue(deliveryIds: string[]) {
+  async enqueue(consumerName: string, deliveryIds: string[], shardId = 0) {
     const job: ValidatedDeliveryJob = {
       id: randomUUID(),
+      consumerName,
       deliveryIds,
+      shardId,
       createdAt: new Date(),
     };
 
@@ -60,6 +65,7 @@ export class InMemoryValidatedDeliveryQueue implements OnModuleInit, OnModuleDes
     this.stopped = true;
     this.activeWorkers = 0;
     this.drainScheduled = false;
+    this.activeConsumerShards.clear();
     this.processorHandler = null;
     this.logger.log('Validated-delivery queue processor stopped');
   }
@@ -84,24 +90,44 @@ export class InMemoryValidatedDeliveryQueue implements OnModuleInit, OnModuleDes
       this.queue.length > 0
     ) {
       const batch = this.dequeueBatch();
+      if (!batch) {
+        break;
+      }
       this.activeWorkers += 1;
-      void this.processBatch(batch.jobs, batch.deliveryCount);
+      this.activeConsumerShards.add(this.toConsumerShardKey(batch.consumerName, batch.shardId));
+      void this.processBatch(batch.jobs, batch.deliveryCount, batch.consumerName, batch.shardId);
     }
   }
 
-  private dequeueBatch(): { jobs: ValidatedDeliveryJob[]; deliveryCount: number } {
+  private dequeueBatch():
+    | { jobs: ValidatedDeliveryJob[]; deliveryCount: number; consumerName: string; shardId: number }
+    | null {
+    const nextJobIndex = this.queue.findIndex(
+      (job) => !this.activeConsumerShards.has(this.toConsumerShardKey(job.consumerName, job.shardId)),
+    );
+    if (nextJobIndex < 0) {
+      return null;
+    }
+
+    const firstJob = this.queue[nextJobIndex]!;
+    const { consumerName, shardId } = firstJob;
     const jobs: ValidatedDeliveryJob[] = [];
     let deliveryCount = 0;
+    let queueIndex = nextJobIndex;
 
-    while (this.queue.length > 0) {
-      const nextJob = this.queue[0];
+    while (queueIndex < this.queue.length) {
+      const nextJob = this.queue[queueIndex];
+      if (!nextJob || nextJob.shardId !== shardId || nextJob.consumerName !== consumerName) {
+        queueIndex += 1;
+        continue;
+      }
+
       const nextDeliveryCount = nextJob.deliveryIds.length;
-
       if (jobs.length > 0 && deliveryCount + nextDeliveryCount > this.maxBatchDeliveries) {
         break;
       }
 
-      jobs.push(this.queue.shift()!);
+      jobs.push(...this.queue.splice(queueIndex, 1));
       deliveryCount += nextDeliveryCount;
     }
 
@@ -110,10 +136,17 @@ export class InMemoryValidatedDeliveryQueue implements OnModuleInit, OnModuleDes
     return {
       jobs,
       deliveryCount,
+      consumerName,
+      shardId,
     };
   }
 
-  private async processBatch(jobs: ValidatedDeliveryJob[], deliveryCount: number) {
+  private async processBatch(
+    jobs: ValidatedDeliveryJob[],
+    deliveryCount: number,
+    consumerName: string,
+    shardId: number,
+  ) {
     try {
       await this.processorHandler?.(jobs);
     } catch (error) {
@@ -125,8 +158,13 @@ export class InMemoryValidatedDeliveryQueue implements OnModuleInit, OnModuleDes
         }`,
       );
     } finally {
+      this.activeConsumerShards.delete(this.toConsumerShardKey(consumerName, shardId));
       this.activeWorkers = Math.max(0, this.activeWorkers - 1);
       this.scheduleDrain();
     }
+  }
+
+  private toConsumerShardKey(consumerName: string, shardId: number) {
+    return `${consumerName}:${shardId}`;
   }
 }

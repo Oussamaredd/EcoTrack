@@ -3,9 +3,7 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import AppStatusScreen from "../components/AppStatusScreen";
 import RouteScrollToTop from "../components/RouteScrollToTop";
 import { useCurrentUser } from "../hooks/useAuth";
-import AuthLayout from "../layouts/AuthLayout";
 import PublicLayout from "../layouts/PublicLayout";
-import LoginPage from "../pages/auth/LoginPage";
 import LandingPage from "../pages/landing/LandingPage";
 import { MARKETING_PAGE_LIST } from "../pages/landing/marketingPages";
 import {
@@ -17,6 +15,8 @@ import {
 import RequireAuth from "./guards/RequireAuth";
 import RequireGuest from "./guards/RequireGuest";
 
+const AuthLayout = lazy(() => import("../layouts/AuthLayout"));
+const LoginPage = lazy(() => import("../pages/auth/LoginPage"));
 const AppLayout = lazy(() => import("../layouts/AppLayout"));
 const AppHomePage = lazy(() => import("../pages/AppHomePage"));
 const Dashboard = lazy(() => import("../pages/Dashboard"));
@@ -187,15 +187,15 @@ export default function AppRouter() {
         </Route>
 
         <Route element={<RequireGuest />}>
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<LoginPage />} />
+          <Route element={withRouteSuspense(<AuthLayout />)}>
+            <Route path="/login" element={withRouteSuspense(<LoginPage />)} />
             <Route path="/signup" element={withRouteSuspense(<SignupPage />)} />
             <Route path="/forgot-password" element={withRouteSuspense(<ForgotPasswordPage />)} />
             <Route path="/reset-password" element={withRouteSuspense(<ResetPasswordPage />)} />
           </Route>
         </Route>
 
-        <Route element={<AuthLayout />}>
+        <Route element={withRouteSuspense(<AuthLayout />)}>
           <Route path="/auth/callback" element={withRouteSuspense(<AuthCallbackPage />)} />
         </Route>
 

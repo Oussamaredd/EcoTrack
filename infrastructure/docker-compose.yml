@@ -5,7 +5,7 @@ x-common-variables: &common-env
 
 services:
   db:
-    profiles: ["core"]
+    profiles: ["core", "obs"]
     image: postgres:15-alpine
     container_name: ticket_db
     hostname: ticket_db
@@ -25,7 +25,7 @@ services:
       - ticket-management-network
 
   backend:
-    profiles: ["core"]
+    profiles: ["core", "obs"]
     build:
       context: ..
       dockerfile: infrastructure/Dockerfile
@@ -99,7 +99,8 @@ services:
       - "5044:5044"
       - "5001:5001"
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     networks:
       - ticket-management-network
 
@@ -126,9 +127,45 @@ services:
     restart: unless-stopped
     volumes:
       - ./tooling/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./tooling/monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ticket-management-network
+
+  alertmanager:
+    profiles: ["obs"]
+    image: prom/alertmanager:v0.28.0
+    container_name: alertmanager
+    restart: unless-stopped
+    env_file:
+      - ./environments/.env.docker
+    entrypoint:
+      - /bin/sh
+      - /etc/alertmanager/render-and-run.sh
+    volumes:
+      - ./tooling/monitoring/alertmanager/render-and-run.sh:/etc/alertmanager/render-and-run.sh:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "9093:9093"
+    depends_on:
+      - alert-webhook-sink
+    networks:
+      - ticket-management-network
+
+  alert-webhook-sink:
+    profiles: ["obs"]
+    image: mendhak/http-https-echo:31
+    container_name: alert_webhook_sink
+    restart: unless-stopped
+    environment:
+      HTTP_PORT: 8080
+    ports:
+      - "8085:8080"
     networks:
       - ticket-management-network
 
@@ -166,12 +203,14 @@ services:
     depends_on:
       - prometheus
       - jaeger
+      - elasticsearch
     networks:
       - ticket-management-network
 
 volumes:
   db_data:
   prometheus-data:
+  alertmanager-data:
   grafana-storage:
   es_data:
 

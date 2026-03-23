@@ -7,6 +7,8 @@ import {
   createApiHeaders,
   createApiRequestError,
 } from '../services/api';
+import { queryKeys } from '../state/queryKeys';
+import { reportRealtimeTransportError } from '../utils/errorHandlers';
 
 type PlanningStreamState = 'connected' | 'reconnecting' | 'fallback' | 'disabled';
 
@@ -90,13 +92,14 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
 
     const invalidateDashboardQueries = () => {
       setLastEventAt(Date.now());
-      queryClient.invalidateQueries({ queryKey: ['planning-dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.planningDashboard });
+      queryClient.invalidateQueries({ queryKey: queryKeys.planningHeatmap() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
     };
 
     const invalidateTourQueries = () => {
       invalidateDashboardQueries();
-      queryClient.invalidateQueries({ queryKey: ['agent-tour'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agentTour });
     };
 
     const closeStream = () => {
@@ -145,6 +148,7 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
           withCredentials: true,
         });
       } catch (error) {
+        reportRealtimeTransportError(error, 'planning.realtime.stream.session');
         if (error instanceof ApiRequestError && error.status === 401) {
           setConnectionState('fallback');
           return;
@@ -171,6 +175,7 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
       };
 
       eventSource.onerror = () => {
+        reportRealtimeTransportError(new Error('EventSource error'), 'planning.realtime.stream.connection');
         scheduleReconnect();
       };
 

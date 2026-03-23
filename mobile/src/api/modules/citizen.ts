@@ -78,10 +78,46 @@ export type CitizenReportResponse = {
   confirmationState: string;
   confirmationMessage: string;
   managerNotificationQueued?: boolean;
+  citizenNotificationId?: string | null;
+  citizenPushNotificationQueued?: boolean;
   gamification: {
     pointsAwarded: number;
     badges: string[];
   };
+};
+
+export type CitizenNotificationItem = {
+  id: string;
+  eventType: string;
+  title: string;
+  body: string;
+  status: string;
+  deepLink: string | null;
+  payload: Record<string, unknown>;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type CitizenNotificationDevicePayload = {
+  provider: "expo";
+  platform: "ios" | "android";
+  pushToken: string;
+  appVersion?: string;
+  deviceLabel?: string;
+};
+
+export type CitizenNotificationDeviceResponse = {
+  registered: boolean;
+  device: {
+    id: string;
+    provider: "expo";
+    platform: "ios" | "android";
+    pushToken: string;
+    status: string;
+    appVersion: string | null;
+    deviceLabel: string | null;
+    lastRegisteredAt: string;
+  } | null;
 };
 
 export const citizenApi = {
@@ -97,6 +133,23 @@ export const citizenApi = {
 
   createReport: (payload: CitizenReportPayload) =>
     apiClient.post<CitizenReportResponse>("/api/citizen/reports", payload),
+
+  getNotifications: (limit = 20) =>
+    apiClient.get<{ notifications: CitizenNotificationItem[] }>(
+      `/api/citizen/notifications?limit=${limit}`
+    ),
+
+  registerNotificationDevice: (payload: CitizenNotificationDevicePayload) =>
+    apiClient.post<CitizenNotificationDeviceResponse>(
+      "/api/citizen/notifications/devices",
+      payload
+    ),
+
+  markNotificationRead: (notificationId: string) =>
+    apiClient.post<{ notificationId: string; status: string; readAt: string | null }>(
+      `/api/citizen/notifications/${notificationId}/read`,
+      {}
+    ),
 
   enrollInChallenge: (challengeId: string) =>
     apiClient.post(`/api/citizen/challenges/${challengeId}/enroll`, {}),

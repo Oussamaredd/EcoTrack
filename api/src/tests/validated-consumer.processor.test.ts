@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { InternalEventPolicyService } from '../modules/events/internal-events.policy.js';
 import { ValidatedConsumerProcessorService } from '../modules/iot/validated-consumer/validated-consumer.processor.js';
 
 const createClaimedDelivery = (overrides: Partial<Record<string, unknown>> = {}) => ({
@@ -8,6 +9,7 @@ const createClaimedDelivery = (overrides: Partial<Record<string, unknown>> = {})
   consumerName: 'timeseries_projection',
   eventName: 'iot.measurement.validated',
   routingKey: 'sensor-001',
+  shardId: 4,
   schemaVersion: 'v1',
   claimedByInstanceId: 'worker-b',
   traceparent: null,
@@ -37,13 +39,37 @@ describe('ValidatedConsumerProcessorService', () => {
   };
 
   let service: ValidatedConsumerProcessorService;
+  let loggerMock: {
+    setContext: ReturnType<typeof vi.fn>;
+    info: ReturnType<typeof vi.fn>;
+    error: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new ValidatedConsumerProcessorService(repositoryMock as any, {
-      getInstanceId: vi.fn().mockReturnValue('worker-b'),
-    } as any);
-    vi.spyOn((service as any).logger, 'error').mockImplementation(() => undefined);
+    loggerMock = {
+      setContext: vi.fn(),
+      info: vi.fn(),
+      error: vi.fn(),
+    };
+    service = new ValidatedConsumerProcessorService(
+      repositoryMock as any,
+      {
+        getInstanceId: vi.fn().mockReturnValue('worker-b'),
+      } as any,
+      {
+        assertConsumerAuthorized: vi.fn(),
+      } as unknown as InternalEventPolicyService,
+      {
+        projectValidatedEventRollup: vi.fn().mockResolvedValue({
+          validatedEventId: 'validated-event-1',
+        }),
+      } as any,
+      {
+        recordServiceHop: vi.fn(),
+      } as any,
+      loggerMock as any,
+    );
   });
 
   it('skips deliveries that are already claimed elsewhere', async () => {
@@ -78,6 +104,44 @@ describe('ValidatedConsumerProcessorService', () => {
       }),
     );
     expect(repositoryMock.markCompleted).toHaveBeenCalledWith('delivery-1');
+  });
+
+  it('projects rollup deliveries through the rollup service', async () => {
+    const rollupService = {
+      projectValidatedEventRollup: vi.fn().mockResolvedValue({
+        validatedEventId: 'validated-event-1',
+      }),
+    };
+    service = new ValidatedConsumerProcessorService(
+      repositoryMock as any,
+      {
+        getInstanceId: vi.fn().mockReturnValue('worker-b'),
+      } as any,
+      {
+        assertConsumerAuthorized: vi.fn(),
+      } as unknown as InternalEventPolicyService,
+      rollupService as any,
+      {
+        recordServiceHop: vi.fn(),
+      } as any,
+      loggerMock as any,
+    );
+    repositoryMock.claimDeliveryForProcessing.mockResolvedValueOnce(
+      createClaimedDelivery({ consumerName: 'measurement_rollup_projection' }),
+    );
+    repositoryMock.markCompleted.mockResolvedValueOnce(undefined);
+
+    await expect(service.processDelivery('delivery-1', 'measurement_rollup_projection')).resolves.toEqual({
+      status: 'completed',
+    });
+
+    expect(rollupService.projectValidatedEventRollup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'delivery-1',
+        consumerName: 'measurement_rollup_projection',
+      }),
+    );
+    expect(repositoryMock.projectValidatedEvent).not.toHaveBeenCalled();
   });
 
   it('marks retryable failures below the retry ceiling', async () => {

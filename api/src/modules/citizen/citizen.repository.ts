@@ -7,7 +7,9 @@ import {
   citizenReports,
   containers,
   gamificationProfiles,
+  notificationDevices,
   notificationDeliveries,
+  notificationRecipients,
   notifications,
   type DatabaseClient,
   users,
@@ -22,6 +24,7 @@ import {
   type CitizenReportType,
 } from './citizen-report.contract.js';
 import type { CreateCitizenReportDto } from './dto/create-citizen-report.dto.js';
+import type { RegisterNotificationDeviceDto } from './dto/register-notification-device.dto.js';
 
 const DUPLICATE_REPORT_WINDOW_HOURS = 1;
 const REPORT_SUBMISSION_POINTS = 10;
@@ -70,7 +73,14 @@ export class CitizenRepository {
       ? `zone:${container.zoneId}:role:manager`
       : 'role:manager';
 
-    const { created, pointsAwarded, badges, managerNotificationQueued } = await this.db.transaction(
+    const {
+      created,
+      pointsAwarded,
+      badges,
+      managerNotificationQueued,
+      citizenNotificationId,
+      citizenPushNotificationQueued,
+    } = await this.db.transaction(
       async (tx) => {
         const [insertedReport] = await tx
           .insert(citizenReports)
@@ -178,11 +188,80 @@ export class CitizenRepository {
           });
         }
 
+        const [createdCitizenNotification] = await tx
+          .insert(notifications)
+          .values({
+            eventType:
+              resolvedReportType === 'container_full'
+                ? 'citizen_container_full_confirmation'
+                : 'citizen_report_confirmation',
+            entityType: 'citizen_report',
+            entityId: insertedReport.id,
+            audienceScope: `user:${userId}`,
+            title: `Report received for ${container.code}`,
+            body:
+              resolvedReportType === 'container_full'
+                ? 'Container full alert recorded. EcoTrack will keep you informed.'
+                : 'Your citizen report has been received and added to the operations queue.',
+            preferredChannels: ['inbox', 'push'],
+            scheduledAt: new Date(),
+            status: 'queued',
+            createdAt: new Date(),
+          })
+          .returning();
+
+        let citizenPushNotificationQueued = false;
+
+        if (createdCitizenNotification) {
+          await tx.insert(notificationRecipients).values({
+            notificationId: createdCitizenNotification.id,
+            userId,
+            deliveryChannel: 'inbox',
+            deepLink: `/(tabs)/history?notificationId=${createdCitizenNotification.id}`,
+            payload: {
+              citizenReportId: insertedReport.id,
+              containerId: container.id,
+              reportType: resolvedReportType,
+            },
+            status: 'unread',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+
+          const devices = await tx
+            .select({
+              pushToken: notificationDevices.pushToken,
+            })
+            .from(notificationDevices)
+            .where(
+              and(
+                eq(notificationDevices.userId, userId),
+                eq(notificationDevices.status, 'active'),
+              ),
+            );
+
+          if (devices.length > 0) {
+            await tx.insert(notificationDeliveries).values(
+              devices.map((device) => ({
+                notificationId: createdCitizenNotification.id,
+                channel: 'push',
+                recipientAddress: device.pushToken,
+                deliveryStatus: 'pending',
+                attemptCount: 0,
+                createdAt: new Date(),
+              })),
+            );
+            citizenPushNotificationQueued = true;
+          }
+        }
+
         return {
           created: insertedReport,
           pointsAwarded: REPORT_SUBMISSION_POINTS,
           badges: nextBadges,
           managerNotificationQueued: Boolean(createdNotification),
+          citizenNotificationId: createdCitizenNotification?.id ?? null,
+          citizenPushNotificationQueued,
         };
       },
     );
@@ -196,6 +275,8 @@ export class CitizenRepository {
       confirmationState: 'submitted',
       confirmationMessage: `Your report has been submitted successfully. +${pointsAwarded} points awarded.`,
       managerNotificationQueued,
+      citizenNotificationId,
+      citizenPushNotificationQueued,
       gamification: {
         pointsAwarded,
         badges,
@@ -244,6 +325,148 @@ export class CitizenRepository {
       items,
       total: totalRows[0]?.value ?? items.length,
     };
+  }
+
+  async registerNotificationDevice(userId: string, dto: RegisterNotificationDeviceDto) {
+    const [registeredDevice] = await this.db
+      .insert(notificationDevices)
+      .values({
+        userId,
+        provider: dto.provider,
+        platform: dto.platform,
+        pushToken: dto.pushToken.trim(),
+        status: 'active',
+        appVersion: this.normalizeOptionalText(dto.appVersion),
+        deviceLabel: this.normalizeOptionalText(dto.deviceLabel),
+        metadata: {},
+        lastRegisteredAt: new Date(),
+        lastSeenAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [notificationDevices.provider, notificationDevices.pushToken],
+        set: {
+          userId,
+          platform: dto.platform,
+          status: 'active',
+          appVersion: this.normalizeOptionalText(dto.appVersion),
+          deviceLabel: this.normalizeOptionalText(dto.deviceLabel),
+          lastRegisteredAt: new Date(),
+          lastSeenAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
+      .returning({
+        id: notificationDevices.id,
+        provider: notificationDevices.provider,
+        platform: notificationDevices.platform,
+        pushToken: notificationDevices.pushToken,
+        status: notificationDevices.status,
+        appVersion: notificationDevices.appVersion,
+        deviceLabel: notificationDevices.deviceLabel,
+        lastRegisteredAt: notificationDevices.lastRegisteredAt,
+      });
+
+    return {
+      registered: Boolean(registeredDevice),
+      device: registeredDevice ?? null,
+    };
+  }
+
+  async listUserNotifications(userId: string, limit: number) {
+    const safeLimit = Math.max(1, Math.min(limit, 50));
+    return this.db
+      .select({
+        id: notifications.id,
+        eventType: notifications.eventType,
+        title: notifications.title,
+        body: notifications.body,
+        status: notificationRecipients.status,
+        deepLink: notificationRecipients.deepLink,
+        payload: notificationRecipients.payload,
+        readAt: notificationRecipients.readAt,
+        createdAt: notificationRecipients.createdAt,
+      })
+      .from(notificationRecipients)
+      .innerJoin(notifications, eq(notificationRecipients.notificationId, notifications.id))
+      .where(eq(notificationRecipients.userId, userId))
+      .orderBy(desc(notificationRecipients.createdAt))
+      .limit(safeLimit);
+  }
+
+  async markUserNotificationRead(userId: string, notificationId: string) {
+    const [updatedRecipient] = await this.db
+      .update(notificationRecipients)
+      .set({
+        status: 'read',
+        readAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(notificationRecipients.userId, userId),
+          eq(notificationRecipients.notificationId, notificationId),
+        ),
+      )
+      .returning({
+        notificationId: notificationRecipients.notificationId,
+        status: notificationRecipients.status,
+        readAt: notificationRecipients.readAt,
+      });
+
+    if (!updatedRecipient) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    return updatedRecipient;
+  }
+
+  async listQueuedPushDeliveries(notificationId: string) {
+    return this.db
+      .select({
+        deliveryId: notificationDeliveries.id,
+        notificationId: notificationDeliveries.notificationId,
+        pushToken: notificationDeliveries.recipientAddress,
+        title: notifications.title,
+        body: notifications.body,
+        deepLink: notificationRecipients.deepLink,
+        payload: notificationRecipients.payload,
+      })
+      .from(notificationDeliveries)
+      .innerJoin(notifications, eq(notificationDeliveries.notificationId, notifications.id))
+      .leftJoin(notificationRecipients, eq(notificationRecipients.notificationId, notifications.id))
+      .where(
+        and(
+          eq(notificationDeliveries.notificationId, notificationId),
+          eq(notificationDeliveries.channel, 'push'),
+          eq(notificationDeliveries.deliveryStatus, 'pending'),
+        ),
+      );
+  }
+
+  async markPushDeliveryDelivered(deliveryId: string, providerMessageId: string | null) {
+    await this.db
+      .update(notificationDeliveries)
+      .set({
+        providerMessageId,
+        deliveryStatus: 'delivered',
+        deliveredAt: new Date(),
+        lastAttemptAt: new Date(),
+        attemptCount: sql`${notificationDeliveries.attemptCount} + 1`,
+      })
+      .where(eq(notificationDeliveries.id, deliveryId));
+  }
+
+  async markPushDeliveryFailed(deliveryId: string, errorCode: string) {
+    await this.db
+      .update(notificationDeliveries)
+      .set({
+        deliveryStatus: 'failed',
+        errorCode,
+        lastAttemptAt: new Date(),
+        attemptCount: sql`${notificationDeliveries.attemptCount} + 1`,
+      })
+      .where(eq(notificationDeliveries.id, deliveryId));
   }
 
   private normalizeOptionalText(value?: string | null) {

@@ -47,21 +47,30 @@ Neon managed baseline note:
 - `IOT_MAX_BATCH_SIZE` for the maximum measurements accepted in one HTTP batch request
 - `IOT_VALIDATED_CONSUMER_CONCURRENCY` for the downstream validated-event projection worker concurrency
 - `IOT_VALIDATED_CONSUMER_BATCH_SIZE` for the maximum validated-event deliveries drained per consumer batch
+- `IOT_INGESTION_SHARD_COUNT` for the number of virtual partitions used by the staged-ingestion worker
+- `IOT_VALIDATED_CONSUMER_SHARD_COUNT` for the number of virtual partitions used by the validated-event consumer
 - `OTEL_TRACING_ENABLED` to enable OpenTelemetry trace export from the API and worker flows
 - `OTEL_SERVICE_NAME` for the OpenTelemetry service name emitted by the API runtime
 - `OTEL_EXPORTER_OTLP_ENDPOINT` for the OTLP HTTP collector endpoint used by trace export
 - `OTEL_TRACES_SAMPLER_RATIO` for probabilistic trace sampling from `0` to `1`
+- `ENABLE_LOGSTASH` to mirror structured API and worker logs to the TCP log shipper
+- `LOGSTASH_HOST` for the log shipping target hostname
+- `LOGSTASH_PORT` for the log shipping target TCP port
 - `VITE_API_BASE_URL` for the browser-facing API base URL (normally the frontend origin in proxied runtimes)
 - `EXPO_PUBLIC_API_BASE_URL` for the native mobile API base URL (must resolve to a device/simulator reachable API origin)
 - `VITE_MAP_TILE_URL_TEMPLATE` for the frontend Leaflet tile source template
 - `VITE_MAP_TILE_ATTRIBUTION` for the frontend map attribution label
+- `VITE_SENTRY_DSN` and `EXPO_PUBLIC_SENTRY_DSN` for optional client-side Sentry issue capture on web and mobile
+- `VITE_RELEASE_VERSION` and `EXPO_PUBLIC_RELEASE_VERSION` for client release tagging in Sentry and backend telemetry
+- `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` for build-time source-map upload; keep them in shell/CI secrets, not client env files
 
 Agent tour mapping note:
 - `ROUTING_API_BASE_URL` is used by the API to build and persist `tour_routes` records; the frontend does not call the routing provider directly.
 - `ROUTING_TIMEOUT_MS`, `ROUTING_FAILURE_THRESHOLD`, and `ROUTING_RESET_WINDOW_MS` tune the tour-routing circuit breaker so agent-route rebuilds fall back cleanly during upstream routing outages.
 - `IOT_INGESTION_ENABLED`, `IOT_QUEUE_CONCURRENCY`, `IOT_QUEUE_BATCH_SIZE`, `IOT_BACKPRESSURE_THRESHOLD`, and `IOT_MAX_BATCH_SIZE` configure the monolith IoT ingestion worker used by `POST /api/iot/v1/measurements` and `POST /api/iot/v1/measurements/batch`.
-- `IOT_VALIDATED_CONSUMER_CONCURRENCY` and `IOT_VALIDATED_CONSUMER_BATCH_SIZE` configure the downstream validated-event consumer that projects durable validated events into `iot.measurements` and container state.
+- `IOT_VALIDATED_CONSUMER_CONCURRENCY`, `IOT_VALIDATED_CONSUMER_BATCH_SIZE`, `IOT_INGESTION_SHARD_COUNT`, and `IOT_VALIDATED_CONSUMER_SHARD_COUNT` configure the downstream validated-event pipeline, including the virtual shard count used to keep same-device processing ordered while allowing parallel drain across different sensors.
 - `OTEL_TRACING_ENABLED`, `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`, and `OTEL_TRACES_SAMPLER_RATIO` configure OpenTelemetry tracing for HTTP requests, auth exchange, citizen reporting, route planning, tour validation, and the IoT worker pipeline.
+- `ENABLE_LOGSTASH`, `LOGSTASH_HOST`, and `LOGSTASH_PORT` configure structured JSON log shipping from the API runtime into Logstash/Elasticsearch when the observability profile is enabled.
 - `APP_BASE_URL` for backend-to-frontend auth callback redirects (fallbacks: `APP_URL`, `CLIENT_ORIGIN`)
 - `JWT_ACCESS_SECRET` for local access-token signing (Bearer JWT)
 - `JWT_ACCESS_EXPIRES_IN` for local access-token TTL (for example `15m`)
@@ -99,7 +108,20 @@ Agent tour mapping note:
 - `OTEL_SERVICE_NAME` sets the service name reported to the collector (default `ecotrack-api`)
 - `OTEL_EXPORTER_OTLP_ENDPOINT` sets the collector base URL for OTLP HTTP export (default `http://localhost:4318` in local/native dev)
 - `OTEL_TRACES_SAMPLER_RATIO` sets probabilistic sampling between `0` and `1` (default `1`)
+- `ENABLE_LOGSTASH` mirrors structured request and worker logs to Logstash over TCP (default `false`)
+- `LOGSTASH_HOST` sets the Logstash hostname used by the API runtime when shipping logs (default `logstash`)
+- `LOGSTASH_PORT` sets the Logstash TCP port used by the API runtime when shipping logs (default `5001`)
+- `ALERTMANAGER_DEV_WEBHOOK_URL` sets the default dev webhook receiver used by the local Alertmanager container
+- `ALERTMANAGER_WARNING_RECEIVER` chooses the Alertmanager receiver name for warning alerts (default `dev-webhook`)
+- `ALERTMANAGER_CRITICAL_RECEIVER` chooses the Alertmanager receiver name for critical alerts (default `dev-webhook`)
+- `ALERTMANAGER_GROUP_WAIT` sets Alertmanager initial grouping delay (default `30s`)
+- `ALERTMANAGER_GROUP_INTERVAL` sets the Alertmanager grouped resend interval (default `5m`)
+- `ALERTMANAGER_REPEAT_INTERVAL` sets the Alertmanager repeat notification interval (default `4h`)
+- `ALERTMANAGER_SLACK_WEBHOOK_URL` sets the Slack webhook URL used by the optional `slack-warning` receiver
+- `ALERTMANAGER_SLACK_CHANNEL` sets the Slack channel name used by the optional `slack-warning` receiver
+- `ALERTMANAGER_PAGERDUTY_ROUTING_KEY` sets the PagerDuty routing key used by the optional `pagerduty-critical` receiver
 - For Docker dev with the `obs` profile enabled, set `OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318` and inspect traces in Jaeger at `http://localhost:16686`.
+- For Docker dev with the `obs` profile enabled, Alertmanager is exposed at `http://localhost:9093`, the local webhook sink is exposed at `http://localhost:8085`, Kibana is exposed at `http://localhost:5601`, and Elasticsearch-backed log search is also available through Grafana.
 
 ## Optional Routing Resilience Keys
 
@@ -116,6 +138,8 @@ Agent tour mapping note:
 - `IOT_MAX_BATCH_SIZE` for the maximum measurements allowed in one HTTP batch request (default `1000`)
 - `IOT_VALIDATED_CONSUMER_CONCURRENCY` for the number of downstream validated-event consumer workers (default `20`)
 - `IOT_VALIDATED_CONSUMER_BATCH_SIZE` for the maximum validated-event deliveries drained per worker batch (default `250`)
+- `IOT_INGESTION_SHARD_COUNT` for the number of virtual shards used by the staged-ingestion queue and recovery loop (default `12`)
+- `IOT_VALIDATED_CONSUMER_SHARD_COUNT` for the number of virtual shards used by the validated-delivery queue and recovery loop (default `12`)
 
 ## Optional CI Quality Keys
 
@@ -209,10 +233,18 @@ Removed runtime aliases (no longer read by API runtime):
 - `app/.env.local`, `app/.env.example`, and mode env files must include only `VITE_*` keys.
 - `mobile/.env.local`, `mobile/.env.example`, and mode env files must include only `EXPO_PUBLIC_*` keys.
 - API/database/infrastructure secrets must never appear in app or mobile env files.
+- `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_RELEASE` are private build/deploy inputs; expose only the public DSNs (`VITE_SENTRY_DSN`, `EXPO_PUBLIC_SENTRY_DSN`) to clients.
 - In local and Docker browser-facing runtimes, `VITE_API_BASE_URL` should target the frontend origin so the edge layer owns `/api` and `/health` routing.
 - In native mobile runtimes, `EXPO_PUBLIC_API_BASE_URL` should target the public API origin directly because Expo clients do not inherit the Vite edge proxy.
 - For Cloudflare Pages deploys, set `VITE_USE_EDGE_API_PROXY=true` and `EDGE_PROXY_TARGET_ORIGIN=<backend-public-origin>` at build time so Vite emits a `_redirects` file that proxies `/api/*` and `/health` through the frontend edge.
 - `APP_URL`/`CLIENT_ORIGIN` values, when used, must target the frontend origin root (for example `https://app.example.com`), not removed legacy paths such as `/auth` or `/dashboard`.
+
+## Frontend Error Tracking
+
+- Web initializes Sentry when `VITE_SENTRY_DSN` is present and continues forwarding aggregate client errors and Web Vitals to `/api/errors` and `/api/metrics/frontend`.
+- Mobile initializes Sentry when `EXPO_PUBLIC_SENTRY_DSN` is present and continues forwarding aggregate runtime, push, and API failures to `/api/errors`.
+- Web source maps upload through the Vite build only when `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are present in the shell or CI environment.
+- Expo builds can enable the `@sentry/react-native/expo` plugin path for native symbol/source-map support without placing private Sentry credentials in committed mobile env files.
 
 ## OAuth Callback Contract
 
@@ -247,7 +279,7 @@ cp infrastructure/environments/.env.docker.example infrastructure/environments/.
 ```bash
 docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile core config
 docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile core up -d --build
-docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile obs up -d jaeger grafana prometheus
+docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile obs up -d elasticsearch logstash kibana jaeger grafana prometheus alertmanager alert-webhook-sink
 ```
 
 ## References

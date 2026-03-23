@@ -8,7 +8,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(rootDirectory, "src"),
-      "@api": path.resolve(rootDirectory, "src/api")
+      "@api": path.resolve(rootDirectory, "src/api"),
+      "react-native": path.resolve(rootDirectory, "src/tests/shims/react-native.ts"),
+      "expo-constants": path.resolve(rootDirectory, "src/tests/shims/expo-constants.ts"),
+      "expo-notifications": path.resolve(rootDirectory, "src/tests/shims/expo-notifications.ts")
     }
   },
   test: {

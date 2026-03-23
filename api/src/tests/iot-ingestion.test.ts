@@ -16,6 +16,8 @@ vi.mock('../config/iot-ingestion.js', () => ({
     IOT_MAX_BATCH_SIZE: 1000,
     IOT_VALIDATED_CONSUMER_CONCURRENCY: 2,
     IOT_VALIDATED_CONSUMER_BATCH_SIZE: 10,
+    IOT_INGESTION_SHARD_COUNT: 12,
+    IOT_VALIDATED_CONSUMER_SHARD_COUNT: 12,
   },
 }));
 
@@ -36,6 +38,8 @@ describe('IngestionService', () => {
     IOT_MAX_BATCH_SIZE: 1000,
     IOT_VALIDATED_CONSUMER_CONCURRENCY: 2,
     IOT_VALIDATED_CONSUMER_BATCH_SIZE: 10,
+    IOT_INGESTION_SHARD_COUNT: 12,
+    IOT_VALIDATED_CONSUMER_SHARD_COUNT: 12,
   };
 
   beforeEach(() => {
@@ -46,6 +50,8 @@ describe('IngestionService', () => {
         {
           id: 'event-1',
           deviceUid: 'sensor-001',
+          routingKey: 'sensor-001',
+          shardId: 2,
           idempotencyKey: null,
           newlyStaged: true,
         },
@@ -60,7 +66,7 @@ describe('IngestionService', () => {
         oldestPendingAgeMs: null,
       }),
       recoverStuckProcessing: vi.fn().mockResolvedValue(undefined),
-      listRunnableEventIds: vi.fn().mockResolvedValue([]),
+      listRunnableEventRefs: vi.fn().mockResolvedValue([]),
     } as unknown as IngestionRepository;
 
     processorService = {
@@ -68,6 +74,14 @@ describe('IngestionService', () => {
     } as unknown as IngestionProcessorService;
     const validatedConsumerService = {
       getHealthSnapshot: vi.fn().mockResolvedValue({
+        pendingCount: 0,
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        completedLastHour: 0,
+        oldestPendingAgeMs: null,
+      }),
+      getHealthSnapshotForConsumer: vi.fn().mockResolvedValue({
         pendingCount: 0,
         retryCount: 0,
         processingCount: 0,
@@ -91,6 +105,9 @@ describe('IngestionService', () => {
       queue,
       processorService,
       validatedConsumerService as any,
+      {
+        recordServiceHop: vi.fn(),
+      } as any,
     );
   });
 
@@ -143,12 +160,16 @@ describe('IngestionService', () => {
       {
         id: 'event-1',
         deviceUid: 'sensor-001',
+        routingKey: 'sensor-001',
+        shardId: 2,
         idempotencyKey: null,
         newlyStaged: true,
       },
       {
         id: 'event-2',
         deviceUid: 'sensor-002',
+        routingKey: 'sensor-002',
+        shardId: 5,
         idempotencyKey: null,
         newlyStaged: true,
       },
@@ -243,6 +264,14 @@ describe('IngestionService', () => {
         processedLastHour: 0,
         oldestPendingAgeMs: null,
       },
+      rollupConsumer: {
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        pendingCount: 0,
+        processedLastHour: 0,
+        oldestPendingAgeMs: null,
+      },
     });
   });
 
@@ -273,6 +302,17 @@ describe('IngestionService', () => {
           completedLastHour: 0,
           oldestPendingAgeMs: null,
         }),
+        getHealthSnapshotForConsumer: vi.fn().mockResolvedValue({
+          pendingCount: 0,
+          retryCount: 0,
+          processingCount: 0,
+          failedCount: 0,
+          completedLastHour: 0,
+          oldestPendingAgeMs: null,
+        }),
+      } as any,
+      {
+        recordServiceHop: vi.fn(),
       } as any,
     );
 
@@ -296,6 +336,14 @@ describe('IngestionService', () => {
         oldestPendingAgeMs: null,
       },
       consumer: {
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        pendingCount: 0,
+        processedLastHour: 0,
+        oldestPendingAgeMs: null,
+      },
+      rollupConsumer: {
         retryCount: 0,
         processingCount: 0,
         failedCount: 0,
@@ -394,19 +442,51 @@ describe('IngestionService', () => {
     service.onModuleInit();
 
     await (service as any).enqueueStagedEvents([
-      { id: 'event-1', newlyStaged: true },
-      { id: 'event-2', newlyStaged: false },
+      {
+        id: 'event-1',
+        deviceUid: 'sensor-001',
+        routingKey: 'sensor-001',
+        shardId: 2,
+        idempotencyKey: null,
+        newlyStaged: true,
+      },
+      {
+        id: 'event-2',
+        deviceUid: 'sensor-002',
+        routingKey: 'sensor-002',
+        shardId: 5,
+        idempotencyKey: null,
+        newlyStaged: false,
+      },
     ]);
 
     const enqueueSpy = vi.spyOn(queue, 'enqueue');
-    await (service as any).enqueueStagedEvents([{ id: 'event-1', newlyStaged: true }]);
+    await (service as any).enqueueStagedEvents([
+      {
+        id: 'event-1',
+        deviceUid: 'sensor-001',
+        routingKey: 'sensor-001',
+        shardId: 2,
+        idempotencyKey: null,
+        newlyStaged: true,
+      },
+    ]);
 
     expect(enqueueSpy).not.toHaveBeenCalled();
 
     enqueueSpy.mockRejectedValueOnce(new Error('queue unavailable'));
 
     await expect(
-      (service as any).enqueueStagedEvents([{ id: 'event-3', newlyStaged: true }]),
+      (service as any).enqueueStagedEvents([
+        {
+          id: 'event-3',
+          deviceUid: 'sensor-003',
+          routingKey: 'sensor-003',
+          shardId: 7,
+          idempotencyKey: null,
+          newlyStaged: true,
+        },
+      ]),
     ).rejects.toThrow('queue unavailable');
     expect((service as any).enqueuedEventIds.has('event-3')).toBe(false);
   });
@@ -415,7 +495,9 @@ describe('IngestionService', () => {
     service.onModuleInit();
 
     const enqueueSpy = vi.spyOn(queue, 'enqueue').mockRejectedValueOnce(new Error('queue down'));
-    vi.mocked(repository.listRunnableEventIds).mockResolvedValueOnce(['event-7']);
+    vi.mocked(repository.listRunnableEventRefs).mockResolvedValueOnce([
+      { id: 'event-7', shardId: 3, routingKey: 'sensor-007' },
+    ]);
 
     await expect((service as any).schedulePendingEventRecovery()).resolves.toBeUndefined();
     expect((service as any).enqueuedEventIds.has('event-7')).toBe(false);
@@ -423,7 +505,7 @@ describe('IngestionService', () => {
     vi.mocked(repository.recoverStuckProcessing).mockRejectedValueOnce(new Error('db down'));
 
     await expect((service as any).schedulePendingEventRecovery()).resolves.toBeUndefined();
-    expect(enqueueSpy).toHaveBeenCalledWith(['event-7']);
+    expect(enqueueSpy).toHaveBeenCalledWith(['event-7'], 3);
   });
 
   it('clears tracked ids even when processor execution fails', async () => {

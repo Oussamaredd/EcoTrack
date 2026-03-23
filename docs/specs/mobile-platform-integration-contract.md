@@ -1,6 +1,6 @@
 # Mobile Layer Integration Contract (Dev Scope)
 
-Last updated: 2026-03-11
+Last updated: 2026-03-23
 
 ## Purpose
 
@@ -49,6 +49,7 @@ Scope note:
 | `UC-C01` Citizen overflow report | `POST /api/citizen/reports`, `GET /api/containers` | `containerId`, `reportType`, optional `description`/`photoUrl` | optional `latitude`, `longitude` (validated) |
 | `UC-C02` Citizen profile/history | `GET /api/citizen/profile`, `GET /api/citizen/history` | auth context | none |
 | `UC-C03` Citizen challenges | `GET /api/citizen/challenges`, `POST /api/citizen/challenges/:challengeId/enroll`, `POST /api/citizen/challenges/:challengeId/progress` | `challengeId` and action payload | none |
+| `UC-C04` Citizen push notifications | `POST /api/citizen/notifications/devices`, `GET /api/citizen/notifications`, `POST /api/citizen/notifications/:id/read` | `provider`, `platform`, `pushToken` for device registration; notification ID for inbox reads | deep-link payloads only |
 | `UC-A01` Agent receives daily tour | `GET /api/tours/agent/me`, `POST /api/tours/:tourId/start`, `GET /api/tours/:tourId/activity` | `tourId` for start | tour stop container coordinates and route geometry provided by API |
 | `UC-A02` Agent validates collection | `POST /api/tours/:tourId/stops/:stopId/validate` | `volumeLiters` (+ optional `containerId`/`qrCode`) | optional `latitude`, `longitude` (validated) |
 | `UC-A03` Agent anomaly report | `GET /api/tours/anomaly-types`, `POST /api/tours/:tourId/anomalies` | `anomalyTypeId` (+ optional details) | link via `tourStopId` when location traceability is needed |
@@ -110,6 +111,11 @@ Scope note:
   - camera/photo picker
   - notifications
   - secure token storage
+- Mobile push uses Expo notifications in development builds:
+  - device registration persists under `notify.notification_devices`
+  - citizen inbox/read state persists under `notify.notification_recipients`
+  - delivery attempts remain observable through `notify.notification_deliveries`
+  - tapping a push deep-links into Expo Router using the server-provided `deepLink`
 
 ## Non-Goals In This Phase
 

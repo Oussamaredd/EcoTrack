@@ -1,6 +1,6 @@
 # Environment Variable Inventory
 
-Last updated: 2026-03-05
+Last updated: 2026-03-23
 
 This inventory is a reference snapshot, not the day-to-day policy document. For the active runtime contract, use `docs/ENV.md`.
 
@@ -44,6 +44,15 @@ Visibility legend:
 | API_PORT | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | API_BASE_URL | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | API_URL | api | private | local-dev, deploy-dev, deploy-staging, deploy-prod | removed runtime alias (use `API_BASE_URL` when explicit API base is needed) |
+| ALERTMANAGER_CRITICAL_RECEIVER | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional) |
+| ALERTMANAGER_DEV_WEBHOOK_URL | infrastructure | private | local-dev, docker-dev | canonical (optional) |
+| ALERTMANAGER_GROUP_INTERVAL | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional) |
+| ALERTMANAGER_GROUP_WAIT | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional) |
+| ALERTMANAGER_PAGERDUTY_ROUTING_KEY | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional) |
+| ALERTMANAGER_REPEAT_INTERVAL | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional) |
+| ALERTMANAGER_SLACK_CHANNEL | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional) |
+| ALERTMANAGER_SLACK_WEBHOOK_URL | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional) |
+| ALERTMANAGER_WARNING_RECEIVER | infrastructure | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical (optional) |
 | APP_BASE_URL | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical optional explicit frontend app base |
 | APP_URL | api | private | docker-dev, deploy-dev, deploy-staging, deploy-prod | supported frontend app-origin fallback (`APP_BASE_URL` takes precedence when both are set) |
 | BCRYPT_ROUNDS | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -72,11 +81,13 @@ Visibility legend:
 | GOOGLE_CLIENT_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | IOT_BACKPRESSURE_THRESHOLD | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | IOT_INGESTION_ENABLED | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| IOT_INGESTION_SHARD_COUNT | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | IOT_MAX_BATCH_SIZE | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | IOT_QUEUE_BATCH_SIZE | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | IOT_QUEUE_CONCURRENCY | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | IOT_VALIDATED_CONSUMER_BATCH_SIZE | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | IOT_VALIDATED_CONSUMER_CONCURRENCY | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| IOT_VALIDATED_CONSUMER_SHARD_COUNT | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_ACCESS_EXPIRES_IN | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_ACCESS_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | JWT_EXPIRES_IN | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -103,6 +114,10 @@ Visibility legend:
 | ROUTING_FAILURE_THRESHOLD | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | ROUTING_RESET_WINDOW_MS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | ROUTING_TIMEOUT_MS | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| SENTRY_AUTH_TOKEN | infrastructure | private | local-dev, ci, deploy-dev, deploy-staging, deploy-prod | optional Sentry sourcemap upload token |
+| SENTRY_ORG | infrastructure | private | local-dev, ci, deploy-dev, deploy-staging, deploy-prod | optional Sentry organization slug for sourcemap upload |
+| SENTRY_PROJECT | infrastructure | private | local-dev, ci, deploy-dev, deploy-staging, deploy-prod | optional Sentry project slug for sourcemap upload |
+| SENTRY_RELEASE | infrastructure | private | local-dev, ci, deploy-dev, deploy-staging, deploy-prod | optional explicit release override for sourcemap upload |
 | SESSION_MAX_AGE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECRET | api | private | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | SESSION_SECURE | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -124,7 +139,13 @@ Visibility legend:
 | VITE_API_BASE_URL | app | public | local-dev, docker-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
 | VITE_API_URL | app | public | local-dev | deprecated alias (migrate to `VITE_API_BASE_URL`) |
 | VITE_BASE | app | public | local-dev, deploy-dev, deploy-staging, deploy-prod | canonical |
+| VITE_RELEASE_VERSION | app | public | local-dev, deploy-dev, deploy-staging, deploy-prod | optional frontend release tag for telemetry/Sentry |
+| VITE_SENTRY_DSN | app | public | local-dev, deploy-dev, deploy-staging, deploy-prod | optional web Sentry DSN |
+| VITE_SENTRY_ENVIRONMENT | app | public | local-dev, deploy-dev, deploy-staging, deploy-prod | optional web Sentry environment override |
 | VITE_USE_LANDING_PAGE | app | public | local-dev | canonical (mode-specific UI toggle) |
+| EXPO_PUBLIC_RELEASE_VERSION | mobile | public | local-dev, deploy-dev, deploy-staging, deploy-prod | optional mobile release tag for telemetry/Sentry |
+| EXPO_PUBLIC_SENTRY_DSN | mobile | public | local-dev, deploy-dev, deploy-staging, deploy-prod | optional mobile Sentry DSN |
+| EXPO_PUBLIC_SENTRY_ENVIRONMENT | mobile | public | local-dev, deploy-dev, deploy-staging, deploy-prod | optional mobile Sentry environment override |
 | WEBHOOK_SECRET | infrastructure | private | deploy-staging, deploy-prod | canonical |
 | WEBHOOK_URL | infrastructure | private | deploy-staging, deploy-prod | canonical |
 
