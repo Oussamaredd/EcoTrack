@@ -10,10 +10,10 @@ For users with `admin` or `super_admin` access, the page also includes a lightwe
 ## Current UX Structure
 - Hero section with user greeting and live sync indicators.
 - KPI cards for total tickets, open queue, completed tickets, and assignment coverage.
+- Manager heatmap panel backed by aggregated planning risk data (`GET /api/planning/heatmap`) with zone filters, risk tiers, and notification feed dismissal state.
 - 7-day activity chart comparing created vs updated ticket volume.
 - Status distribution with proportional progress bars.
 - Recent ticket activity feed with status badges and relative timestamps.
-- Support-focused activity feed for recent ticket operations.
 - Admin-only panel with quick links to the Admin Center for user management, audit logs, and system settings.
 
 ## Navigation Behavior
@@ -40,9 +40,34 @@ The response powers:
 Frontend uses `useDashboard()` in `app/src/hooks/useTickets.tsx` with React Query caching (`staleTime: 5 minutes`) and polling (`refetchInterval: 20 seconds`).
 Polling is disabled in background tabs (`refetchIntervalInBackground: false`).
 
+Manager planning heatmap data now comes from:
+
+```http
+GET /api/planning/heatmap
+```
+
+The endpoint returns:
+
+- `zoneSummaries`
+- `containerSignals`
+- deterministic risk thresholds (`low`, `medium`, `high`)
+
+The client does not aggregate raw IoT measurements in the browser. It consumes the API read model directly through `usePlanningHeatmap()`.
+
 Manager-capable sessions also use `usePlanningRealtimeStream()` (`app/src/hooks/usePlanningRealtimeStream.tsx`) for secured SSE updates. The hook first requests a short-lived opaque stream session token from `POST /api/planning/stream/session` (no request body), then subscribes to `GET /api/planning/stream?stream_session=...` and tracks event IDs for replay-aware reconnect. The API emits periodic dashboard snapshots in addition to event-triggered updates, so clients connected to different instances still receive fresh state without shared in-memory listeners. The hook invalidates `planning-dashboard`, `dashboard`, and `agent-tour` query caches on push events, and automatically falls back to polling when stream connectivity is unavailable.
 
 WebSocket transport is now enabled via `usePlanningRealtimeSocket()` (`app/src/hooks/usePlanningRealtimeSocket.tsx`) and uses `POST /api/planning/ws-session` (no request body) + socket path `/api/planning/ws`. Runtime transport order is: WebSocket first, SSE second, polling fallback last.
+
+The dashboard page body is now split into lazy-loaded non-critical panels:
+
+- planning KPI summary
+- manager heatmap
+- 7-day activity panel
+- status distribution panel
+- admin center panel
+- recent ticket activity panel
+
+Browser Web Vitals are also forwarded to `POST /api/metrics/frontend` so Lighthouse and field telemetry share the same backend ingestion path. When `VITE_SENTRY_DSN` is configured, dashboard runtime failures and related user-context tags also flow to Sentry while aggregate counts continue to land in the backend metrics/errors pipeline.
 
 ## Realtime Transport Operations
 - **Precedence**: Dashboard resolves realtime status in strict order: WebSocket (`ws-connected`) -> SSE (`connected`/`reconnecting`/`fallback`) -> polling-safe fallback (`fallback`).
@@ -65,8 +90,10 @@ WebSocket transport is now enabled via `usePlanningRealtimeSocket()` (`app/src/h
 
 ## Relevant Files
 - `app/src/pages/Dashboard.tsx`
+- `app/src/components/dashboard/ManagerHeatmapPanel.tsx`
 - `app/src/App.css`
 - `api/src/modules/dashboard/dashboard.repository.ts`
+- `api/src/modules/routes/planning.repository.ts`
 - `app/src/tests/Dashboard.test.tsx`
 - `app/src/tests/useDashboard.test.tsx`
 

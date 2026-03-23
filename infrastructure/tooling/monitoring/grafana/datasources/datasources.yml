@@ -8,10 +8,17 @@ datasources:
     isDefault: true
     editable: true
 
-  - name: Loki
-    type: loki
+  - name: Elasticsearch Logs
+    type: elasticsearch
     access: proxy
-    url: http://loki:3100
+    url: http://elasticsearch:9200
+    jsonData:
+      index: ecotrack-api-logs-*
+      timeField: "@timestamp"
+      interval: Daily
+      esVersion: "8.12.0"
+      logMessageField: msg
+      logLevelField: level
     editable: true
 
   - name: Jaeger

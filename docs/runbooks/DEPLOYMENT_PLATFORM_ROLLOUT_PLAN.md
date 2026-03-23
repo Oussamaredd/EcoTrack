@@ -155,12 +155,14 @@ Completion definition:
 - the service can connect to Neon and pass startup validation
 - implemented baseline:
   - Render web service `ecotrack-3ggh` is live at `https://ecotrack-3ggh.onrender.com`
-  - monorepo build runs from the repo root with `npm ci --include=dev && npm run build:database && npm run build:api`
-  - runtime start command is `npm run start --workspace=ecotrack-api`
+  - monorepo build runs from the repo root with `npm run deploy:render:build`
+  - runtime start command is `npm run deploy:render:start`
   - Render port contract is aligned with `API_PORT=10000`
   - readiness health check uses `/api/health/ready`
   - baseline backend deployment env values are configured on Render; final frontend/public-origin alignment remains Phase 6 work
   - because the service is on the Render free plan, migrations run manually via `npm run db:migrate --workspace=ecotrack-database` against the direct Neon connection string before deploys that include schema changes
+  - `npm ci --omit=dev` is not a supported Render build command for this repo; the canonical build path installs the workspace dev toolchain, compiles `database` and `api`, and validates that every API production dependency still resolves from `api/dist/main.js`
+  - local Windows verification should use `npm run deploy:render:verify-local` instead of the full Render build command if `npm ci` is blocked by file-locking or antivirus on native modules under `node_modules`
 
 Checklist:
 

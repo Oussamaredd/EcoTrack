@@ -22,6 +22,8 @@ vi.mock('../config/iot-ingestion.js', () => ({
     IOT_MAX_BATCH_SIZE: 1000,
     IOT_VALIDATED_CONSUMER_CONCURRENCY: 2,
     IOT_VALIDATED_CONSUMER_BATCH_SIZE: 10,
+    IOT_INGESTION_SHARD_COUNT: 12,
+    IOT_VALIDATED_CONSUMER_SHARD_COUNT: 12,
   },
 }));
 
@@ -39,6 +41,8 @@ describe('IngestionController (HTTP)', () => {
     IOT_MAX_BATCH_SIZE: 1000,
     IOT_VALIDATED_CONSUMER_CONCURRENCY: 2,
     IOT_VALIDATED_CONSUMER_BATCH_SIZE: 10,
+    IOT_INGESTION_SHARD_COUNT: 12,
+    IOT_VALIDATED_CONSUMER_SHARD_COUNT: 12,
   };
 
   beforeEach(async () => {
@@ -47,6 +51,8 @@ describe('IngestionController (HTTP)', () => {
         {
           id: 'event-1',
           deviceUid: 'sensor-001',
+          routingKey: 'sensor-001',
+          shardId: 1,
           idempotencyKey: null,
           newlyStaged: true,
         },
@@ -61,7 +67,7 @@ describe('IngestionController (HTTP)', () => {
         oldestPendingAgeMs: null,
       }),
       recoverStuckProcessing: vi.fn().mockResolvedValue(undefined),
-      listRunnableEventIds: vi.fn().mockResolvedValue([]),
+      listRunnableEventRefs: vi.fn().mockResolvedValue([]),
     } as unknown as IngestionRepository;
 
     const queue = new InMemoryIngestionQueue();
@@ -70,6 +76,14 @@ describe('IngestionController (HTTP)', () => {
     } as unknown as IngestionProcessorService;
     const validatedConsumerService = {
       getHealthSnapshot: vi.fn().mockResolvedValue({
+        pendingCount: 0,
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        completedLastHour: 0,
+        oldestPendingAgeMs: null,
+      }),
+      getHealthSnapshotForConsumer: vi.fn().mockResolvedValue({
         pendingCount: 0,
         retryCount: 0,
         processingCount: 0,
@@ -93,6 +107,9 @@ describe('IngestionController (HTTP)', () => {
       queue,
       processorService,
       validatedConsumerService as any,
+      {
+        recordServiceHop: vi.fn(),
+      } as any,
     );
 
     service.onModuleInit();
@@ -168,6 +185,14 @@ describe('IngestionController (HTTP)', () => {
         oldestPendingAgeMs: null,
       },
       consumer: {
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        pendingCount: 0,
+        processedLastHour: 0,
+        oldestPendingAgeMs: null,
+      },
+      rollupConsumer: {
         retryCount: 0,
         processingCount: 0,
         failedCount: 0,

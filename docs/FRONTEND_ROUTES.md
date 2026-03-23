@@ -63,6 +63,7 @@ Authenticated shell behavior:
 - Sign Out returns users to the landing page (`/`).
 - Role-protected app surfaces use a shared Access Denied presentation pattern (`app-access-denied`).
 - Unauthorized authenticated requests for `/app/dashboard` are redirected back to `/app` instead of rendering the dashboard.
+- `/app/dashboard` now lazy-loads non-critical analytics panels and a manager heatmap panel after the shell and KPI strip have rendered.
 
 ## Landing sections and hash navigation
 

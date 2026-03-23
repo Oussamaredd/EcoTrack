@@ -11,7 +11,7 @@ import {
 } from 'ecotrack-database';
 
 import { DRIZZLE } from '../../../database/database.constants.js';
-import { VALIDATED_EVENT_TIMESERIES_CONSUMER } from '../../events/internal-events.catalog.js';
+import { IOT_MEASUREMENT_VALIDATED_CONSUMERS } from '../../events/internal-events.catalog.js';
 import type { InternalEventEnvelope } from '../../events/internal-events.contracts.js';
 
 import {
@@ -35,6 +35,18 @@ type SensorContext = {
   containerId: string | null;
 };
 
+const coerceTimestamp = (value: Date | string | null | undefined) => {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(normalized.getTime()) ? null : normalized;
+};
+
+const computeProcessingLatencyMs = (receivedAtColumn: typeof ingestionEvents.receivedAt) =>
+  sql<number>`cast(extract(epoch from (clock_timestamp() - ${receivedAtColumn})) * 1000 as integer)`;
+
 @Injectable()
 export class IngestionRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DatabaseClient) {}
@@ -53,6 +65,8 @@ export class IngestionRepository {
             deviceUid: measurement.deviceUid,
             sensorDeviceId: measurement.sensorDeviceId,
             containerId: measurement.containerId,
+            routingKey: measurement.routingKey,
+            shardId: measurement.shardId,
             idempotencyKey: measurement.idempotencyKey,
             measuredAt: measurement.measuredAt,
             fillLevelPercent: measurement.fillLevelPercent,
@@ -71,6 +85,8 @@ export class IngestionRepository {
           .returning({
             id: ingestionEvents.id,
             deviceUid: ingestionEvents.deviceUid,
+            routingKey: ingestionEvents.routingKey,
+            shardId: ingestionEvents.shardId,
             idempotencyKey: ingestionEvents.idempotencyKey,
           });
 
@@ -98,9 +114,13 @@ export class IngestionRepository {
     });
   }
 
-  async listRunnableEventIds(limit: number): Promise<string[]> {
+  async listRunnableEventRefs(limit: number): Promise<Array<{ id: string; shardId: number; routingKey: string }>> {
     const rows = await this.db
-      .select({ id: ingestionEvents.id })
+      .select({
+        id: ingestionEvents.id,
+        shardId: ingestionEvents.shardId,
+        routingKey: ingestionEvents.routingKey,
+      })
       .from(ingestionEvents)
       .where(
         and(
@@ -111,10 +131,10 @@ export class IngestionRepository {
           lte(ingestionEvents.nextAttemptAt, new Date()),
         ),
       )
-      .orderBy(asc(ingestionEvents.receivedAt))
+      .orderBy(asc(ingestionEvents.shardId), asc(ingestionEvents.receivedAt))
       .limit(limit);
 
-    return rows.map((row) => row.id);
+    return rows;
   }
 
   async recoverStuckProcessing(staleThreshold: Date) {
@@ -161,6 +181,8 @@ export class IngestionRepository {
         id: ingestionEvents.id,
         batchId: ingestionEvents.batchId,
         deviceUid: ingestionEvents.deviceUid,
+        routingKey: ingestionEvents.routingKey,
+        shardId: ingestionEvents.shardId,
         sensorDeviceId: ingestionEvents.sensorDeviceId,
         containerId: ingestionEvents.containerId,
         idempotencyKey: ingestionEvents.idempotencyKey,
@@ -203,7 +225,7 @@ export class IngestionRepository {
         claimedByInstanceId: null,
         processedAt: now,
         failedAt: now,
-        processingLatencyMs: sql`extract(epoch from (${now} - ${ingestionEvents.receivedAt})) * 1000`,
+        processingLatencyMs: computeProcessingLatencyMs(ingestionEvents.receivedAt),
         updatedAt: now,
       })
       .where(eq(ingestionEvents.id, eventId));
@@ -221,7 +243,7 @@ export class IngestionRepository {
         lastError: errorMessage,
         claimedByInstanceId: null,
         failedAt: failed ? now : null,
-        processingLatencyMs: sql`extract(epoch from (${now} - ${ingestionEvents.receivedAt})) * 1000`,
+        processingLatencyMs: computeProcessingLatencyMs(ingestionEvents.receivedAt),
         updatedAt: now,
       })
       .where(eq(ingestionEvents.id, eventId));
@@ -253,6 +275,7 @@ export class IngestionRepository {
         eventName: envelope.eventName,
         schemaVersion: envelope.schemaVersion,
         routingKey: envelope.routingKey,
+        shardId: event.shardId,
         producerName: envelope.producerName,
         producerTransactionId: envelope.producerTransactionId,
         deviceUid: event.deviceUid,
@@ -288,6 +311,7 @@ export class IngestionRepository {
           validationSummary: event.validationSummary,
           eventName: envelope.eventName,
           routingKey: envelope.routingKey,
+          shardId: event.shardId,
           schemaVersion: envelope.schemaVersion,
           producerName: envelope.producerName,
           producerTransactionId: envelope.producerTransactionId,
@@ -303,18 +327,23 @@ export class IngestionRepository {
         throw new Error('Failed to persist validated measurement event.');
       }
 
-      const [createdDelivery] = await tx
+      const createdDeliveries = await tx
         .insert(validatedEventDeliveries)
-        .values({
-          consumerName: VALIDATED_EVENT_TIMESERIES_CONSUMER,
-          validatedEventId: validatedEvent.id,
-          eventName: envelope.eventName,
-          routingKey: envelope.routingKey,
-          traceparent: event.traceparent,
-          tracestate: event.tracestate,
-        })
+        .values(
+          IOT_MEASUREMENT_VALIDATED_CONSUMERS.map((consumerName) => ({
+            consumerName,
+            validatedEventId: validatedEvent.id,
+            eventName: envelope.eventName,
+            routingKey: envelope.routingKey,
+            shardId: event.shardId,
+            traceparent: event.traceparent,
+            tracestate: event.tracestate,
+          })),
+        )
         .returning({
           id: validatedEventDeliveries.id,
+          shardId: validatedEventDeliveries.shardId,
+          consumerName: validatedEventDeliveries.consumerName,
         });
 
       await tx
@@ -328,14 +357,18 @@ export class IngestionRepository {
           lastError: null,
           claimedByInstanceId: null,
           processedAt,
-          processingLatencyMs: sql`extract(epoch from (${processedAt} - ${ingestionEvents.receivedAt})) * 1000`,
+          processingLatencyMs: computeProcessingLatencyMs(ingestionEvents.receivedAt),
           updatedAt: processedAt,
         })
         .where(eq(ingestionEvents.id, event.sourceEventId));
 
       return {
         validatedEventId: validatedEvent.id,
-        deliveryIds: createdDelivery ? [createdDelivery.id] : [],
+        deliveryRefs: createdDeliveries.map((delivery) => ({
+          id: delivery.id,
+          shardId: delivery.shardId,
+          consumerName: delivery.consumerName,
+        })),
       };
     });
   }
@@ -352,6 +385,8 @@ export class IngestionRepository {
       .select({
         id: ingestionEvents.id,
         deviceUid: ingestionEvents.deviceUid,
+        routingKey: ingestionEvents.routingKey,
+        shardId: ingestionEvents.shardId,
         idempotencyKey: ingestionEvents.idempotencyKey,
       })
       .from(ingestionEvents)
@@ -392,7 +427,10 @@ export class IngestionRepository {
       failedCount,
       rejectedCount,
       validatedLastHour,
-      oldestPendingAgeMs: oldestPending ? Math.max(0, Date.now() - oldestPending.getTime()) : null,
+      oldestPendingAgeMs: (() => {
+        const timestamp = coerceTimestamp(oldestPending);
+        return timestamp ? Math.max(0, Date.now() - timestamp.getTime()) : null;
+      })(),
     };
   }
 

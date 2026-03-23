@@ -1,222 +1,83 @@
 # ELK Stack Integration Guide
 
-This document explains how to use the ELK (Elasticsearch, Logstash, Kibana) stack for centralized logging.
+EcoTrack uses the existing ELK stack in the `obs` compose profile for centralized structured logs.
 
-## Components
+## Services
 
-### Elasticsearch
-- **URL**: http://localhost:9200
-- **Purpose**: Stores and indexes log data
-- **Health Check**: http://localhost:9200/_cluster/health
+- Elasticsearch: `http://localhost:9200`
+- Logstash TCP input: `logstash:5001` inside Docker, `localhost:5001` from the host
+- Kibana: `http://localhost:5601`
+- Grafana Elasticsearch datasource: `Elasticsearch Logs`
 
-### Logstash
-- **Input**: TCP port 5001 for JSON logs
-- **Output**: Elasticsearch with daily indices
-- **Configuration**: `infrastructure/tooling/monitoring/elk/logstash/logstash.conf`
+## Startup
 
-### Kibana
-- **URL**: http://localhost:5601
-- **Purpose**: Visualize and search log data
-- **Default Login**: elastic/changeme (demo only)
-
-## Setup
-
-### Start ELK Stack
 ```bash
-docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile obs up -d --build
+docker compose --env-file infrastructure/environments/.env.docker -f infrastructure/docker-compose.yml --profile obs up -d elasticsearch logstash kibana
 ```
 
-### Verify Services
-```bash
-# Elasticsearch
-curl http://localhost:9200/_cluster/health
+When Prometheus or full observability commands are started with the `obs` profile, Docker Compose now pulls in `backend` and `db` automatically so metrics scraping and API log shipping have a live target.
 
-# Logstash
-docker logs logstash
+Enable log shipping from the API runtime with:
 
-# Kibana
-curl http://localhost:5601/api/status
+```env
+ENABLE_LOGSTASH=true
+LOGSTASH_HOST=logstash
+LOGSTASH_PORT=5001
 ```
 
-## Log Data Structure
+For host-native API runs, point `LOGSTASH_HOST` at `localhost`.
 
-Backend logs are sent as structured JSON with these fields:
-```json
-{
-  "time": 1705233600000,
-  "level": 30,
-  "msg": "request completed",
-  "method": "GET",
-  "path": "/api/tickets",
-  "status": 200,
-  "requestId": "uuid-v4",
-  "traceId": "35f0de5f9a8f4d8ea4d6e1c46f5b2d0a",
-  "spanId": "bf18a7b6c80932ad",
-  "duration": 150,
-  "userId": "user_123"
-}
+## Indexed Log Shape
+
+The API already emits JSON logs. When log shipping is enabled, Logstash writes them into daily indices named:
+
+```text
+ecotrack-api-logs-YYYY.MM.DD
 ```
 
-## Kibana Usage
+Important searchable fields include:
 
-### Access Kibana
-1. Open http://localhost:5601 in browser
-2. Navigate to "Stack Management" > "Index Patterns"
-3. Create index pattern: `backend-logs-*`
-4. Select time field: `@timestamp`
+- `traceId`
+- `requestId`
+- `eventId`
+- `validatedEventId`
+- `deliveryId`
+- `producerName`
+- `consumerName`
+- `method`
+- `path`
+- `status`
+- `msg`
+- `service`
+- `environment`
 
-### Example Queries
+The IoT worker processors now emit structured success and failure logs so replay, validation, and projection activity can be correlated with the originating trace.
 
-#### View All Backend Logs
-```
-msg:("request completed" OR "request failed")
-```
+## Kibana Setup
 
-#### Find Error Logs
-```
-level:>=50
-```
+1. Open `http://localhost:5601`.
+2. Create a data view for `ecotrack-api-logs-*`.
+3. Use `@timestamp` as the time field.
 
-#### Track Specific Request
-```
-requestId:"550e8400-e29b-41d4-a716-446655440000"
-```
+Example queries:
 
-#### Track Specific Trace
-```
+```text
 traceId:"35f0de5f9a8f4d8ea4d6e1c46f5b2d0a"
+eventId:"11111111-1111-4111-8111-111111111111"
+deliveryId:"22222222-2222-4222-8222-222222222222"
+producerName:"iot_ingestion_worker"
+consumerName:"timeseries_projection"
+msg:"Failed processing validated-event delivery"
 ```
 
-#### Monitor API Endpoints
-```
-path:"/api/tickets" AND level:>=50
-```
+## Validation
 
-#### Response Time Analysis
-```
-duration:>1000
-```
+- Elasticsearch health: `curl http://localhost:9200/_cluster/health`
+- Logstash logs: `docker logs logstash`
+- Kibana status: `curl http://localhost:5601/api/status`
+- Example alert sink logs: `docker logs alert_webhook_sink`
 
-## Troubleshooting
+## Notes
 
-### Common Issues
-
-#### No Logs in Kibana
-1. Check Logstash is running: `docker logs logstash`
-2. Verify port connectivity: `telnet localhost 5001`
-3. Check Elasticsearch: `curl http://localhost:9200/_cluster/health`
-
-#### High Memory Usage
-1. Reduce Elasticsearch heap: Set `ES_JAVA_OPTS=-Xms512m -Xmx512m`
-2. Monitor disk space: Elasticsearch needs free space
-
-#### Connection Issues
-1. Verify Docker network: `docker compose ps`
-2. Check ports: 9200 (ES), 5601 (Kibana), 5001 (Logstash)
-3. Firewall: Ensure ports are accessible
-
-### Logstash Configuration Issues
-```bash
-# Test Logstash config
-docker exec logstash /usr/share/logstash/bin/logstash --config.test_and_exit
-
-# Check syntax errors
-docker logs logstash | grep ERROR
-```
-
-### Performance Tuning
-
-#### Elasticsearch
-```yaml
-# In docker-compose.yml
-environment:
-  - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-  - "discovery.type=single-node"
-```
-
-#### Logstash
-```conf
-# Adjust pipeline workers
-pipeline.workers: 2
-pipeline.batch.size: 125
-```
-
-## Security Considerations
-
-### Production Setup
-- Change default passwords
-- Enable SSL/TLS
-- Use proper encryption keys
-- Set up access controls
-- Monitor for security logs
-
-### Network Security
-- Restrict access to ELK ports
-- Use VPN or private networks
-- Implement authentication for Kibana
-
-## Alternative: File-Based Monitoring
-
-If ELK stack causes issues, you can monitor logs directly:
-
-```bash
-# View backend logs
-docker logs -f ticket_backend
-
-# View all logs
-docker compose logs -f
-```
-
-## Integration with Alerts
-
-### Email Alerts (Optional)
-```conf
-# In logstash.conf
-output {
-  email {
-    to: "admin@example.com"
-    subject: "Backend Alert: %{level}"
-    body: "Service: %{service}\\nMessage: %{message}"
-  }
-}
-```
-
-### Slack Integration (Optional)
-Use Webhook output plugin for real-time notifications.
-
-## Monitoring Dashboards
-
-### Recommended Kibana Visualizations
-1. **Request Rate**: Count of requests over time
-2. **Error Rate**: Number of errors per minute
-3. **Response Time**: Histogram of request durations
-4. **Status Codes**: Pie chart of HTTP status codes
-5. **User Activity**: Authentication events
-
-### Dashboard Metrics
-- Requests per minute/hour
-- Error percentage
-- Average response time
-- Top requested endpoints
-- Geolocation of requests
-
-## Cleanup and Maintenance
-
-### Log Rotation
-Elasticsearch indices are created daily with pattern `backend-logs-YYYY.MM.dd`.
-
-```bash
-# Delete old indices (7 days)
-curl -X DELETE "localhost:9200/backend-logs-$(date -d '7 days ago' +%Y.%m.%d)"
-```
-
-### Disk Usage Monitoring
-```bash
-# Check Elasticsearch data directory
-docker exec elasticsearch du -sh /usr/share/elasticsearch/data
-
-# Monitor index sizes
-curl localhost:9200/_cat/indices?v
-```
-
-This setup provides comprehensive visibility into application behavior and performance.
+- Grafana no longer provisions a dead Loki datasource in this repo; ELK is the supported log path.
+- Trace search works through `traceId`, and worker replay troubleshooting works through `eventId`, `validatedEventId`, and `deliveryId`.

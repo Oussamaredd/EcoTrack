@@ -10,6 +10,7 @@ COPY app/package*.json ./app/
 COPY api/package*.json ./api/
 COPY database/package*.json ./database/
 COPY infrastructure/package*.json ./infrastructure/
+COPY infrastructure/scripts/install-git-hooks.mjs ./infrastructure/scripts/
 
 RUN npm ci
 

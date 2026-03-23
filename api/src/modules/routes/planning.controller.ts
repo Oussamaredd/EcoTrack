@@ -82,6 +82,29 @@ export class PlanningController {
     return this.planningService.getManagerDashboard();
   }
 
+  @Get('heatmap')
+  @RequirePermissions('ecotrack.analytics.read')
+  async heatmap(
+    @Query('zoneId') zoneId?: string,
+    @Query('riskTier') riskTier?: string,
+  ) {
+    const normalizedRiskTier = riskTier?.trim().toLowerCase();
+    if (
+      normalizedRiskTier &&
+      normalizedRiskTier !== 'all' &&
+      normalizedRiskTier !== 'low' &&
+      normalizedRiskTier !== 'medium' &&
+      normalizedRiskTier !== 'high'
+    ) {
+      throw new BadRequestException('riskTier must be one of: all, low, medium, high');
+    }
+
+    return this.planningService.getManagerHeatmap({
+      zoneId: normalizeSearchTerm(zoneId),
+      riskTier: (normalizedRiskTier as 'all' | 'low' | 'medium' | 'high' | undefined) ?? 'all',
+    });
+  }
+
   @Get('alerts')
   @RequirePermissions('ecotrack.analytics.read')
   async alerts(

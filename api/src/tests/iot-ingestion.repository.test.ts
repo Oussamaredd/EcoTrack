@@ -12,6 +12,8 @@ const createMeasurementInput = (overrides: Record<string, unknown> = {}) => ({
   sensorDeviceId: null,
   containerId: 'container-1',
   deviceUid: 'sensor-001',
+  routingKey: 'sensor-001',
+  shardId: 3,
   measuredAt: new Date('2026-03-19T10:00:00.000Z'),
   fillLevelPercent: 50,
   temperatureC: null,
@@ -38,6 +40,8 @@ const createNormalizedEvent = (overrides: Record<string, unknown> = {}) => ({
   sourceEventId: 'event-1',
   batchId: null,
   deviceUid: 'sensor-001',
+  routingKey: 'sensor-001',
+  shardId: 3,
   sensorDeviceId: null,
   containerId: 'container-1',
   measuredAt: new Date('2026-03-19T10:00:00.000Z'),
@@ -62,12 +66,12 @@ const createNormalizedEvent = (overrides: Record<string, unknown> = {}) => ({
 const validatedEnvelope = {
   eventName: 'iot.measurement.validated',
   routingKey: 'sensor-001',
-  schemaVersion: 'v1' as const,
+  schemaVersion: 'v1',
   producerName: 'iot_ingestion_worker',
   producerTransactionId: 'event-1',
   traceparent: null,
   tracestate: null,
-};
+} as const;
 
 const createLimitedSelectQuery = <TRow>(rows: TRow[]) => ({
   from: vi.fn().mockReturnValue({
@@ -93,6 +97,8 @@ describe('IngestionRepository', () => {
               {
                 id: 'event-created',
                 deviceUid: 'sensor-001',
+                routingKey: 'sensor-001',
+                shardId: 3,
                 idempotencyKey: 'dup-key',
               },
             ]),
@@ -108,6 +114,8 @@ describe('IngestionRepository', () => {
       {
         id: 'event-created',
         deviceUid: 'sensor-001',
+        routingKey: 'sensor-001',
+        shardId: 3,
         idempotencyKey: 'dup-key',
         newlyStaged: true,
       },
@@ -130,6 +138,8 @@ describe('IngestionRepository', () => {
               {
                 id: 'event-existing',
                 deviceUid: 'sensor-001',
+                routingKey: 'sensor-001',
+                shardId: 3,
                 idempotencyKey: 'dup-key',
               },
             ]),
@@ -145,6 +155,8 @@ describe('IngestionRepository', () => {
       {
         id: 'event-existing',
         deviceUid: 'sensor-001',
+        routingKey: 'sensor-001',
+        shardId: 3,
         idempotencyKey: 'dup-key',
         newlyStaged: false,
       },
@@ -177,7 +189,12 @@ describe('IngestionRepository', () => {
   });
 
   it('lists runnable events in received order', async () => {
-    const limit = vi.fn().mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]);
+    const limit = vi
+      .fn()
+      .mockResolvedValue([
+        { id: 'event-1', shardId: 1, routingKey: 'sensor-001' },
+        { id: 'event-2', shardId: 2, routingKey: 'sensor-002' },
+      ]);
     const dbMock = {
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -191,9 +208,12 @@ describe('IngestionRepository', () => {
     };
 
     const repository = new IngestionRepository(dbMock as any);
-    const runnableEventIds = await repository.listRunnableEventIds(2);
+    const runnableEventRefs = await repository.listRunnableEventRefs(2);
 
-    expect(runnableEventIds).toEqual(['event-1', 'event-2']);
+    expect(runnableEventRefs).toEqual([
+      { id: 'event-1', shardId: 1, routingKey: 'sensor-001' },
+      { id: 'event-2', shardId: 2, routingKey: 'sensor-002' },
+    ]);
     expect(limit).toHaveBeenCalledWith(2);
   });
 
@@ -228,6 +248,8 @@ describe('IngestionRepository', () => {
                 id: 'event-1',
                 batchId: 'batch-1',
                 deviceUid: 'sensor-001',
+                routingKey: 'sensor-001',
+                shardId: 3,
                 sensorDeviceId: 'sensor-1',
                 containerId: 'container-1',
                 idempotencyKey: 'key-1',
@@ -409,6 +431,13 @@ describe('IngestionRepository', () => {
             returning: vi.fn().mockResolvedValue([
               {
                 id: 'delivery-1',
+                shardId: 3,
+                consumerName: 'timeseries_projection',
+              },
+              {
+                id: 'delivery-2',
+                shardId: 3,
+                consumerName: 'measurement_rollup_projection',
               },
             ]),
           }),
@@ -436,7 +465,10 @@ describe('IngestionRepository', () => {
 
     expect(result).toEqual({
       validatedEventId: 'validated-1',
-      deliveryIds: ['delivery-1'],
+      deliveryRefs: [
+        { id: 'delivery-1', shardId: 3, consumerName: 'timeseries_projection' },
+        { id: 'delivery-2', shardId: 3, consumerName: 'measurement_rollup_projection' },
+      ],
     });
     expect(ingestionUpdateWhere).toHaveBeenCalledTimes(1);
   });

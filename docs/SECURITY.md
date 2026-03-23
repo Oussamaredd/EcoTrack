@@ -85,6 +85,28 @@ npm run validate-env:all
 
 This repository stays inside the current Development-only specialty scope. The delivered security work for this phase is automated verification owned by the app and API teams; it does not expand into pentesting, WAF, IDS, SIEM, or other broader security-specialty tracks.
 
+## M3.13 Development-Owned Security Baseline
+
+Workbook task `M3.13` is implemented only to the extent allowed by the active scope freeze.
+
+Delivered in the Development lane:
+
+- Grafana dashboard `EcoTrack Security Signals Baseline`
+- Prometheus families `ecotrack_http_request_status_total` and `ecotrack_security_signals_total`
+- Runtime signal coverage for `401`, `403`, `429`, `5xx`, login failures, admin validation failures, and WebSocket auth failures
+- Admin audit-action visibility through `ecotrack_admin_audit_actions_last_hour`
+- Alert rules `EcoTrackAuthorizationDeniedSpike`, `EcoTrackLoginFailuresHigh`, and `RealtimeWebSocketAuthFailuresHigh`
+
+Explicitly deferred to the Security handoff:
+
+- SIEM correlation rules and case management
+- Wazuh, Splunk, Sentinel, or other external SOC integrations
+- SOAR playbooks
+- threat-intel enrichment
+- UEBA, compliance automation, and specialty-run incident response workflows
+
+This keeps the runtime and observability interfaces ready for later security-specialty ownership without expanding the current delivery scope.
+
 Repo-owned negative security tests now live in `api/src/tests/security-negative-input.test.ts` and cover three existing high-risk admin endpoints:
 
 - `GET /api/admin/users` with a SQL-style `search` payload to verify inert handling and no widened result set

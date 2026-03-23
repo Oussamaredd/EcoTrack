@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SpanKind } from '@opentelemetry/api';
+import { PinoLogger } from 'nestjs-pino';
 import { z } from 'zod';
 
 import {
@@ -11,7 +12,9 @@ import {
   IOT_INGESTION_WORKER_PRODUCER,
   IOT_MEASUREMENT_VALIDATED_EVENT,
 } from '../../events/internal-events.catalog.js';
+import { InternalEventPolicyService } from '../../events/internal-events.policy.js';
 import { InternalEventRuntimeService } from '../../events/internal-events.runtime.js';
+import { MonitoringService } from '../../monitoring/monitoring.service.js';
 import { ValidatedConsumerService } from '../validated-consumer/validated-consumer.service.js';
 
 import {
@@ -41,24 +44,49 @@ const claimedEventSchema = z.object({
   rawPayload: z.record(z.string(), z.unknown()),
 });
 
+const TRACEPARENT_PATTERN = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/i;
+
+const extractTraceId = (traceparent: string | null): string | null => {
+  if (!traceparent) {
+    return null;
+  }
+
+  const match = traceparent.match(TRACEPARENT_PATTERN);
+  return match?.[1]?.toLowerCase() ?? null;
+};
+
 @Injectable()
 export class IngestionProcessorService {
-  private readonly logger = new Logger(IngestionProcessorService.name);
-
   constructor(
     private readonly repository: IngestionRepository,
     private readonly validatedConsumerService: ValidatedConsumerService,
     private readonly internalEventRuntime: InternalEventRuntimeService,
-  ) {}
+    private readonly internalEventPolicy: InternalEventPolicyService,
+    private readonly monitoringService: MonitoringService,
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(IngestionProcessorService.name);
+  }
 
   async processStagedEvent(eventId: string) {
+    const claimStartedAt = Date.now();
     const claimedEvent = await this.repository.claimEventForProcessing(
       eventId,
       this.internalEventRuntime.getInstanceId(),
     );
     if (!claimedEvent) {
+      this.monitoringService.recordServiceHop(
+        'staged_event_claim',
+        'skipped',
+        Date.now() - claimStartedAt,
+      );
       return { status: 'skipped' as const };
     }
+    this.monitoringService.recordServiceHop(
+      'staged_event_claim',
+      'claimed',
+      Date.now() - claimStartedAt,
+    );
 
     const parentContext = extractContextFromTraceCarrier({
       traceparent: claimedEvent.traceparent,
@@ -68,18 +96,43 @@ export class IngestionProcessorService {
     return withActiveSpan(
       'iot.ingestion.process_staged_event',
       async () => {
+        const validationStartedAt = Date.now();
         try {
           const normalizedEvent = this.normalizeEvent(claimedEvent);
-          const persistResult = await this.repository.persistValidatedEvent(normalizedEvent, {
+          const persistStartedAt = Date.now();
+          const envelope = {
             eventName: IOT_MEASUREMENT_VALIDATED_EVENT,
-            routingKey: normalizedEvent.deviceUid,
+            routingKey: normalizedEvent.routingKey,
             schemaVersion: INTERNAL_EVENT_SCHEMA_VERSION_V1,
             producerName: IOT_INGESTION_WORKER_PRODUCER,
             producerTransactionId: normalizedEvent.sourceEventId,
             traceparent: normalizedEvent.traceparent,
             tracestate: normalizedEvent.tracestate,
-          });
-          await this.validatedConsumerService.enqueueValidatedDeliveryIds(persistResult.deliveryIds);
+          } as const;
+          this.internalEventPolicy.assertProducerAuthorized(envelope);
+          const persistResult = await this.repository.persistValidatedEvent(normalizedEvent, envelope);
+          this.monitoringService.recordServiceHop(
+            'validation_to_delivery_enqueue',
+            'emitted',
+            Date.now() - persistStartedAt,
+          );
+          await this.validatedConsumerService.enqueueValidatedDeliveryRefs(persistResult.deliveryRefs);
+          this.monitoringService.recordServiceHop(
+            'staged_queue_to_validation',
+            'validated',
+            Date.now() - validationStartedAt,
+          );
+          this.logger.info(
+            {
+              traceId: extractTraceId(normalizedEvent.traceparent),
+              eventId: claimedEvent.id,
+              validatedEventId: persistResult.validatedEventId,
+              routingKey: normalizedEvent.routingKey,
+              shardId: normalizedEvent.shardId,
+              producerName: envelope.producerName,
+            },
+            'Validated staged ingestion event',
+          );
           return { status: 'validated' as const };
         } catch (error) {
           if (error instanceof IngestionBusinessRuleError) {
@@ -87,7 +140,22 @@ export class IngestionProcessorService {
               sourceEventId: claimedEvent.id,
               rejectionReason: error.message,
             });
-            this.logger.warn(`Rejected staged ingestion event ${claimedEvent.id}: ${error.message}`);
+            this.monitoringService.recordServiceHop(
+              'staged_queue_to_validation',
+              'rejected',
+              Date.now() - validationStartedAt,
+            );
+            this.logger.warn(
+              {
+                traceId: extractTraceId(claimedEvent.traceparent),
+                eventId: claimedEvent.id,
+                routingKey: claimedEvent.routingKey,
+                shardId: claimedEvent.shardId,
+                producerName: claimedEvent.producerName,
+                reason: error.message,
+              },
+              'Rejected staged ingestion event',
+            );
             return { status: 'rejected' as const };
           }
 
@@ -100,8 +168,23 @@ export class IngestionProcessorService {
             errorMessage,
             nextAttemptAt,
           );
+          this.monitoringService.recordServiceHop(
+            'staged_queue_to_validation',
+            claimedEvent.attemptCount >= IOT_PROCESSING_MAX_RETRIES ? 'failed' : 'retry',
+            Date.now() - validationStartedAt,
+          );
 
-          this.logger.error(`Failed processing staged ingestion event ${claimedEvent.id}: ${errorMessage}`);
+          this.logger.error(
+            {
+              traceId: extractTraceId(claimedEvent.traceparent),
+              eventId: claimedEvent.id,
+              routingKey: claimedEvent.routingKey,
+              shardId: claimedEvent.shardId,
+              producerName: claimedEvent.producerName,
+              errorMessage,
+            },
+            'Failed processing staged ingestion event',
+          );
           return {
             status:
               claimedEvent.attemptCount >= IOT_PROCESSING_MAX_RETRIES
@@ -162,6 +245,8 @@ export class IngestionProcessorService {
       sourceEventId: parsed.data.sourceEventId,
       batchId: parsed.data.batchId,
       deviceUid: parsed.data.deviceUid,
+      routingKey: event.routingKey,
+      shardId: event.shardId,
       sensorDeviceId: parsed.data.sensorDeviceId,
       containerId: parsed.data.containerId,
       measuredAt: parsed.data.measuredAt,

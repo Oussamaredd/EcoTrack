@@ -1,6 +1,8 @@
 // client/src/hooks/useTickets.tsx
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../services/api';
+import { invalidateTicketQueries } from '../state/invalidation';
+import { queryKeys } from '../state/queryKeys';
 import { useAuth } from './useAuth';
 
 const DASHBOARD_REFETCH_INTERVAL_MS = 20_000;
@@ -62,7 +64,7 @@ const normalizeTicket = (raw: any): Ticket => ({
 
 export const useTickets = (filters = {}) => {
   return useQuery({
-    queryKey: ['tickets', filters],
+    queryKey: queryKeys.tickets(filters),
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filters && typeof filters === 'object') {
@@ -103,9 +105,8 @@ export const useCreateTicket = () => {
       const response = await apiClient.post('/api/tickets', data);
       return response;
     },
-    onSuccess: () => {
-      // Invalidate tickets query to refetch
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+    onSuccess: async () => {
+      await invalidateTicketQueries(queryClient);
     },
   });
 };
@@ -118,15 +119,15 @@ export const useDeleteTicket = () => {
       await apiClient.delete(`/api/tickets/${id}`);
       return id;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+    onSuccess: async () => {
+      await invalidateTicketQueries(queryClient);
     },
   });
 };
 
 export const useTicketDetails = (id?: string | null) => {
   return useQuery({
-    queryKey: ['ticket', id],
+    queryKey: queryKeys.ticket(id),
     queryFn: async () => {
       const response = await apiClient.get(`/api/tickets/${id}`);
       return normalizeTicket(response);
@@ -138,7 +139,7 @@ export const useTicketDetails = (id?: string | null) => {
 
 export const useTicketComments = (ticketId?: string | null, page = 1) => {
   return useQuery({
-    queryKey: ['ticketComments', ticketId, page],
+    queryKey: queryKeys.ticketComments(ticketId, page),
     queryFn: async () => {
       const response = await apiClient.get(`/api/tickets/${ticketId}/comments?page=${page}`);
       return response;
@@ -157,8 +158,8 @@ export const useAddComment = () => {
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ticketComments'] });
-      queryClient.invalidateQueries({ queryKey: ['ticketActivity'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-activity'] });
     },
   });
 
@@ -186,8 +187,8 @@ export const useUpdateComment = () => {
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ticketComments'] });
-      queryClient.invalidateQueries({ queryKey: ['ticketActivity'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-activity'] });
     },
   });
 
@@ -207,8 +208,8 @@ export const useDeleteComment = () => {
       return commentId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ticketComments'] });
-      queryClient.invalidateQueries({ queryKey: ['ticketActivity'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-activity'] });
     },
   });
 
@@ -221,7 +222,7 @@ export const useDeleteComment = () => {
 
 export const useTicketActivity = (ticketId) => {
   return useQuery({
-    queryKey: ['ticketActivity', ticketId],
+    queryKey: queryKeys.ticketActivity(ticketId),
     queryFn: async () => {
       const response = await apiClient.get(`/api/tickets/${ticketId}/activity`);
       return response;
@@ -233,7 +234,7 @@ export const useTicketActivity = (ticketId) => {
 
 export const useDashboard = (enabled = true) => {
   return useQuery({
-    queryKey: ['dashboard'],
+    queryKey: queryKeys.dashboard,
     queryFn: async () => {
       const response = await apiClient.get('/api/dashboard');
       return response;

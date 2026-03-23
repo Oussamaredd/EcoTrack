@@ -1,4 +1,5 @@
 import { mobileApiBase } from "@/lib/env";
+import { reportMobileError } from "@/monitoring/clientTelemetry";
 
 import { clearPersistedSession, getCachedAccessToken } from "./tokenStore";
 import { createRequestId } from "./requestId";
@@ -90,6 +91,33 @@ export const createApiRequestError = async (response: Response) => {
   if (response.status === 401) {
     await clearPersistedSession();
     emitSessionInvalidated();
+    void reportMobileError({
+      type: "AUTH",
+      message: "Mobile session invalidated",
+      context: "mobile.auth.session.invalidated",
+      severity: "high",
+      status: 401
+    });
+  } else if (response.status >= 500) {
+    const error = new ApiRequestError(
+      resolveApiErrorMessage(payload, response.status),
+      response.status,
+      payload
+    );
+
+    void reportMobileError({
+      type: "SERVER",
+      message: error.message,
+      context: "mobile.api.request",
+      severity: "high",
+      status: response.status,
+      metadata: {
+        responseUrl: response.url
+      },
+      error
+    });
+
+    return error;
   }
 
   return new ApiRequestError(

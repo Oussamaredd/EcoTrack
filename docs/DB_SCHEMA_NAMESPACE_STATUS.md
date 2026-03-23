@@ -21,6 +21,11 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 - These tables are Development-owned monolith event-workflow artifacts used for staged ingestion, validation, enrichment, retry state, and validated-event storage.
 - This extension does not add Kafka infrastructure, DW/ETL storage, or Security/Data specialty artifacts.
 
+2026-03-23 extension note:
+
+- `iot.measurement_rollups_10m` was added in `database/migrations/0021_damp_wendell_vaughn.sql` for workbook task `M3.11`.
+- The table stores Development-owned 10-minute rollups derived from the existing validated-event stream and supports the monolith lag, resilience, and operator dashboards without introducing warehouse or analytics-platform scope.
+
 Known readiness exceptions from the original rollout pass:
 
 - the worktree still had broad unrelated local changes across `app`, `api`, `database`, `docs`, environment templates, and `package-lock.json`

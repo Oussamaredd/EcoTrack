@@ -27,7 +27,7 @@ export class MonitoringController {
   @Get('metrics')
   @SkipThrottle()
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
-  getPrometheusMetrics() {
+  async getPrometheusMetrics() {
     return this.monitoringService.renderPrometheusMetrics();
   }
 }

@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 import { HTTP_REQUEST_DURATION_BUCKETS_MS } from './http-metrics.utils.js';
+import { MonitoringRepository } from './monitoring.repository.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -28,6 +30,11 @@ type HttpRequestMetric = {
   path: string;
   statusCode: number;
   durationMs: number;
+};
+
+type SecuritySignalMetric = {
+  signal: string;
+  severity: 'info' | 'warning' | 'critical';
 };
 
 type RealtimeDiagnosticsSnapshot = {
@@ -110,8 +117,44 @@ const getStatusClass = (statusCode: number): string => {
 const buildMethodPathKey = (method: string, path: string) => `${method} ${path}`;
 const buildMethodPathStatusKey = (method: string, path: string, statusClass: string) =>
   `${method} ${path} ${statusClass}`;
+const buildMethodPathExactStatusKey = (method: string, path: string, statusCode: number) =>
+  `${method} ${path} ${statusCode}`;
 const buildBucketKey = (method: string, path: string, bucket: number) =>
   `${method} ${path} ${bucket}`;
+const buildServiceHopKey = (hop: string, outcome: string) => `${hop} ${outcome}`;
+const buildServiceHopBucketKey = (hop: string, bucket: number) => `${hop} ${bucket}`;
+const buildSecuritySignalKey = (signal: string, severity: string) => `${signal} ${severity}`;
+
+const deriveSecuritySignals = (metric: HttpRequestMetric): SecuritySignalMetric[] => {
+  const path = metric.path;
+  const signals: SecuritySignalMetric[] = [];
+
+  if (metric.statusCode === 401) {
+    signals.push({ signal: 'auth_unauthorized', severity: 'warning' });
+  }
+
+  if (metric.statusCode === 403) {
+    signals.push({ signal: 'authorization_denied', severity: 'warning' });
+  }
+
+  if (metric.statusCode === 429) {
+    signals.push({ signal: 'rate_limited', severity: 'warning' });
+  }
+
+  if (metric.statusCode >= 500) {
+    signals.push({ signal: 'server_error', severity: 'critical' });
+  }
+
+  if (path === '/login' && metric.statusCode >= 400) {
+    signals.push({ signal: 'login_failure', severity: 'warning' });
+  }
+
+  if (path.startsWith('/api/admin') && metric.statusCode === 400) {
+    signals.push({ signal: 'admin_validation_failed', severity: 'warning' });
+  }
+
+  return signals;
+};
 
 @Injectable()
 export class MonitoringService {
@@ -123,10 +166,16 @@ export class MonitoringService {
   private readonly frontendErrorsByType = new Map<string, number>();
   private readonly frontendMetricsByType = new Map<string, number>();
   private readonly httpRequestsByRoute = new Map<string, number>();
+  private readonly httpRequestsByExactStatus = new Map<string, number>();
   private readonly httpRequestErrorsByRoute = new Map<string, number>();
   private readonly httpRequestDurationBuckets = new Map<string, number>();
   private readonly httpRequestDurationCountByRoute = new Map<string, number>();
   private readonly httpRequestDurationSumMsByRoute = new Map<string, number>();
+  private readonly serviceHopEvents = new Map<string, number>();
+  private readonly serviceHopDurationBuckets = new Map<string, number>();
+  private readonly serviceHopDurationCount = new Map<string, number>();
+  private readonly serviceHopDurationSumMs = new Map<string, number>();
+  private readonly securitySignals = new Map<string, number>();
   private readonly frontendErrors: FrontendErrorEvent[] = [];
   private readonly frontendMetrics: FrontendMetricEvent[] = [];
   private realtimeDiagnostics: RealtimeDiagnosticsSnapshot = {
@@ -143,6 +192,11 @@ export class MonitoringService {
     lastEventTimestamp: null,
     lastEventName: null,
   };
+
+  constructor(
+    @Inject(ConfigService) private readonly configService: ConfigService,
+    @Inject(MonitoringRepository) private readonly monitoringRepository: MonitoringRepository,
+  ) {}
 
   setRealtimeDiagnostics(snapshot: RealtimeDiagnosticsSnapshot) {
     this.realtimeDiagnostics = {
@@ -176,6 +230,7 @@ export class MonitoringService {
       (this.httpRequestDurationSumMsByRoute.get(buildMethodPathKey(method, path)) ?? 0) + durationMs,
     );
     incrementCounter(this.httpRequestsByRoute, buildMethodPathStatusKey(method, path, statusClass));
+    incrementCounter(this.httpRequestsByExactStatus, buildMethodPathExactStatusKey(method, path, metric.statusCode));
 
     if (metric.statusCode >= 400) {
       this.httpRequestErrorsTotal += 1;
@@ -190,6 +245,31 @@ export class MonitoringService {
         incrementCounter(this.httpRequestDurationBuckets, buildBucketKey(method, path, bucket));
       }
     }
+
+    for (const signal of deriveSecuritySignals(metric)) {
+      this.recordSecuritySignal(signal.signal, signal.severity);
+    }
+  }
+
+  recordServiceHop(hop: string, outcome: string, durationMs: number) {
+    const normalizedDurationMs =
+      Number.isFinite(durationMs) && durationMs >= 0 ? durationMs : 0;
+    incrementCounter(this.serviceHopEvents, buildServiceHopKey(hop, outcome));
+    incrementCounter(this.serviceHopDurationCount, hop);
+    this.serviceHopDurationSumMs.set(
+      hop,
+      (this.serviceHopDurationSumMs.get(hop) ?? 0) + normalizedDurationMs,
+    );
+
+    for (const bucket of HTTP_REQUEST_DURATION_BUCKETS_MS) {
+      if (normalizedDurationMs <= bucket) {
+        incrementCounter(this.serviceHopDurationBuckets, buildServiceHopBucketKey(hop, bucket));
+      }
+    }
+  }
+
+  recordSecuritySignal(signal: string, severity: SecuritySignalMetric['severity']) {
+    incrementCounter(this.securitySignals, buildSecuritySignalKey(signal, severity));
   }
 
   recordFrontendError(payload: unknown): number {
@@ -242,7 +322,7 @@ export class MonitoringService {
     return this.frontendMetricsTotal;
   }
 
-  renderPrometheusMetrics(): string {
+  async renderPrometheusMetrics(): Promise<string> {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
     const lines: string[] = [
@@ -277,6 +357,18 @@ export class MonitoringService {
       const [method, path, statusClass] = key.split(' ');
       lines.push(
         `ecotrack_http_request_errors_total{method="${sanitizeLabelValue(method)}",path="${sanitizeLabelValue(path)}",status_class="${sanitizeLabelValue(statusClass)}"} ${count}`,
+      );
+    }
+
+    lines.push('# HELP ecotrack_http_request_status_total Total number of API requests grouped by exact status code.');
+    lines.push('# TYPE ecotrack_http_request_status_total counter');
+
+    for (const [key, count] of [...this.httpRequestsByExactStatus.entries()].sort(([left], [right]) =>
+      left.localeCompare(right),
+    )) {
+      const [method, path, statusCode] = key.split(' ');
+      lines.push(
+        `ecotrack_http_request_status_total{method="${sanitizeLabelValue(method)}",path="${sanitizeLabelValue(path)}",status_code="${sanitizeLabelValue(statusCode)}"} ${count}`,
       );
     }
 
@@ -359,6 +451,53 @@ export class MonitoringService {
       lines.push(`frontend_metrics_by_type_total{type="${sanitizeLabelValue(type)}"} ${count}`);
     }
 
+    lines.push('# HELP ecotrack_service_hop_events_total Total logical service-hop events across the IoT pipeline.');
+    lines.push('# TYPE ecotrack_service_hop_events_total counter');
+    for (const [key, count] of [...this.serviceHopEvents.entries()].sort(([left], [right]) =>
+      left.localeCompare(right),
+    )) {
+      const [hop, outcome] = key.split(' ');
+      lines.push(
+        `ecotrack_service_hop_events_total{hop="${sanitizeLabelValue(hop)}",outcome="${sanitizeLabelValue(outcome)}"} ${count}`,
+      );
+    }
+
+    lines.push('# HELP ecotrack_service_hop_duration_ms Logical service-hop duration histogram in milliseconds.');
+    lines.push('# TYPE ecotrack_service_hop_duration_ms histogram');
+    for (const hop of [...this.serviceHopDurationCount.keys()].sort((left, right) => left.localeCompare(right))) {
+      for (const bucket of HTTP_REQUEST_DURATION_BUCKETS_MS) {
+        const bucketCount =
+          this.serviceHopDurationBuckets.get(buildServiceHopBucketKey(hop, bucket)) ?? 0;
+        lines.push(
+          `ecotrack_service_hop_duration_ms_bucket{hop="${sanitizeLabelValue(hop)}",le="${bucket}"} ${bucketCount}`,
+        );
+      }
+      lines.push(
+        `ecotrack_service_hop_duration_ms_bucket{hop="${sanitizeLabelValue(hop)}",le="+Inf"} ${this.serviceHopDurationCount.get(hop) ?? 0}`,
+      );
+      lines.push(
+        `ecotrack_service_hop_duration_ms_sum{hop="${sanitizeLabelValue(hop)}"} ${(
+          this.serviceHopDurationSumMs.get(hop) ?? 0
+        ).toFixed(3)}`,
+      );
+      lines.push(
+        `ecotrack_service_hop_duration_ms_count{hop="${sanitizeLabelValue(hop)}"} ${this.serviceHopDurationCount.get(hop) ?? 0}`,
+      );
+    }
+
+    lines.push('# HELP ecotrack_security_signals_total Derived security-relevant runtime signals.');
+    lines.push('# TYPE ecotrack_security_signals_total counter');
+    for (const [key, count] of [...this.securitySignals.entries()].sort(([left], [right]) =>
+      left.localeCompare(right),
+    )) {
+      const separatorIndex = key.lastIndexOf(' ');
+      const signal = separatorIndex >= 0 ? key.slice(0, separatorIndex) : key;
+      const severity = separatorIndex >= 0 ? key.slice(separatorIndex + 1) : 'info';
+      lines.push(
+        `ecotrack_security_signals_total{signal="${sanitizeLabelValue(signal)}",severity="${sanitizeLabelValue(severity)}"} ${count}`,
+      );
+    }
+
     lines.push('# HELP ecotrack_realtime_active_connections Active realtime connections by transport.');
     lines.push('# TYPE ecotrack_realtime_active_connections gauge');
     lines.push(`ecotrack_realtime_active_connections{transport="sse"} ${this.realtimeDiagnostics.activeSseConnections}`);
@@ -401,6 +540,152 @@ export class MonitoringService {
       lines.push(
         `ecotrack_realtime_last_event_name_info{event="${sanitizeLabelValue(this.realtimeDiagnostics.lastEventName)}"} 1`,
       );
+    }
+
+    const ingestionShardCount = this.configService.get<number>('iotIngestion.IOT_INGESTION_SHARD_COUNT') ?? 1;
+    const validatedShardCount =
+      this.configService.get<number>('iotIngestion.IOT_VALIDATED_CONSUMER_SHARD_COUNT') ?? 1;
+    const backpressureThreshold =
+      this.configService.get<number>('iotIngestion.IOT_BACKPRESSURE_THRESHOLD') ?? 100000;
+
+    lines.push('# HELP ecotrack_iot_virtual_partitions Configured virtual partition count by pipeline.');
+    lines.push('# TYPE ecotrack_iot_virtual_partitions gauge');
+    lines.push(`ecotrack_iot_virtual_partitions{pipeline="ingestion"} ${ingestionShardCount}`);
+    lines.push(`ecotrack_iot_virtual_partitions{pipeline="validated_consumer"} ${validatedShardCount}`);
+
+    try {
+      const snapshot = await this.monitoringRepository.getOperationalMetricsSnapshot();
+      const ingestionBacklog =
+        snapshot.ingestionByStatus.pending +
+        snapshot.ingestionByStatus.retry +
+        snapshot.ingestionByStatus.processing;
+      const deliveryBacklog =
+        snapshot.deliveryByStatus.pending +
+        snapshot.deliveryByStatus.retry +
+        snapshot.deliveryByStatus.processing;
+
+      lines.push('# HELP ecotrack_observability_snapshot_up Whether DB-backed observability metrics were collected.');
+      lines.push('# TYPE ecotrack_observability_snapshot_up gauge');
+      lines.push('ecotrack_observability_snapshot_up 1');
+
+      lines.push('# HELP ecotrack_iot_ingestion_events Gauge of staged ingestion events by status.');
+      lines.push('# TYPE ecotrack_iot_ingestion_events gauge');
+      for (const [status, count] of Object.entries(snapshot.ingestionByStatus).sort(([left], [right]) =>
+        left.localeCompare(right),
+      )) {
+        lines.push(`ecotrack_iot_ingestion_events{status="${sanitizeLabelValue(status)}"} ${count}`);
+      }
+
+      lines.push('# HELP ecotrack_iot_validated_delivery_events Gauge of validated-event deliveries by status.');
+      lines.push('# TYPE ecotrack_iot_validated_delivery_events gauge');
+      for (const [status, count] of Object.entries(snapshot.deliveryByStatus).sort(([left], [right]) =>
+        left.localeCompare(right),
+      )) {
+        lines.push(
+          `ecotrack_iot_validated_delivery_events{status="${sanitizeLabelValue(status)}"} ${count}`,
+        );
+      }
+
+      lines.push('# HELP ecotrack_iot_ingestion_backlog_total Total staged-event backlog in pending, retry, or processing state.');
+      lines.push('# TYPE ecotrack_iot_ingestion_backlog_total gauge');
+      lines.push(`ecotrack_iot_ingestion_backlog_total ${ingestionBacklog}`);
+
+      lines.push('# HELP ecotrack_iot_validated_delivery_backlog_total Total validated-delivery backlog in pending, retry, or processing state.');
+      lines.push('# TYPE ecotrack_iot_validated_delivery_backlog_total gauge');
+      lines.push(`ecotrack_iot_validated_delivery_backlog_total ${deliveryBacklog}`);
+
+      lines.push('# HELP ecotrack_iot_ingestion_oldest_pending_age_ms Oldest runnable staged-event age in milliseconds.');
+      lines.push('# TYPE ecotrack_iot_ingestion_oldest_pending_age_ms gauge');
+      lines.push(`ecotrack_iot_ingestion_oldest_pending_age_ms ${snapshot.ingestionOldestPendingAgeMs ?? 0}`);
+
+      lines.push('# HELP ecotrack_iot_validated_delivery_oldest_pending_age_ms Oldest runnable validated-delivery age in milliseconds.');
+      lines.push('# TYPE ecotrack_iot_validated_delivery_oldest_pending_age_ms gauge');
+      lines.push(
+        `ecotrack_iot_validated_delivery_oldest_pending_age_ms ${snapshot.deliveryOldestPendingAgeMs ?? 0}`,
+      );
+
+      lines.push('# HELP ecotrack_iot_ingestion_processed_last_hour Total staged ingestion events validated in the last hour.');
+      lines.push('# TYPE ecotrack_iot_ingestion_processed_last_hour gauge');
+      lines.push(`ecotrack_iot_ingestion_processed_last_hour ${snapshot.validatedLastHour}`);
+
+      lines.push('# HELP ecotrack_iot_validated_delivery_processed_last_hour Total validated deliveries completed in the last hour.');
+      lines.push('# TYPE ecotrack_iot_validated_delivery_processed_last_hour gauge');
+      lines.push(`ecotrack_iot_validated_delivery_processed_last_hour ${snapshot.completedLastHour}`);
+
+      lines.push('# HELP ecotrack_iot_backpressure_active Indicates whether ingestion backlog crossed the configured threshold.');
+      lines.push('# TYPE ecotrack_iot_backpressure_active gauge');
+      lines.push(`ecotrack_iot_backpressure_active ${ingestionBacklog >= backpressureThreshold ? 1 : 0}`);
+
+      lines.push('# HELP ecotrack_iot_ingestion_shard_backlog Total runnable staged events grouped by shard.');
+      lines.push('# TYPE ecotrack_iot_ingestion_shard_backlog gauge');
+      for (const shard of snapshot.ingestionBacklogByShard) {
+        lines.push(`ecotrack_iot_ingestion_shard_backlog{shard="${shard.shardId}"} ${shard.count}`);
+      }
+
+      lines.push('# HELP ecotrack_iot_validated_delivery_shard_backlog Total runnable deliveries grouped by shard.');
+      lines.push('# TYPE ecotrack_iot_validated_delivery_shard_backlog gauge');
+      for (const shard of snapshot.deliveryBacklogByShard) {
+        lines.push(
+          `ecotrack_iot_validated_delivery_shard_backlog{consumer="${sanitizeLabelValue(shard.consumerName)}",shard="${shard.shardId}"} ${shard.count}`,
+        );
+      }
+
+      lines.push('# HELP ecotrack_containers_fill_total Total containers grouped by operational fill status.');
+      lines.push('# TYPE ecotrack_containers_fill_total gauge');
+      lines.push(`ecotrack_containers_fill_total{status="critical"} ${snapshot.criticalContainers}`);
+      lines.push(`ecotrack_containers_fill_total{status="attention_required"} ${snapshot.attentionContainers}`);
+
+      lines.push('# HELP ecotrack_containers_max_fill_percent Maximum observed container fill percentage.');
+      lines.push('# TYPE ecotrack_containers_max_fill_percent gauge');
+      lines.push(`ecotrack_containers_max_fill_percent ${snapshot.maxContainerFillLevel}`);
+
+      lines.push('# HELP ecotrack_alert_events_open_total Total open alert events grouped by severity.');
+      lines.push('# TYPE ecotrack_alert_events_open_total gauge');
+      for (const alert of snapshot.openAlertsBySeverity) {
+        lines.push(
+          `ecotrack_alert_events_open_total{severity="${sanitizeLabelValue(alert.severity)}"} ${alert.count}`,
+        );
+      }
+
+      lines.push('# HELP ecotrack_internal_consumer_lag_messages Total internal validated-delivery backlog per consumer.');
+      lines.push('# TYPE ecotrack_internal_consumer_lag_messages gauge');
+      lines.push('# HELP ecotrack_internal_consumer_lag_oldest_pending_age_ms Oldest pending internal-delivery age per consumer.');
+      lines.push('# TYPE ecotrack_internal_consumer_lag_oldest_pending_age_ms gauge');
+      lines.push('# HELP ecotrack_internal_consumer_lag_shard_skew Internal backlog skew between the busiest and least busy consumer shards.');
+      lines.push('# TYPE ecotrack_internal_consumer_lag_shard_skew gauge');
+      lines.push('# HELP ecotrack_internal_consumer_completed_last_hour Total completed internal deliveries in the last hour by consumer.');
+      lines.push('# TYPE ecotrack_internal_consumer_completed_last_hour gauge');
+      lines.push('# HELP ecotrack_internal_consumer_failures_total Total failed internal deliveries by consumer.');
+      lines.push('# TYPE ecotrack_internal_consumer_failures_total gauge');
+      for (const consumer of snapshot.deliveryLagByConsumer) {
+        lines.push(
+          `ecotrack_internal_consumer_lag_messages{consumer="${sanitizeLabelValue(consumer.consumerName)}"} ${consumer.backlogTotal}`,
+        );
+        lines.push(
+          `ecotrack_internal_consumer_lag_oldest_pending_age_ms{consumer="${sanitizeLabelValue(consumer.consumerName)}"} ${consumer.oldestPendingAgeMs ?? 0}`,
+        );
+        lines.push(
+          `ecotrack_internal_consumer_lag_shard_skew{consumer="${sanitizeLabelValue(consumer.consumerName)}"} ${consumer.shardSkew}`,
+        );
+        lines.push(
+          `ecotrack_internal_consumer_completed_last_hour{consumer="${sanitizeLabelValue(consumer.consumerName)}"} ${consumer.completedLastHour}`,
+        );
+        lines.push(
+          `ecotrack_internal_consumer_failures_total{consumer="${sanitizeLabelValue(consumer.consumerName)}"} ${consumer.failedCount}`,
+        );
+      }
+
+      lines.push('# HELP ecotrack_admin_audit_actions_last_hour Total admin audit actions grouped by action in the last hour.');
+      lines.push('# TYPE ecotrack_admin_audit_actions_last_hour gauge');
+      for (const auditAction of snapshot.recentAuditActions) {
+        lines.push(
+          `ecotrack_admin_audit_actions_last_hour{action="${sanitizeLabelValue(auditAction.action)}"} ${auditAction.count}`,
+        );
+      }
+    } catch {
+      lines.push('# HELP ecotrack_observability_snapshot_up Whether DB-backed observability metrics were collected.');
+      lines.push('# TYPE ecotrack_observability_snapshot_up gauge');
+      lines.push('ecotrack_observability_snapshot_up 0');
     }
 
     return `${lines.join('\n')}\n`;

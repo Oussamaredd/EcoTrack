@@ -1550,6 +1550,9 @@ export function ReportScreen() {
                   ? "Manager notified"
                   : "Notification queued"}
               </Chip>
+              {lastSubmission.response.citizenPushNotificationQueued ? (
+                <Chip>Push confirmation queued</Chip>
+              ) : null}
               <Chip>
                 {lastSubmission.location
                   ? formatCoordinates(

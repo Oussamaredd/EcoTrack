@@ -5,11 +5,12 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 export interface MeasurementJob {
   id: string;
   eventIds: string[];
+  shardId: number;
   createdAt: Date;
 }
 
 export interface IngestionQueue {
-  enqueue(eventIds: string[]): Promise<string>;
+  enqueue(eventIds: string[], shardId?: number): Promise<string>;
   getPendingCount(): Promise<number>;
   getProcessedLastHour(): number;
   pause(): void;
@@ -30,6 +31,7 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
   private readonly logger = new Logger(InMemoryIngestionQueue.name);
   private readonly queue: MeasurementJob[] = [];
   private readonly processedEvents: Array<{ processedAt: number; count: number }> = [];
+  private readonly activeShardIds = new Set<number>();
 
   private pendingEvents = 0;
   private activeWorkers = 0;
@@ -49,7 +51,7 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
     this.logger.log('In-memory ingestion queue stopped');
   }
 
-  async enqueue(eventIds: string[]): Promise<string> {
+  async enqueue(eventIds: string[], shardId = 0): Promise<string> {
     if (this.paused) {
       throw new Error('Queue is paused due to backpressure');
     }
@@ -57,6 +59,7 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
     const job: MeasurementJob = {
       id: randomUUID(),
       eventIds,
+      shardId,
       createdAt: new Date(),
     };
 
@@ -110,6 +113,7 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
     this.stopped = true;
     this.activeWorkers = 0;
     this.drainScheduled = false;
+    this.activeShardIds.clear();
     this.processorHandler = null;
     this.logger.log('Queue processor stopped');
   }
@@ -135,24 +139,39 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
       this.queue.length > 0
     ) {
       const batch = this.dequeueBatch();
+      if (!batch) {
+        break;
+      }
       this.activeWorkers += 1;
-      void this.processBatch(batch.jobs, batch.measurementCount);
+      this.activeShardIds.add(batch.shardId);
+      void this.processBatch(batch.jobs, batch.measurementCount, batch.shardId);
     }
   }
 
-  private dequeueBatch(): { jobs: MeasurementJob[]; measurementCount: number } {
+  private dequeueBatch(): { jobs: MeasurementJob[]; measurementCount: number; shardId: number } | null {
+    const nextShardIndex = this.queue.findIndex((job) => !this.activeShardIds.has(job.shardId));
+    if (nextShardIndex < 0) {
+      return null;
+    }
+
+    const shardId = this.queue[nextShardIndex]!.shardId;
     const jobs: MeasurementJob[] = [];
     let eventCount = 0;
+    let queueIndex = nextShardIndex;
 
-    while (this.queue.length > 0) {
-      const nextJob = this.queue[0];
+    while (queueIndex < this.queue.length) {
+      const nextJob = this.queue[queueIndex];
+      if (!nextJob || nextJob.shardId !== shardId) {
+        queueIndex += 1;
+        continue;
+      }
+
       const nextEventCount = nextJob.eventIds.length;
-
       if (jobs.length > 0 && eventCount + nextEventCount > this.maxBatchMeasurements) {
         break;
       }
 
-      jobs.push(this.queue.shift()!);
+      jobs.push(...this.queue.splice(queueIndex, 1));
       eventCount += nextEventCount;
     }
 
@@ -161,10 +180,11 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
     return {
       jobs,
       measurementCount: eventCount,
+      shardId,
     };
   }
 
-  private async processBatch(jobs: MeasurementJob[], measurementCount: number): Promise<void> {
+  private async processBatch(jobs: MeasurementJob[], measurementCount: number, shardId: number): Promise<void> {
     try {
       await this.processorHandler?.(jobs);
       this.recordProcessed(measurementCount);
@@ -175,6 +195,7 @@ export class InMemoryIngestionQueue implements IngestionQueue, OnModuleInit, OnM
         `Failed to process batch: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     } finally {
+      this.activeShardIds.delete(shardId);
       this.activeWorkers = Math.max(0, this.activeWorkers - 1);
       this.scheduleDrain();
     }

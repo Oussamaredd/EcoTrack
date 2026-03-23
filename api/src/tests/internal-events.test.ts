@@ -3,14 +3,19 @@ import 'reflect-metadata';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { describe, expect, it } from 'vitest';
 
+import { InternalEventSchemaRegistryService } from '../modules/events/internal-event-schema-registry.service.js';
 import {
   INTERNAL_EVENT_SCHEMA_VERSION_V1,
+  INTERNAL_EVENT_SCHEMA_VERSION_V1_1,
+  INTERNAL_EVENT_POLICIES,
   IOT_INGESTION_HTTP_PRODUCER,
   IOT_MEASUREMENT_VALIDATED_EVENT,
+  VALIDATED_EVENT_ROLLUP_CONSUMER,
   VALIDATED_EVENT_TIMESERIES_CONSUMER,
 } from '../modules/events/internal-events.catalog.js';
 import type { InternalEventEnvelope } from '../modules/events/internal-events.contracts.js';
 import { InternalEventsModule } from '../modules/events/internal-events.module.js';
+import { InternalEventPolicyService } from '../modules/events/internal-events.policy.js';
 import { InternalEventRuntimeService } from '../modules/events/internal-events.runtime.js';
 
 const readModuleMetadata = (key: string, target: object) =>
@@ -19,9 +24,11 @@ const readModuleMetadata = (key: string, target: object) =>
 describe('Internal event support', () => {
   it('exposes stable event catalog constants for the monolith transport', () => {
     expect(INTERNAL_EVENT_SCHEMA_VERSION_V1).toBe('v1');
+    expect(INTERNAL_EVENT_SCHEMA_VERSION_V1_1).toBe('v1.1');
     expect(IOT_INGESTION_HTTP_PRODUCER).toBe('iot_ingestion_http');
     expect(IOT_MEASUREMENT_VALIDATED_EVENT).toBe('iot.measurement.validated');
     expect(VALIDATED_EVENT_TIMESERIES_CONSUMER).toBe('timeseries_projection');
+    expect(VALIDATED_EVENT_ROLLUP_CONSUMER).toBe('measurement_rollup_projection');
   });
 
   it('creates a stable per-process worker instance identifier', () => {
@@ -38,8 +45,16 @@ describe('Internal event support', () => {
     const providers = readModuleMetadata(MODULE_METADATA.PROVIDERS, InternalEventsModule);
     const exports = readModuleMetadata(MODULE_METADATA.EXPORTS, InternalEventsModule);
 
-    expect(providers).toEqual([InternalEventRuntimeService]);
-    expect(exports).toEqual([InternalEventRuntimeService]);
+    expect(providers).toEqual([
+      InternalEventRuntimeService,
+      InternalEventSchemaRegistryService,
+      InternalEventPolicyService,
+    ]);
+    expect(exports).toEqual([
+      InternalEventRuntimeService,
+      InternalEventSchemaRegistryService,
+      InternalEventPolicyService,
+    ]);
   });
 
   it('keeps the internal event envelope contract shape stable', () => {
@@ -62,5 +77,104 @@ describe('Internal event support', () => {
       traceparent: null,
       tracestate: null,
     });
+  });
+
+  it('publishes a typed internal event policy registry', () => {
+    expect(INTERNAL_EVENT_POLICIES).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventName: IOT_MEASUREMENT_VALIDATED_EVENT,
+          allowedProducers: ['iot_ingestion_worker'],
+          allowedConsumers: [
+            VALIDATED_EVENT_TIMESERIES_CONSUMER,
+            VALIDATED_EVENT_ROLLUP_CONSUMER,
+          ],
+          replayable: true,
+        }),
+      ]),
+    );
+  });
+
+  it('blocks unauthorized internal event producers', () => {
+    const policy = new InternalEventPolicyService(new InternalEventSchemaRegistryService());
+
+    expect(() =>
+      policy.assertProducerAuthorized({
+        eventName: IOT_MEASUREMENT_VALIDATED_EVENT,
+        routingKey: 'sensor-001',
+        schemaVersion: INTERNAL_EVENT_SCHEMA_VERSION_V1,
+        producerName: 'iot_ingestion_worker',
+        producerTransactionId: 'tx-1',
+        traceparent: null,
+        tracestate: null,
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      policy.assertProducerAuthorized({
+        eventName: IOT_MEASUREMENT_VALIDATED_EVENT,
+        routingKey: 'sensor-001',
+        schemaVersion: INTERNAL_EVENT_SCHEMA_VERSION_V1,
+        producerName: 'unauthorized_producer' as any,
+        producerTransactionId: 'tx-2',
+        traceparent: null,
+        tracestate: null,
+      }),
+    ).toThrow(/not authorized/i);
+  });
+
+  it('blocks unauthorized internal event consumers', () => {
+    const policy = new InternalEventPolicyService(new InternalEventSchemaRegistryService());
+
+    expect(() =>
+      policy.assertConsumerAuthorized(IOT_MEASUREMENT_VALIDATED_EVENT, VALIDATED_EVENT_TIMESERIES_CONSUMER),
+    ).not.toThrow();
+
+    expect(() =>
+      policy.assertConsumerAuthorized(IOT_MEASUREMENT_VALIDATED_EVENT, 'unauthorized_consumer'),
+    ).toThrow(/not authorized/i);
+  });
+
+  it('registers schema subjects and keeps v1.1 compatible with the current validated-event contract', () => {
+    const registry = new InternalEventSchemaRegistryService();
+
+    expect(registry.listSubjects()).toEqual([
+      'iot.ingestion.request',
+      'iot.ingestion.staged',
+      'iot.measurement.rollup.10m',
+      'iot.measurement.validated',
+      'iot.validated.delivery',
+    ]);
+
+    const latestValidatedSchema = registry.getLatestSchema('iot.measurement.validated');
+
+    expect(latestValidatedSchema.version).toBe('v1.1');
+    expect(
+      registry.isCompatible(
+        registry.getSchema('iot.measurement.validated', 'v1'),
+        latestValidatedSchema,
+        latestValidatedSchema.compatibility,
+      ),
+    ).toBe(true);
+    expect(() =>
+      registry.assertCandidateCompatible({
+        subject: 'iot.measurement.validated',
+        version: 'v1.1',
+        compatibility: 'BACKWARD',
+        description: 'compatible optional-field evolution',
+        fields: [
+          { name: 'sourceEventId', type: 'uuid', required: true },
+          { name: 'deviceUid', type: 'string', required: true },
+          { name: 'routingKey', type: 'string', required: true },
+          { name: 'shardId', type: 'integer', required: true },
+          { name: 'measuredAt', type: 'timestamp', required: true },
+          { name: 'fillLevelPercent', type: 'integer', required: true },
+          { name: 'measurementQuality', type: 'string', required: true },
+          { name: 'warningThreshold', type: 'integer', required: false },
+          { name: 'criticalThreshold', type: 'integer', required: false },
+          { name: 'ingestionSource', type: 'string', required: false, hasDefault: true },
+        ],
+      }),
+    ).not.toThrow();
   });
 });

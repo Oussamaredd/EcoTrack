@@ -7,7 +7,7 @@ import { usePlanningDashboard, useEmergencyCollection } from "../hooks/usePlanni
 import { usePlanningRealtimeSocket } from "../hooks/usePlanningRealtimeSocket";
 import { usePlanningRealtimeStream } from "../hooks/usePlanningRealtimeStream";
 import { useDashboard } from "../hooks/useTickets";
-import { renderWithRouter } from "./test-utils";
+import { renderWithProviders } from "./test-utils";
 
 vi.mock("../hooks/useAuth", () => ({
   useCurrentUser: vi.fn(),
@@ -101,7 +101,7 @@ describe("Dashboard realtime transport precedence", () => {
       isConnected: false,
     });
 
-    renderWithRouter(<Dashboard />);
+    renderWithProviders(<Dashboard />, { withAuthProvider: false });
 
     expect(usePlanningRealtimeStream).toHaveBeenCalledWith(false);
     expect(screen.getByText("WebSocket live: WebSocket push active")).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe("Dashboard realtime transport precedence", () => {
       isConnected: true,
     });
 
-    renderWithRouter(<Dashboard />);
+    renderWithProviders(<Dashboard />, { withAuthProvider: false });
 
     expect(usePlanningRealtimeStream).toHaveBeenCalledWith(true);
     expect(screen.getByText("Live stream: Server push active")).toBeInTheDocument();
@@ -137,7 +137,7 @@ describe("Dashboard realtime transport precedence", () => {
       isConnected: false,
     });
 
-    renderWithRouter(<Dashboard />);
+    renderWithProviders(<Dashboard />, { withAuthProvider: false });
 
     expect(screen.getByText("Polling fallback: Push unavailable, polling active")).toBeInTheDocument();
   });

@@ -2,6 +2,7 @@ import { performance } from 'node:perf_hooks';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { InternalEventPolicyService } from '../modules/events/internal-events.policy.js';
 import { IngestionProcessorService } from '../modules/iot/ingestion/ingestion.processor.js';
 import { IngestionRepository } from '../modules/iot/ingestion/ingestion.repository.js';
 import { ValidatedConsumerService } from '../modules/iot/validated-consumer/validated-consumer.service.js';
@@ -18,6 +19,8 @@ const createClaimedEvent = (overrides: {
   id: overrides.id ?? EVENT_ID,
   batchId: null,
   deviceUid: 'sensor-001',
+  routingKey: 'sensor-001',
+  shardId: 3,
   sensorDeviceId: null,
   containerId: CONTAINER_ID,
   idempotencyKey: null,
@@ -46,22 +49,39 @@ describe('IngestionProcessorService', () => {
       claimEventForProcessing: vi.fn(),
       persistValidatedEvent: vi.fn().mockResolvedValue({
         validatedEventId: 'validated-1',
-        deliveryIds: ['delivery-1'],
+        deliveryRefs: [
+          { id: 'delivery-1', shardId: 3, consumerName: 'timeseries_projection' },
+          { id: 'delivery-2', shardId: 3, consumerName: 'measurement_rollup_projection' },
+        ],
       }),
       markRejected: vi.fn().mockResolvedValue(undefined),
       markRetryOrFailed: vi.fn().mockResolvedValue(undefined),
     } as unknown as IngestionRepository;
     const validatedConsumerService = {
-      enqueueValidatedDeliveryIds: vi.fn().mockResolvedValue(undefined),
+      enqueueValidatedDeliveryRefs: vi.fn().mockResolvedValue(undefined),
     } as unknown as ValidatedConsumerService;
     const internalEventRuntime = {
       getInstanceId: vi.fn().mockReturnValue('worker-a'),
+    };
+    const internalEventPolicy = {
+      assertProducerAuthorized: vi.fn(),
+    } as unknown as InternalEventPolicyService;
+    const logger = {
+      setContext: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
     };
 
     service = new IngestionProcessorService(
       repository,
       validatedConsumerService,
       internalEventRuntime as any,
+      internalEventPolicy,
+      {
+        recordServiceHop: vi.fn(),
+      } as any,
+      logger as any,
     );
   });
 
@@ -76,6 +96,8 @@ describe('IngestionProcessorService', () => {
       expect.objectContaining({
         sourceEventId: EVENT_ID,
         deviceUid: 'sensor-001',
+        routingKey: 'sensor-001',
+        shardId: 3,
         measurementQuality: 'valid',
         validationSummary: expect.objectContaining({
           schemaValidation: 'passed',

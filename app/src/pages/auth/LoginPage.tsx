@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import BrandLogo from '../../components/branding/BrandLogo';
+import DocumentMetadata from '../../components/DocumentMetadata';
 import LoginButton from '../../components/LoginButton';
 import { useAuth } from '../../hooks/useAuth';
 import { authApi } from '../../services/authApi';
@@ -134,6 +135,11 @@ export default function LoginPage() {
 
   return (
     <section className="auth-login-shell auth-compact-shell auth-login-spotlight-shell">
+      <DocumentMetadata
+        title="Sign In | EcoTrack"
+        description="Sign in to EcoTrack to manage planning, support queues, citizen workflows, and live operational monitoring."
+        canonicalPath="/login"
+      />
       <div className="auth-login-spotlight-overlay" ref={spotlightOverlayRef} aria-hidden="true" />
       <Link to="/" className="auth-brand-link auth-login-brand-link" aria-label="EcoTrack home">
         <BrandLogo

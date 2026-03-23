@@ -29,11 +29,13 @@ import { GamificationModule } from './modules/gamification/gamification.module.j
 import { HealthModule } from './modules/health/health.module.js';
 import { ContainersModule } from './modules/iot/containers.module.js';
 import { IngestionModule } from './modules/iot/ingestion/ingestion.module.js';
+import { MeasurementRollupsModule } from './modules/iot/rollups/rollups.module.js';
 import { MonitoringModule } from './modules/monitoring/monitoring.module.js';
 import { CitizenReportsModule } from './modules/reports/citizen-reports.module.js';
 import { PlanningModule } from './modules/routes/planning.module.js';
 import { TicketsModule } from './modules/tickets/tickets.module.js';
 import { ZonesModule } from './modules/zones/zones.module.js';
+import { createLogDestinationStream } from './observability/logstash-stream.js';
 
 const REDACTED_FIELDS = '[REDACTED]';
 const LOG_LEVELS = new Set(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']);
@@ -181,6 +183,9 @@ const getTraceFields = (request: Request) => {
         const level = resolveLogLevel(configService.get('logging.level'));
         const logFormat = String(configService.get('logging.format') ?? 'json').toLowerCase();
         const nodeEnv = String(configService.get('nodeEnv') ?? process.env.NODE_ENV ?? 'development');
+        const logstashEnabled = Boolean(configService.get('logging.logstash.enabled'));
+        const logstashHost = String(configService.get('logging.logstash.host') ?? 'logstash');
+        const logstashPort = Number(configService.get('logging.logstash.port') ?? 5001);
 
         const pinoHttp: PinoHttpOptions = {
           level,
@@ -239,7 +244,14 @@ const getTraceFields = (request: Request) => {
           },
         };
 
-        if (logFormat === 'pretty' && nodeEnv !== 'production') {
+        if (logstashEnabled) {
+          pinoHttp.stream = createLogDestinationStream({
+            enabled: true,
+            host: logstashHost,
+            port: logstashPort,
+            mirrorStdout: true,
+          });
+        } else if (logFormat === 'pretty' && nodeEnv !== 'production') {
           pinoHttp.transport = {
             target: 'pino-pretty',
             options: {
@@ -284,6 +296,7 @@ const getTraceFields = (request: Request) => {
     ZonesModule,
     ContainersModule,
     IngestionModule,
+    MeasurementRollupsModule,
     ToursModule,
     CitizenModule,
     CitizenReportsModule,

@@ -1,4 +1,7 @@
-export { VALIDATED_EVENT_TIMESERIES_CONSUMER } from '../../events/internal-events.catalog.js';
+export {
+  VALIDATED_EVENT_ROLLUP_CONSUMER,
+  VALIDATED_EVENT_TIMESERIES_CONSUMER,
+} from '../../events/internal-events.catalog.js';
 
 export const VALIDATED_EVENT_CONSUMER_MAX_RETRIES = 3;
 export const VALIDATED_EVENT_CONSUMER_RECOVERY_INTERVAL_MS = 1_000;
@@ -16,7 +19,9 @@ export type ClaimedValidatedEventDelivery = {
   validatedEventId: string;
   consumerName: string;
   eventName: string;
+  deviceUid: string;
   routingKey: string;
+  shardId: number;
   schemaVersion: string;
   claimedByInstanceId: string | null;
   traceparent: string | null;
@@ -34,6 +39,12 @@ export type ClaimedValidatedEventDelivery = {
   criticalThreshold: number | null;
   normalizedPayload: Record<string, unknown>;
   emittedAt: Date;
+};
+
+export type ValidatedDeliveryRef = {
+  id: string;
+  shardId: number;
+  consumerName: string;
 };
 
 export type ValidatedEventConsumerHealthStats = {

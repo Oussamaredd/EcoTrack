@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./hooks/useAuth";
 import { ToastProvider } from "./context/ToastContext";
 import { ErrorHandlingSetup } from "./components/ErrorHandlingSetup";
+import { SentryScopeBridge } from "./monitoring/SentryScopeBridge";
 import AppRouter from "./routes/AppRouter";
+import { AppStateProvider } from "./state/AppStateProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,11 +20,14 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ErrorHandlingSetup>
+        <AppStateProvider>
           <ToastProvider>
-            <AppRouter />
+            <SentryScopeBridge />
+            <ErrorHandlingSetup>
+              <AppRouter />
+            </ErrorHandlingSetup>
           </ToastProvider>
-        </ErrorHandlingSetup>
+        </AppStateProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

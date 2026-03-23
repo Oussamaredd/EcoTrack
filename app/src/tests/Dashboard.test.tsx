@@ -79,7 +79,7 @@ describe("Dashboard Component", () => {
     expect(screen.getByText(/Total tickets/i)).toBeInTheDocument();
     expect(screen.getByText("42")).toBeInTheDocument();
     expect(screen.getByText(/Recent ticket activity/i)).toBeInTheDocument();
-    expect(screen.getByText(/Lobby AC issue/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Lobby AC issue/i)).toBeInTheDocument();
   });
 
   test("does not render dashboard quick links that redirect to other pages", async () => {

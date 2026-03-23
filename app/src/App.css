@@ -1725,6 +1725,214 @@
   border-color: rgba(74, 212, 160, 0.42);
 }
 
+.dashboard-panel-skeleton {
+  min-height: 180px;
+  border-radius: 12px;
+  border: 1px solid rgba(122, 163, 247, 0.18);
+  background:
+    linear-gradient(90deg, rgba(7, 13, 24, 0.9), rgba(19, 34, 61, 0.9), rgba(7, 13, 24, 0.9));
+  background-size: 200% 100%;
+  animation: dashboard-panel-pulse 1.6s ease-in-out infinite;
+}
+
+.dashboard-heatmap-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.dashboard-heatmap-filter {
+  display: grid;
+  gap: 0.22rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.dashboard-heatmap-filter select {
+  min-width: 120px;
+  border: 1px solid rgba(122, 163, 247, 0.25);
+  border-radius: 999px;
+  background: rgba(7, 13, 24, 0.88);
+  color: var(--text);
+  padding: 0.38rem 0.72rem;
+}
+
+.dashboard-heatmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.77rem;
+  color: var(--text-muted);
+}
+
+.dashboard-heatmap-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dashboard-heatmap-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+}
+
+.dashboard-heatmap-swatch-low {
+  background: #16a34a;
+}
+
+.dashboard-heatmap-swatch-medium {
+  background: #ea580c;
+}
+
+.dashboard-heatmap-swatch-high {
+  background: #dc2626;
+}
+
+.dashboard-heatmap-map,
+.dashboard-heatmap-static {
+  min-height: 320px;
+  border: 1px solid rgba(122, 163, 247, 0.24);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(7, 13, 24, 0.9);
+}
+
+.dashboard-heatmap-static {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 1rem;
+}
+
+.dashboard-heatmap-grid {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.dashboard-subheading {
+  margin: 0 0 0.55rem;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.dashboard-zone-summary-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.dashboard-zone-summary-item {
+  border: 1px solid rgba(126, 167, 247, 0.24);
+  border-radius: 12px;
+  background: rgba(7, 13, 24, 0.82);
+}
+
+.dashboard-zone-summary-item-active {
+  border-color: rgba(122, 163, 247, 0.54);
+  box-shadow: 0 0 0 1px rgba(122, 163, 247, 0.24);
+}
+
+.dashboard-zone-summary-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.68rem 0.74rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dashboard-zone-summary-button span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.dashboard-zone-summary-button small {
+  color: var(--text-muted);
+}
+
+.dashboard-zone-tier {
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.dashboard-zone-tier-low {
+  color: #d9ffef;
+  background: rgba(74, 212, 160, 0.18);
+}
+
+.dashboard-zone-tier-medium {
+  color: #ffe6aa;
+  background: rgba(246, 195, 91, 0.16);
+}
+
+.dashboard-zone-tier-high {
+  color: #ffd7d9;
+  background: rgba(220, 38, 38, 0.18);
+}
+
+.dashboard-heatmap-notifications {
+  margin-top: 1rem;
+}
+
+.dashboard-heatmap-label {
+  display: grid;
+  place-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 163, 247, 0.26);
+  backdrop-filter: blur(8px);
+}
+
+.dashboard-heatmap-label span {
+  padding: 0.34rem 0.58rem;
+  border-radius: inherit;
+}
+
+.dashboard-heatmap-label-low span {
+  color: #d9ffef;
+  background: rgba(22, 163, 74, 0.24);
+}
+
+.dashboard-heatmap-label-medium span {
+  color: #ffe6aa;
+  background: rgba(234, 88, 12, 0.25);
+}
+
+.dashboard-heatmap-label-high span {
+  color: #ffd7d9;
+  background: rgba(220, 38, 38, 0.28);
+}
+
+@keyframes dashboard-panel-pulse {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
 @media (max-width: 1080px) {
   .dashboard-hero {
     flex-direction: column;
@@ -1744,6 +1952,103 @@
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
+
+  .dashboard-heatmap-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+}
+
+.toast-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(126, 167, 247, 0.24);
+  background: rgba(7, 13, 24, 0.94);
+  padding: 12px 14px;
+  box-shadow: 0 12px 34px rgba(4, 9, 18, 0.36);
+}
+
+.toast-item-success {
+  border-color: rgba(74, 212, 160, 0.42);
+}
+
+.toast-item-error {
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.toast-item-warning {
+  border-color: rgba(246, 195, 91, 0.38);
+}
+
+.toast-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(79, 140, 255, 0.16);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.toast-body {
+  display: grid;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.toast-action,
+.toast-dismiss,
+.app-error-fallback-actions button {
+  border: 1px solid rgba(126, 167, 247, 0.24);
+  border-radius: 999px;
+  background: rgba(7, 13, 24, 0.88);
+  color: var(--text);
+  padding: 0.34rem 0.72rem;
+  cursor: pointer;
+}
+
+.toast-dismiss {
+  padding-inline: 0.55rem;
+}
+
+.app-error-fallback {
+  margin: 2rem auto;
+  max-width: 640px;
+  border-radius: 18px;
+  border: 1px solid rgba(220, 38, 38, 0.32);
+  background: rgba(42, 10, 15, 0.82);
+  padding: 1.4rem;
+}
+
+.app-error-fallback-details {
+  margin-top: 1rem;
+}
+
+.app-error-fallback-details pre {
+  overflow: auto;
+  white-space: pre-wrap;
+  border-radius: 12px;
+  background: rgba(7, 13, 24, 0.82);
+  padding: 0.8rem;
+}
+
+.app-error-fallback-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.6rem;
 }
 
 .auth-page-shell {

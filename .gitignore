@@ -10,6 +10,7 @@ lerna-debug.log*
 # Disposable local/CI artifacts
 tmp/
 tmp-ci-logs-*/
+.lighthouseci/
 
 # Dependency directories
 node_modules

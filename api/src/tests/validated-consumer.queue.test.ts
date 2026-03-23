@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { InMemoryValidatedDeliveryQueue } from '../modules/iot/validated-consumer/validated-consumer.queue.js';
+import {
+  InMemoryValidatedDeliveryQueue,
+  type ValidatedDeliveryJob,
+} from '../modules/iot/validated-consumer/validated-consumer.queue.js';
 
 const flushQueue = async (ticks = 8) => {
   for (let index = 0; index < ticks; index += 1) {
@@ -22,11 +25,11 @@ describe('InMemoryValidatedDeliveryQueue', () => {
     queue.onModuleInit();
     const handler = vi.fn().mockResolvedValue(undefined);
 
-    await queue.enqueue(['delivery-prestart']);
+    await queue.enqueue('timeseries_projection', ['delivery-prestart']);
     queue.startProcessor(handler, { concurrency: 1, maxBatchDeliveries: 3 });
-    await queue.enqueue(['delivery-1']);
-    await queue.enqueue(['delivery-2', 'delivery-3']);
-    await queue.enqueue(['delivery-4']);
+    await queue.enqueue('timeseries_projection', ['delivery-1']);
+    await queue.enqueue('timeseries_projection', ['delivery-2', 'delivery-3']);
+    await queue.enqueue('timeseries_projection', ['delivery-4']);
 
     await flushQueue();
 
@@ -53,7 +56,7 @@ describe('InMemoryValidatedDeliveryQueue', () => {
       .mockResolvedValueOnce(undefined);
 
     queue.startProcessor(handler, { concurrency: 1, maxBatchDeliveries: 10 });
-    await queue.enqueue(['delivery-1', 'delivery-2']);
+    await queue.enqueue('timeseries_projection', ['delivery-1', 'delivery-2']);
 
     await flushQueue();
 
@@ -61,5 +64,32 @@ describe('InMemoryValidatedDeliveryQueue', () => {
     expect(handler.mock.calls[0]?.[0][0].deliveryIds).toEqual(['delivery-1', 'delivery-2']);
     expect(handler.mock.calls[1]?.[0][0].deliveryIds).toEqual(['delivery-1', 'delivery-2']);
     expect(loggerErrorSpy).toHaveBeenCalled();
+  });
+
+  it('keeps the same shard runnable when different consumers share it', async () => {
+    queue = new InMemoryValidatedDeliveryQueue();
+    queue.onModuleInit();
+    const processed: Array<{ consumerName: string; deliveryIds: string[] }> = [];
+    const handler = vi.fn().mockImplementation(async (jobs: ValidatedDeliveryJob[]) => {
+      processed.push(
+        ...jobs.map((job) => ({
+          consumerName: job.consumerName,
+          deliveryIds: job.deliveryIds,
+        })),
+      );
+    });
+
+    queue.startProcessor(handler, { concurrency: 2, maxBatchDeliveries: 10 });
+    await queue.enqueue('timeseries_projection', ['delivery-1'], 4);
+    await queue.enqueue('measurement_rollup_projection', ['delivery-2'], 4);
+
+    await flushQueue();
+
+    expect(processed).toEqual(
+      expect.arrayContaining([
+        { consumerName: 'timeseries_projection', deliveryIds: ['delivery-1'] },
+        { consumerName: 'measurement_rollup_projection', deliveryIds: ['delivery-2'] },
+      ]),
+    );
   });
 });

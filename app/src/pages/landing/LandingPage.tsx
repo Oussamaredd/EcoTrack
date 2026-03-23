@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import DocumentMetadata from "../../components/DocumentMetadata";
 import Navbar from "../../components/landing/Navbar";
 import GradientGlow from "../../components/landing/background/GradientGlow";
 import GridOverlay from "../../components/landing/background/GridOverlay";
@@ -19,6 +20,11 @@ export default function LandingPage() {
 
   return (
     <div className="landing-root">
+      <DocumentMetadata
+        title="EcoTrack | Smart Waste Operations"
+        description="Coordinate route planning, citizen reporting, live container monitoring, and operational dashboards from one EcoTrack workspace."
+        canonicalPath="/"
+      />
       <GradientGlow />
       <GridOverlay />
       <Vignette />

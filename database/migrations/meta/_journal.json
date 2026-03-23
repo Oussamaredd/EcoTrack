@@ -141,6 +141,27 @@
       "when": 1774111564321,
       "tag": "0019_strong_bulldozer",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1774259965458,
+      "tag": "0020_chunky_gamora",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1774268795269,
+      "tag": "0021_damp_wendell_vaughn",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1774282200000,
+      "tag": "0022_wiry_namor",
+      "breakpoints": true
     }
   ]
 }

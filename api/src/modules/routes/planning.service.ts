@@ -151,6 +151,13 @@ export class PlanningService {
     return this.repository.getManagerDashboard();
   }
 
+  async getManagerHeatmap(filters: {
+    zoneId?: string | null;
+    riskTier?: 'all' | 'low' | 'medium' | 'high';
+  }) {
+    return this.repository.getManagerHeatmap(filters);
+  }
+
   async listAlerts(filters: { status?: string; severity?: string; limit: number }) {
     return this.repository.listAlerts(filters);
   }

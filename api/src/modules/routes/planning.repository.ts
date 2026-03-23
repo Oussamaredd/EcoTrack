@@ -7,6 +7,7 @@ import {
   collectionEvents,
   containers,
   type DatabaseClient,
+  measurementRollups10m,
   measurements,
   notificationDeliveries,
   notifications,
@@ -44,6 +45,29 @@ const SCHEDULE_CONFLICT_WINDOW_MINUTES = 120;
 const TERMINAL_TOUR_STATUSES = new Set(['completed', 'closed', 'cancelled']);
 const AVERAGE_ROUTE_SPEED_KMH = 24;
 const STOP_SERVICE_DURATION_MINUTES = 4;
+const HEATMAP_LOOKBACK_HOURS = 48;
+
+type HeatmapFilters = {
+  zoneId?: string | null;
+  riskTier?: 'all' | 'low' | 'medium' | 'high';
+};
+
+type HeatmapContainerSignal = {
+  containerId: string;
+  code: string;
+  label: string;
+  zoneId: string | null;
+  zoneName: string | null;
+  latitude: number;
+  longitude: number;
+  fillLevelPercent: number;
+  fillLevelDeltaPercent: number;
+  sensorHealthScore: number;
+  riskScore: number;
+  riskTier: 'low' | 'medium' | 'high';
+  latestWindowEnd: string | null;
+  status: string;
+};
 
 const toNumberOrNull = (value: unknown) => {
   if (value == null) return null;
@@ -64,6 +88,36 @@ const toIsoTimestampOrNull = (value: unknown) => {
   }
 
   return null;
+};
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const normalizeRiskTier = (value: number): HeatmapContainerSignal['riskTier'] => {
+  if (value >= 75) {
+    return 'high';
+  }
+
+  if (value >= 50) {
+    return 'medium';
+  }
+
+  return 'low';
+};
+
+const computeRiskScore = (input: {
+  fillLevelPercent: number;
+  fillLevelDeltaPercent: number;
+  sensorHealthScore: number;
+  status: string;
+}) => {
+  const fillLevel = clamp(input.fillLevelPercent, 0, 100);
+  const deltaBoost = clamp(Math.max(0, input.fillLevelDeltaPercent) * 1.5, 0, 15);
+  const healthPenalty = input.sensorHealthScore >= 60
+    ? 0
+    : clamp(Math.round((60 - input.sensorHealthScore) / 2), 0, 15);
+  const statusBoost = input.status.trim().toLowerCase() === 'attention_required' ? 10 : 0;
+
+  return clamp(Math.round(fillLevel + deltaBoost + healthPenalty + statusBoost), 0, 100);
 };
 
 const toRadians = (value: number) => (value * Math.PI) / 180;
@@ -356,6 +410,172 @@ export class PlanningRepository {
       thresholds: {
         criticalFillPercent: 80,
       },
+    };
+  }
+
+  async getManagerHeatmap(filters: HeatmapFilters = {}) {
+    const lookbackWindowStart = new Date(Date.now() - HEATMAP_LOOKBACK_HOURS * 60 * 60 * 1000);
+    const conditions = [
+      or(isNull(measurementRollups10m.windowEnd), gte(measurementRollups10m.windowEnd, lookbackWindowStart)),
+    ];
+
+    if (filters.zoneId?.trim()) {
+      conditions.push(eq(containers.zoneId, filters.zoneId.trim()));
+    }
+
+    const rows = await this.db
+      .select({
+        containerId: containers.id,
+        code: containers.code,
+        label: containers.label,
+        status: containers.status,
+        zoneId: containers.zoneId,
+        zoneName: zones.name,
+        latitude: containers.latitude,
+        longitude: containers.longitude,
+        fallbackFillLevelPercent: containers.fillLevelPercent,
+        averageFillLevelPercent: measurementRollups10m.averageFillLevelPercent,
+        fillLevelDeltaPercent: measurementRollups10m.fillLevelDeltaPercent,
+        sensorHealthScore: measurementRollups10m.sensorHealthScore,
+        windowEnd: measurementRollups10m.windowEnd,
+      })
+      .from(containers)
+      .leftJoin(zones, eq(containers.zoneId, zones.id))
+      .leftJoin(measurementRollups10m, eq(measurementRollups10m.containerId, containers.id))
+      .where(and(...conditions))
+      .orderBy(desc(measurementRollups10m.windowEnd), desc(containers.updatedAt))
+      .limit(2000);
+
+    const latestByContainerId = new Map<string, (typeof rows)[number]>();
+    for (const row of rows) {
+      if (!latestByContainerId.has(row.containerId)) {
+        latestByContainerId.set(row.containerId, row);
+      }
+    }
+
+    const containerSignals = Array.from(latestByContainerId.values())
+      .map((row) => {
+        const latitude = toNumberOrNull(row.latitude);
+        const longitude = toNumberOrNull(row.longitude);
+        if (latitude == null || longitude == null) {
+          return null;
+        }
+
+        const fillLevelPercent =
+          toNumberOrNull(row.averageFillLevelPercent) ??
+          toNumberOrNull(row.fallbackFillLevelPercent) ??
+          0;
+        const fillLevelDeltaPercent = toNumberOrNull(row.fillLevelDeltaPercent) ?? 0;
+        const sensorHealthScore = clamp(toNumberOrNull(row.sensorHealthScore) ?? 100, 0, 100);
+        const riskScore = computeRiskScore({
+          fillLevelPercent,
+          fillLevelDeltaPercent,
+          sensorHealthScore,
+          status: row.status ?? 'unknown',
+        });
+        const riskTier = normalizeRiskTier(riskScore);
+
+        return {
+          containerId: row.containerId,
+          code: row.code,
+          label: row.label,
+          zoneId: row.zoneId,
+          zoneName: row.zoneName,
+          latitude,
+          longitude,
+          fillLevelPercent,
+          fillLevelDeltaPercent,
+          sensorHealthScore,
+          riskScore,
+          riskTier,
+          latestWindowEnd: toIsoTimestampOrNull(row.windowEnd),
+          status: row.status,
+        } satisfies HeatmapContainerSignal;
+      })
+      .filter((signal): signal is HeatmapContainerSignal => signal != null)
+      .filter((signal) => (filters.riskTier && filters.riskTier !== 'all' ? signal.riskTier === filters.riskTier : true))
+      .sort((left, right) => right.riskScore - left.riskScore);
+
+    const zoneSummaryMap = new Map<string, {
+      zoneId: string;
+      zoneName: string;
+      containerCount: number;
+      riskScoreTotal: number;
+      latitudeTotal: number;
+      longitudeTotal: number;
+      latestWindowEnd: string | null;
+      countsByTier: Record<'low' | 'medium' | 'high', number>;
+    }>();
+
+    for (const signal of containerSignals) {
+      const zoneId = signal.zoneId ?? 'unassigned';
+      const zoneName = signal.zoneName ?? 'Unassigned';
+      const existing = zoneSummaryMap.get(zoneId) ?? {
+        zoneId,
+        zoneName,
+        containerCount: 0,
+        riskScoreTotal: 0,
+        latitudeTotal: 0,
+        longitudeTotal: 0,
+        latestWindowEnd: null,
+        countsByTier: {
+          low: 0,
+          medium: 0,
+          high: 0,
+        },
+      };
+
+      existing.containerCount += 1;
+      existing.riskScoreTotal += signal.riskScore;
+      existing.latitudeTotal += signal.latitude;
+      existing.longitudeTotal += signal.longitude;
+      existing.countsByTier[signal.riskTier] += 1;
+      existing.latestWindowEnd =
+        existing.latestWindowEnd == null ||
+        (signal.latestWindowEnd != null && signal.latestWindowEnd > existing.latestWindowEnd)
+          ? signal.latestWindowEnd
+          : existing.latestWindowEnd;
+
+      zoneSummaryMap.set(zoneId, existing);
+    }
+
+    const zoneSummaries = Array.from(zoneSummaryMap.values())
+      .map((zone) => {
+        const averageRiskScore =
+          zone.containerCount > 0 ? Math.round(zone.riskScoreTotal / zone.containerCount) : 0;
+
+        return {
+          zoneId: zone.zoneId,
+          zoneName: zone.zoneName,
+          containerCount: zone.containerCount,
+          averageRiskScore,
+          riskTier: normalizeRiskTier(averageRiskScore),
+          centroid: zone.containerCount > 0
+            ? {
+                latitude: Number((zone.latitudeTotal / zone.containerCount).toFixed(6)),
+                longitude: Number((zone.longitudeTotal / zone.containerCount).toFixed(6)),
+              }
+            : null,
+          latestWindowEnd: zone.latestWindowEnd,
+          countsByTier: zone.countsByTier,
+        };
+      })
+      .sort((left, right) => right.averageRiskScore - left.averageRiskScore);
+
+    return {
+      generatedAt: new Date().toISOString(),
+      filters: {
+        zoneId: filters.zoneId ?? null,
+        riskTier: filters.riskTier ?? 'all',
+      },
+      thresholds: {
+        lowMax: 49,
+        mediumMax: 74,
+        highMin: 75,
+        criticalFillPercent: 80,
+      },
+      zoneSummaries,
+      containerSignals,
     };
   }
 

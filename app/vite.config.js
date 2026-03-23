@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -64,16 +65,42 @@ export default defineConfig(({ mode }) => {
   const base = env.VITE_BASE || "/";
   const edgeProxyEnabled = env.VITE_USE_EDGE_API_PROXY === "true";
   const edgeProxyTargetOrigin = env.EDGE_PROXY_TARGET_ORIGIN?.trim() ?? "";
+  const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN?.trim();
+  const sentryOrganization = process.env.SENTRY_ORG?.trim();
+  const sentryProject = process.env.SENTRY_PROJECT?.trim();
+  const sentryRelease = env.VITE_RELEASE_VERSION?.trim() || process.env.SENTRY_RELEASE?.trim();
+  const sentrySourceMapsEnabled = Boolean(sentryAuthToken && sentryOrganization && sentryProject);
+
+  const plugins = [
+    react(),
+    createCloudflarePagesRedirectsPlugin({
+      edgeProxyEnabled,
+      edgeProxyTargetOrigin,
+    }),
+  ];
+
+  if (sentrySourceMapsEnabled) {
+    plugins.push(
+      ...sentryVitePlugin({
+        authToken: sentryAuthToken,
+        org: sentryOrganization,
+        project: sentryProject,
+        release: sentryRelease
+          ? {
+              name: sentryRelease,
+            }
+          : undefined,
+        sourcemaps: {
+          assets: "./dist/**/*.{js,map}",
+          filesToDeleteAfterUpload: ["./dist/**/*.map"],
+        },
+      }),
+    );
+  }
 
   return {
     base,
-    plugins: [
-      react(),
-      createCloudflarePagesRedirectsPlugin({
-        edgeProxyEnabled,
-        edgeProxyTargetOrigin,
-      }),
-    ],
+    plugins,
     root: ".",
     optimizeDeps: spawnRestricted
       ? {
@@ -81,11 +108,33 @@ export default defineConfig(({ mode }) => {
           include: [],
         }
       : undefined,
-    build: spawnRestricted
-      ? {
-          minify: false,
-        }
-      : undefined,
+    build: {
+      ...(spawnRestricted
+        ? {
+            minify: false,
+          }
+        : {}),
+      sourcemap: sentrySourceMapsEnabled,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) {
+              return undefined;
+            }
+
+            if (id.includes("react-router")) {
+              return "router-vendor";
+            }
+
+            if (id.includes("@tanstack/react-query")) {
+              return "query-vendor";
+            }
+
+            return undefined;
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         "@": path.resolve(currentDir, "./src"),

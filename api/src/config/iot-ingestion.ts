@@ -6,6 +6,8 @@ const DEFAULT_IOT_BACKPRESSURE_THRESHOLD = 100000;
 const DEFAULT_IOT_MAX_BATCH_SIZE = 1000;
 const DEFAULT_IOT_VALIDATED_CONSUMER_CONCURRENCY = 20;
 const DEFAULT_IOT_VALIDATED_CONSUMER_BATCH_SIZE = 250;
+const DEFAULT_IOT_INGESTION_SHARD_COUNT = 12;
+const DEFAULT_IOT_VALIDATED_CONSUMER_SHARD_COUNT = 12;
 
 const iotIngestionSchema = z.object({
   IOT_INGESTION_ENABLED: z
@@ -34,6 +36,13 @@ const iotIngestionSchema = z.object({
       return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_IOT_QUEUE_BATCH_SIZE;
     })
     .default(String(DEFAULT_IOT_QUEUE_BATCH_SIZE)),
+  IOT_INGESTION_SHARD_COUNT: z
+    .string()
+    .transform((val) => {
+      const parsed = Number(val);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_IOT_INGESTION_SHARD_COUNT;
+    })
+    .default(String(DEFAULT_IOT_INGESTION_SHARD_COUNT)),
   IOT_BACKPRESSURE_THRESHOLD: z
     .string()
     .transform((val) => {
@@ -62,6 +71,13 @@ const iotIngestionSchema = z.object({
       return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_IOT_VALIDATED_CONSUMER_BATCH_SIZE;
     })
     .default(String(DEFAULT_IOT_VALIDATED_CONSUMER_BATCH_SIZE)),
+  IOT_VALIDATED_CONSUMER_SHARD_COUNT: z
+    .string()
+    .transform((val) => {
+      const parsed = Number(val);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_IOT_VALIDATED_CONSUMER_SHARD_COUNT;
+    })
+    .default(String(DEFAULT_IOT_VALIDATED_CONSUMER_SHARD_COUNT)),
   IOT_REDIS_URL: z.string().optional(),
 });
 
@@ -79,9 +95,11 @@ export const DEFAULT_IOT_CONFIG: IotIngestionConfig = {
   IOT_MQTT_TOPIC: 'ecotrack/measurements',
   IOT_QUEUE_CONCURRENCY: DEFAULT_IOT_QUEUE_CONCURRENCY,
   IOT_QUEUE_BATCH_SIZE: DEFAULT_IOT_QUEUE_BATCH_SIZE,
+  IOT_INGESTION_SHARD_COUNT: DEFAULT_IOT_INGESTION_SHARD_COUNT,
   IOT_BACKPRESSURE_THRESHOLD: DEFAULT_IOT_BACKPRESSURE_THRESHOLD,
   IOT_MAX_BATCH_SIZE: DEFAULT_IOT_MAX_BATCH_SIZE,
   IOT_VALIDATED_CONSUMER_CONCURRENCY: DEFAULT_IOT_VALIDATED_CONSUMER_CONCURRENCY,
   IOT_VALIDATED_CONSUMER_BATCH_SIZE: DEFAULT_IOT_VALIDATED_CONSUMER_BATCH_SIZE,
+  IOT_VALIDATED_CONSUMER_SHARD_COUNT: DEFAULT_IOT_VALIDATED_CONSUMER_SHARD_COUNT,
   IOT_REDIS_URL: undefined,
 };

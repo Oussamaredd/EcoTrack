@@ -1,36 +1,68 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SpanKind } from '@opentelemetry/api';
+import { PinoLogger } from 'nestjs-pino';
 
 import {
   extractContextFromTraceCarrier,
   withActiveSpan,
 } from '../../../observability/tracing.helpers.js';
+import { InternalEventPolicyService } from '../../events/internal-events.policy.js';
 import { InternalEventRuntimeService } from '../../events/internal-events.runtime.js';
+import { MonitoringService } from '../../monitoring/monitoring.service.js';
+import { MeasurementRollupsService } from '../rollups/rollups.service.js';
 
 import {
   VALIDATED_EVENT_CONSUMER_MAX_RETRIES,
+  VALIDATED_EVENT_ROLLUP_CONSUMER,
+  VALIDATED_EVENT_TIMESERIES_CONSUMER,
   type ClaimedValidatedEventDelivery,
 } from './validated-consumer.contracts.js';
 import { ValidatedConsumerRepository } from './validated-consumer.repository.js';
 
+const TRACEPARENT_PATTERN = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/i;
+
+const extractTraceId = (traceparent: string | null): string | null => {
+  if (!traceparent) {
+    return null;
+  }
+
+  const match = traceparent.match(TRACEPARENT_PATTERN);
+  return match?.[1]?.toLowerCase() ?? null;
+};
+
 @Injectable()
 export class ValidatedConsumerProcessorService {
-  private readonly logger = new Logger(ValidatedConsumerProcessorService.name);
-
   constructor(
     private readonly repository: ValidatedConsumerRepository,
     private readonly internalEventRuntime: InternalEventRuntimeService,
-  ) {}
+    private readonly internalEventPolicy: InternalEventPolicyService,
+    private readonly measurementRollupsService: MeasurementRollupsService,
+    private readonly monitoringService: MonitoringService,
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(ValidatedConsumerProcessorService.name);
+  }
 
   async processDelivery(deliveryId: string, consumerName: string) {
+    const claimStartedAt = Date.now();
     const claimedDelivery = await this.repository.claimDeliveryForProcessing(
       deliveryId,
       consumerName,
       this.internalEventRuntime.getInstanceId(),
     );
     if (!claimedDelivery) {
+      this.monitoringService.recordServiceHop(
+        'validated_delivery_claim',
+        'skipped',
+        Date.now() - claimStartedAt,
+      );
       return { status: 'skipped' as const };
     }
+    this.monitoringService.recordServiceHop(
+      'validated_delivery_claim',
+      'claimed',
+      Date.now() - claimStartedAt,
+    );
 
     const parentContext = extractContextFromTraceCarrier({
       traceparent: claimedDelivery.traceparent,
@@ -39,7 +71,13 @@ export class ValidatedConsumerProcessorService {
 
     return withActiveSpan(
       'iot.validated_consumer.process',
-      async () => this.processClaimedDelivery(claimedDelivery),
+      async () => {
+        this.internalEventPolicy.assertConsumerAuthorized(
+          claimedDelivery.eventName,
+          claimedDelivery.consumerName,
+        );
+        return this.processClaimedDelivery(claimedDelivery);
+      },
       {
         kind: SpanKind.CONSUMER,
         parentContext,
@@ -54,9 +92,38 @@ export class ValidatedConsumerProcessorService {
   }
 
   private async processClaimedDelivery(delivery: ClaimedValidatedEventDelivery) {
+    const startedAt = Date.now();
     try {
-      await this.repository.projectValidatedEvent(delivery);
+      if (delivery.consumerName === VALIDATED_EVENT_ROLLUP_CONSUMER) {
+        await this.measurementRollupsService.projectValidatedEventRollup(delivery);
+        this.monitoringService.recordServiceHop(
+          'delivery_to_rollup_projection',
+          'completed',
+          Date.now() - startedAt,
+        );
+      } else if (delivery.consumerName === VALIDATED_EVENT_TIMESERIES_CONSUMER) {
+        await this.repository.projectValidatedEvent(delivery);
+        this.monitoringService.recordServiceHop(
+          'delivery_to_timeseries_projection',
+          'completed',
+          Date.now() - startedAt,
+        );
+      } else {
+        throw new Error(`Unsupported validated-event consumer '${delivery.consumerName}'.`);
+      }
       await this.repository.markCompleted(delivery.id);
+      this.logger.info(
+        {
+          traceId: extractTraceId(delivery.traceparent),
+          deliveryId: delivery.id,
+          validatedEventId: delivery.validatedEventId,
+          eventName: delivery.eventName,
+          routingKey: delivery.routingKey,
+          shardId: delivery.shardId,
+          consumerName: delivery.consumerName,
+        },
+        'Projected validated-event delivery',
+      );
       return { status: 'completed' as const };
     } catch (error) {
       const nextAttemptAt = this.computeNextAttemptAt(delivery.attemptCount);
@@ -68,9 +135,26 @@ export class ValidatedConsumerProcessorService {
         errorMessage,
         nextAttemptAt,
       );
+      this.monitoringService.recordServiceHop(
+        delivery.consumerName === VALIDATED_EVENT_ROLLUP_CONSUMER
+          ? 'delivery_to_rollup_projection'
+          : 'delivery_to_timeseries_projection',
+        delivery.attemptCount >= VALIDATED_EVENT_CONSUMER_MAX_RETRIES ? 'failed' : 'retry',
+        Date.now() - startedAt,
+      );
 
       this.logger.error(
-        `Failed processing validated-event delivery ${delivery.id}: ${errorMessage}`,
+        {
+          traceId: extractTraceId(delivery.traceparent),
+          deliveryId: delivery.id,
+          validatedEventId: delivery.validatedEventId,
+          eventName: delivery.eventName,
+          routingKey: delivery.routingKey,
+          shardId: delivery.shardId,
+          consumerName: delivery.consumerName,
+          errorMessage,
+        },
+        'Failed processing validated-event delivery',
       );
 
       return {

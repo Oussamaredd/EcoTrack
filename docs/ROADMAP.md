@@ -1,6 +1,6 @@
 # EcoTrack Development Roadmap (Dev Scope Only)
 
-Last update: 2026-03-19
+Last update: 2026-03-23
 Planning horizon: 8 completed delivery sprints, 3 follow-on completion sprints, and the remaining monolith backlog
 
 ## 1. Scope and Planning Basis
@@ -1014,14 +1014,14 @@ Checklist:
 
 ### M3 - Event Workflow Hardening
 
-Status: `IN_PROGRESS`
+Status: `COMPLETE`
 Lane: `Dev Core`
-Open task IDs: `M3.4`, `M3.6` to `M3.15`
-Completed task IDs: `M3.1`, `M3.2`, `M3.3`
+Open task IDs: none
+Completed task IDs: `M3.1`, `M3.2`, `M3.3`, `M3.4`, `M3.6`, `M3.7`, `M3.8`, `M3.9`, `M3.10`, `M3.11`, `M3.12`, `M3.13 (Dev baseline)`, `M3.14`, `M3.15`
 
 Description: Replace broker-cluster assumptions with a monolith event pipeline based on outbox and inbox patterns, workers, and replay-safe controls.
 
-Progress: IoT ingestion now stages raw events in PostgreSQL inside one transaction per request or batch, derives or normalizes the canonical idempotency key for every accepted measurement, records producer metadata on staged rows, processes them through an internal worker with validation, normalization, enrichment, retry handling, and observability, records validated events with an internal event-envelope contract (`event_name`, `routing_key`, `schema_version`, worker producer identity), creates durable downstream delivery rows with lease-owner tracking, and projects time-series measurements plus container-status updates through a dedicated idempotent consumer.
+Progress: IoT ingestion now stages raw events in PostgreSQL inside one transaction per request or batch, derives or normalizes the canonical idempotency key for every accepted measurement, records producer metadata on staged rows, processes them through an internal worker with validation, normalization, enrichment, retry handling, and observability, records validated events with an internal event-envelope contract (`event_name`, `routing_key`, `schema_version`, worker producer identity), enforces internal producer and consumer authorization policy, creates durable downstream delivery rows with lease-owner tracking, exposes admin-only replay controls for failed or retryable rows, uses shard-aware queue scheduling to keep same-device processing ordered while scaling across sensors, publishes hop-level telemetry plus per-consumer lag and shard-skew metrics, registers 5 future externalization subjects in an internal schema registry, fans out validated events to both timeseries and rollup consumers, surfaces Development-owned security dashboards and alerts, and ships a Docker-Compose-based chaos harness that measures RTO and RPO gaps for pipeline recovery.
 
 Checklist:
 - [x] Implement DB inbox-style staging and validated-event storage where required for the IoT flow.
@@ -1029,6 +1029,8 @@ Checklist:
 - [x] Add event schema versioning and backlog observability for the IoT processing path.
 - [x] Add monolith-compatible internal event transport metadata and lease-owner tracking for HA-style worker recovery.
 - [x] Add exactly-once producer staging semantics for critical IoT ingestion through deterministic idempotency and transactional batch staging.
+- [x] Add service-hop dashboards, consumer lag dashboards, and resilience scripts for the monolith event pipeline.
+- [x] Add the Development-owned security-signal baseline while keeping full SIEM scope deferred to Security handoff.
 
 ### M4 - Platform and Deployment Baseline
 
@@ -1045,20 +1047,19 @@ Checklist:
 
 ### M5 - Frontend Monolith Client Completion
 
-Status: `PARTIAL`
+Status: `DONE`
 Lane: `Dev App`
-Open task IDs: `M5.3`, `M5.7`, `M5.8`, `M5.13`, `M5.14`, `M5.15`
-Completed task IDs: `M5.10`
+Completed task IDs: `M5.3`, `M5.7`, `M5.8`, `M5.10`, `M5.13`, `M5.14`, `M5.15`
 
 Description: Finish the remaining frontend architecture and experience work around state, mapping UX, performance, caching, push UX, telemetry, and component reuse.
 
-Progress: The agent web experience now has an explicit service-worker cache policy, cached-tour fallback handling, offline shell behavior, and same-origin static asset caching without serving stale API responses.
+Progress: The web client now uses a documented Query-plus-slice state boundary, lazy-loaded dashboard panels, a manager heatmap read model, browser Web Vitals ingestion, Sentry-backed frontend telemetry hooks, and a cross-app design-system contract. The mobile client now owns push device registration, citizen inbox reads, deep-link handling, and mobile runtime/push error telemetry with optional Sentry capture on top of the existing Development-only monolith platform.
 
 Checklist:
-- [ ] Refine frontend state architecture where gaps remain.
-- [ ] Complete heatmap UX and Web Vitals improvements.
+- [x] Refine frontend state architecture where gaps remain.
+- [x] Complete heatmap UX and Web Vitals improvements.
 - [x] Add the agent-web caching policy and offline fallback behavior.
-- [ ] Add push-notification UX contract, telemetry hooks, and reusable component library improvements.
+- [x] Add push-notification UX contract, telemetry hooks, and reusable component library improvements.
 
 ### M6 - Security Governance and Hardening Handoff
 
@@ -1161,7 +1162,7 @@ Description: Implement the remaining observability stack for the monolith runtim
 
 Checklist:
 - [x] Add tracing and APM coverage.
-- [ ] Add business KPI and alerting visibility.
+- [x] Add business KPI and alerting visibility.
 - [ ] Add synthetic checks, error tracking, and SLO or SLI reporting.
 
 ### M14 - Documentation Operations Completion

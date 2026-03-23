@@ -31,6 +31,11 @@ describe('configuration', () => {
       logging: {
         level: 'info',
         format: 'pretty',
+        logstash: {
+          enabled: false,
+          host: 'logstash',
+          port: 5001,
+        },
       },
       observability: {
         tracing: {
@@ -58,7 +63,8 @@ describe('configuration', () => {
         IOT_MAX_BATCH_SIZE: 1000,
         IOT_VALIDATED_CONSUMER_CONCURRENCY: 20,
         IOT_VALIDATED_CONSUMER_BATCH_SIZE: 250,
-        IOT_REDIS_URL: undefined,
+        IOT_INGESTION_SHARD_COUNT: 12,
+        IOT_VALIDATED_CONSUMER_SHARD_COUNT: 12,
       },
     });
   });
@@ -108,6 +114,11 @@ describe('configuration', () => {
       logging: {
         level: 'debug',
         format: 'json',
+        logstash: {
+          enabled: false,
+          host: 'logstash',
+          port: 5001,
+        },
       },
       observability: {
         tracing: {
@@ -135,6 +146,8 @@ describe('configuration', () => {
         IOT_MAX_BATCH_SIZE: 500,
         IOT_VALIDATED_CONSUMER_CONCURRENCY: 12,
         IOT_VALIDATED_CONSUMER_BATCH_SIZE: 30,
+        IOT_INGESTION_SHARD_COUNT: 12,
+        IOT_VALIDATED_CONSUMER_SHARD_COUNT: 12,
         IOT_REDIS_URL: 'redis://cache.internal:6379',
       },
     });

@@ -8,6 +8,9 @@ import App from './App';
 import { registerMapServiceWorker } from './lib/registerMapServiceWorker';
 
 registerMapServiceWorker();
+void import('./monitoring/sentry').then(({ initializeWebErrorTracking }) => {
+  initializeWebErrorTracking();
+});
 
 const root = ReactDOM.createRoot(
   document.getElementById('root')!
