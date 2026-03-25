@@ -83,9 +83,10 @@ The ingestion repository stages each request or batch in one database transactio
 If `idempotencyKey` is omitted, the API derives a deterministic key from the normalized measurement payload before staging; duplicate logical measurements inside the same batch are rejected with `400 Bad Request`.
 The monolith processing worker then performs schema validation, business-rule validation, normalization, enrichment with sensor and container context, validated-event storage, and durable delivery creation in `iot.validated_event_deliveries`.
 Validated events now carry internal event-envelope metadata (`event_name`, `routing_key`, `schema_version`, worker producer identity), explicit internal producer and consumer authorization policy, and shard metadata used to keep same-device events ordered while different devices can drain in parallel.
-Each validated event currently fans out to two durable consumers: `timeseries_projection` and `measurement_rollup_projection`.
+Each validated event now fans out to five durable consumers: `timeseries_projection`, `measurement_rollup_projection`, `zone_analytics_projection`, `anomaly_alert_projection`, and `event_archive_connector`.
 Both worker phases record `claimed_by_instance_id` while a lease is active so recovery remains visible and replay-safe across process restarts.
 The downstream validated-event consumers project those durable deliveries into `iot.measurements`, container-status updates, and `iot.measurement_rollups_10m` with idempotent retry handling and a recency guard so older completions cannot overwrite newer container state.
+Additional downstream projections now persist per-zone aggregates in `analytics.zone_aggregates_10m`, current zone read state in `analytics.zone_current_state`, anomaly alerts in `incident.alert_events`, and archive-ready connector payloads in `integration.event_connector_exports`.
 `deviceUid` plus the explicit or server-derived `idempotencyKey` is the canonical staging deduplication key.
 `GET /api/iot/v1/health` returns backlog health, backpressure state, pending staged-event counts, the rolling validated-event count for the last hour, worker processing counters, and separate timeseries-consumer plus rollup-consumer counters.
 `GET /api/iot/v1/rollups/latest` returns precomputed 10-minute IoT rollups so dashboards and operators can query rich metrics without re-aggregating raw measurements.
@@ -138,6 +139,8 @@ Agent tour execution notes:
 - `GET /api/tours/agent/me` returns the current actionable non-terminal tour for the authenticated agent, plus ordered `stops`, itinerary coordinates, a `routeSummary` block, and persisted `routeGeometry` when at least two valid stop coordinates are available.
 - `POST /api/tours/:tourId/start` is safe to repeat while the tour is already `in_progress`; completed tours are rejected.
 - `POST /api/tours/:tourId/stops/:stopId/validate` accepts only the active stop for new validations. Repeating the same completed-stop validation returns the latest route state without creating a duplicate collection event.
+- Tour writes now run through an internal command side backed by `ops.collection_domain_events` and `ops.collection_domain_snapshots`, while reads stay on the query-side projection tables used by the existing tour APIs.
+- Planning-created tours seed the same scheduled-tour domain event stream so planning, agent start, stop validation, completion, and cancellation all share one replayable collection history.
 - The current web workflow uses manual container confirmation plus optional browser geolocation. The optional `qrCode` field remains available for future mobile clients, but it is not required for the platform UI.
 - Route geometry is now stored in the database per tour (`tour_routes`) and returned as a GeoJSON `LineString`.
 - The API persists road-snapped route geometry against the configured routing service (`ROUTING_API_BASE_URL`) during tour creation/update flows; when routing is unavailable, it stores a straight stop-to-stop fallback `LineString`.
@@ -221,10 +224,17 @@ Billing notes:
 
 ```text
 GET /analytics/summary
+GET /analytics/zones/current
+GET /analytics/zones/aggregates
 
 GET /gamification/leaderboard
 POST /gamification/profiles
 ```
+
+Analytics notes:
+- `GET /api/analytics/zones/current` returns the latest persisted zone read model from `analytics.zone_current_state`, optionally filtered by `zoneId`.
+- `GET /api/analytics/zones/aggregates` returns recent 10-minute zone aggregates from `analytics.zone_aggregates_10m`, optionally filtered by `zoneId`.
+- Zone analytics are derived asynchronously from validated IoT events and represent the monolith read-model equivalent of a future event-driven analytics consumer.
 
 ## Support and Admin Endpoints
 
@@ -323,6 +333,7 @@ Metrics notes:
 - Runtime / USE-style gauges include `ecotrack_http_requests_in_flight`, `ecotrack_process_uptime_seconds`, `ecotrack_process_resident_memory_bytes`, `ecotrack_process_heap_*`, and `ecotrack_process_cpu_*`.
 - Route labels are normalized (for example `/api/tickets/:id`) to avoid high-cardinality metrics from raw UUIDs or numeric IDs.
 - DB-backed operational gauges now include `ecotrack_iot_ingestion_events`, `ecotrack_iot_validated_delivery_events`, `ecotrack_iot_ingestion_backlog_total`, `ecotrack_iot_validated_delivery_backlog_total`, `ecotrack_iot_ingestion_oldest_pending_age_ms`, `ecotrack_iot_validated_delivery_oldest_pending_age_ms`, `ecotrack_iot_virtual_partitions`, `ecotrack_containers_fill_total`, `ecotrack_containers_max_fill_percent`, `ecotrack_alert_events_open_total`, `ecotrack_internal_consumer_lag_messages`, `ecotrack_internal_consumer_lag_oldest_pending_age_ms`, `ecotrack_internal_consumer_lag_shard_skew`, and `ecotrack_admin_audit_actions_last_hour`.
+- Event-connector gauges now also include `ecotrack_event_connector_exports`, `ecotrack_event_connector_backlog_total`, `ecotrack_event_connector_oldest_pending_age_ms`, `ecotrack_event_connector_lag_messages`, `ecotrack_event_connector_lag_oldest_pending_age_ms`, `ecotrack_event_connector_completed_last_hour`, and `ecotrack_event_connector_failures_total`.
 - `ecotrack_observability_snapshot_up` reports whether the DB-backed operational snapshot was collected successfully.
 
 IoT ingestion health notes:
@@ -332,7 +343,8 @@ IoT ingestion health notes:
 - Health returns `healthy`, `degraded`, or `unhealthy` based on queue enablement, backlog pressure, and worker retry or failure state.
 
 Schema-registry notes:
-- The internal `events` boundary now registers 5 future externalization subjects: `iot.ingestion.request`, `iot.ingestion.staged`, `iot.measurement.validated`, `iot.validated.delivery`, and `iot.measurement.rollup.10m`.
+- The internal `events` boundary now registers 12 future externalization subjects across IoT, collections, and analytics contracts.
+- Registered business-domain subjects now include `collections.tour.scheduled`, `collections.tour.updated`, `collections.tour.started`, `collections.stop.validated`, `collections.tour.completed`, `collections.tour.cancelled`, and `analytics.zone.aggregate.10m`.
 - `iot.measurement.validated` currently tracks `v1` and `v1.1`, where `v1.1` adds only an optional field and remains backward-compatible with the active monolith consumers.
 
 Tracing notes:

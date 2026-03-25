@@ -41,6 +41,8 @@ describe('EcoTrack contract endpoints', () => {
 
   const analyticsService = {
     getSummary: vi.fn(),
+    listZoneCurrentState: vi.fn(),
+    listZoneAggregates: vi.fn(),
   };
 
   beforeAll(async () => {
@@ -86,6 +88,8 @@ describe('EcoTrack contract endpoints', () => {
       citizenReports: 0,
       gamificationProfiles: 0,
     });
+    analyticsService.listZoneCurrentState.mockResolvedValue([]);
+    analyticsService.listZoneAggregates.mockResolvedValue([]);
   });
 
   afterAll(async () => {
@@ -146,6 +150,36 @@ describe('EcoTrack contract endpoints', () => {
       tours: 0,
       citizenReports: 0,
       gamificationProfiles: 0,
+    });
+  });
+
+  it('returns zone current-state analytics with normalized query parameters', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/analytics/zones/current')
+      .query({ zoneId: ' zone-1 ', limit: '25' })
+      .expect(200);
+
+    expect(analyticsService.listZoneCurrentState).toHaveBeenCalledWith({
+      zoneId: 'zone-1',
+      limit: 25,
+    });
+    expect(response.body).toEqual({
+      zones: [],
+    });
+  });
+
+  it('returns zone aggregate analytics with normalized query parameters', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/analytics/zones/aggregates')
+      .query({ zoneId: ' zone-2 ', limit: '60' })
+      .expect(200);
+
+    expect(analyticsService.listZoneAggregates).toHaveBeenCalledWith({
+      zoneId: 'zone-2',
+      limit: 60,
+    });
+    expect(response.body).toEqual({
+      aggregates: [],
     });
   });
 });

@@ -6,10 +6,13 @@ import { describe, expect, it } from 'vitest';
 
 import { DatabaseModule } from '../database/database.module.js';
 import { AuthModule } from '../modules/auth/auth.module.js';
+import { CollectionsDomainRepository } from '../modules/collections/collections-domain.repository.js';
 import { RoutingClient } from '../modules/collections/routing/routing.client.js';
+import { ToursCommandService } from '../modules/collections/tours.command.service.js';
 import { TOURS_ROUTE_COORDINATION_PORT } from '../modules/collections/tours.contract.js';
 import { ToursController } from '../modules/collections/tours.controller.js';
 import { ToursModule } from '../modules/collections/tours.module.js';
+import { ToursQueryService } from '../modules/collections/tours.query.service.js';
 import { ToursRepository } from '../modules/collections/tours.repository.js';
 import { ToursService } from '../modules/collections/tours.service.js';
 import { InternalEventsModule } from '../modules/events/internal-events.module.js';
@@ -30,13 +33,16 @@ const readModuleMetadata = (key: string, target: object) =>
 describe('IoT module wiring', () => {
   it('registers the tours module controller, providers, and exported coordination port', () => {
     expect(readModuleMetadata(MODULE_METADATA.IMPORTS, ToursModule)).toEqual(
-      expect.arrayContaining([AuthModule, ConfigModule]),
+      expect.arrayContaining([AuthModule, ConfigModule, InternalEventsModule]),
     );
     expect(readModuleMetadata(MODULE_METADATA.CONTROLLERS, ToursModule)).toEqual([ToursController]);
     expect(readModuleMetadata(MODULE_METADATA.PROVIDERS, ToursModule)).toEqual(
       expect.arrayContaining([
         ToursRepository,
+        CollectionsDomainRepository,
         RoutingClient,
+        ToursCommandService,
+        ToursQueryService,
         ToursService,
         expect.objectContaining({
           provide: TOURS_ROUTE_COORDINATION_PORT,

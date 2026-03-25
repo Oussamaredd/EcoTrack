@@ -5,13 +5,20 @@ import { describe, expect, it } from 'vitest';
 
 import { InternalEventSchemaRegistryService } from '../modules/events/internal-event-schema-registry.service.js';
 import {
+  ANALYTICS_ZONE_AGGREGATE_EVENT,
+  ANALYTICS_PROJECTION_SERVICE_PRODUCER,
+  COLLECTIONS_COMMAND_SERVICE_PRODUCER,
+  COLLECTIONS_STOP_VALIDATED_EVENT,
+  EVENT_ARCHIVE_CONNECTOR_CONSUMER,
   INTERNAL_EVENT_SCHEMA_VERSION_V1,
   INTERNAL_EVENT_SCHEMA_VERSION_V1_1,
   INTERNAL_EVENT_POLICIES,
   IOT_INGESTION_HTTP_PRODUCER,
   IOT_MEASUREMENT_VALIDATED_EVENT,
+  VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER,
   VALIDATED_EVENT_ROLLUP_CONSUMER,
   VALIDATED_EVENT_TIMESERIES_CONSUMER,
+  VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER,
 } from '../modules/events/internal-events.catalog.js';
 import type { InternalEventEnvelope } from '../modules/events/internal-events.contracts.js';
 import { InternalEventsModule } from '../modules/events/internal-events.module.js';
@@ -29,6 +36,13 @@ describe('Internal event support', () => {
     expect(IOT_MEASUREMENT_VALIDATED_EVENT).toBe('iot.measurement.validated');
     expect(VALIDATED_EVENT_TIMESERIES_CONSUMER).toBe('timeseries_projection');
     expect(VALIDATED_EVENT_ROLLUP_CONSUMER).toBe('measurement_rollup_projection');
+    expect(COLLECTIONS_COMMAND_SERVICE_PRODUCER).toBe('collections_command_service');
+    expect(ANALYTICS_PROJECTION_SERVICE_PRODUCER).toBe('analytics_projection_service');
+    expect(COLLECTIONS_STOP_VALIDATED_EVENT).toBe('collections.stop.validated');
+    expect(ANALYTICS_ZONE_AGGREGATE_EVENT).toBe('analytics.zone.aggregate.10m');
+    expect(VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER).toBe('zone_analytics_projection');
+    expect(VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER).toBe('anomaly_alert_projection');
+    expect(EVENT_ARCHIVE_CONNECTOR_CONSUMER).toBe('event_archive_connector');
   });
 
   it('creates a stable per-process worker instance identifier', () => {
@@ -88,7 +102,22 @@ describe('Internal event support', () => {
           allowedConsumers: [
             VALIDATED_EVENT_TIMESERIES_CONSUMER,
             VALIDATED_EVENT_ROLLUP_CONSUMER,
+            VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER,
+            VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER,
+            EVENT_ARCHIVE_CONNECTOR_CONSUMER,
           ],
+          replayable: true,
+        }),
+        expect.objectContaining({
+          eventName: COLLECTIONS_STOP_VALIDATED_EVENT,
+          allowedProducers: [COLLECTIONS_COMMAND_SERVICE_PRODUCER],
+          allowedConsumers: [EVENT_ARCHIVE_CONNECTOR_CONSUMER],
+          replayable: true,
+        }),
+        expect.objectContaining({
+          eventName: ANALYTICS_ZONE_AGGREGATE_EVENT,
+          allowedProducers: [ANALYTICS_PROJECTION_SERVICE_PRODUCER],
+          allowedConsumers: [EVENT_ARCHIVE_CONNECTOR_CONSUMER],
           replayable: true,
         }),
       ]),
@@ -129,6 +158,9 @@ describe('Internal event support', () => {
     expect(() =>
       policy.assertConsumerAuthorized(IOT_MEASUREMENT_VALIDATED_EVENT, VALIDATED_EVENT_TIMESERIES_CONSUMER),
     ).not.toThrow();
+    expect(() =>
+      policy.assertConsumerAuthorized(COLLECTIONS_STOP_VALIDATED_EVENT, EVENT_ARCHIVE_CONNECTOR_CONSUMER),
+    ).not.toThrow();
 
     expect(() =>
       policy.assertConsumerAuthorized(IOT_MEASUREMENT_VALIDATED_EVENT, 'unauthorized_consumer'),
@@ -139,6 +171,13 @@ describe('Internal event support', () => {
     const registry = new InternalEventSchemaRegistryService();
 
     expect(registry.listSubjects()).toEqual([
+      'analytics.zone.aggregate.10m',
+      'collections.stop.validated',
+      'collections.tour.cancelled',
+      'collections.tour.completed',
+      'collections.tour.scheduled',
+      'collections.tour.started',
+      'collections.tour.updated',
       'iot.ingestion.request',
       'iot.ingestion.staged',
       'iot.measurement.rollup.10m',

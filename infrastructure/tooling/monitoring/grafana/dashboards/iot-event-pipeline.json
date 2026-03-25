@@ -57,7 +57,7 @@
       {
         "collapse": false,
         "height": "280px",
-        "title": "Five Logical Hops",
+        "title": "Eight Logical Hops",
         "panels": [
           {
             "title": "HTTP Ingestion to Staging",
@@ -68,7 +68,7 @@
                 "legendFormat": "{{outcome}}"
               }
             ],
-            "gridPos": { "h": 9, "w": 4, "x": 0, "y": 9 },
+            "gridPos": { "h": 9, "w": 3, "x": 0, "y": 9 },
             "id": 4
           },
           {
@@ -80,7 +80,7 @@
                 "legendFormat": "{{outcome}}"
               }
             ],
-            "gridPos": { "h": 9, "w": 4, "x": 4, "y": 9 },
+            "gridPos": { "h": 9, "w": 3, "x": 3, "y": 9 },
             "id": 5
           },
           {
@@ -92,7 +92,7 @@
                 "legendFormat": "{{outcome}}"
               }
             ],
-            "gridPos": { "h": 9, "w": 4, "x": 8, "y": 9 },
+            "gridPos": { "h": 9, "w": 3, "x": 6, "y": 9 },
             "id": 6
           },
           {
@@ -104,7 +104,7 @@
                 "legendFormat": "{{outcome}}"
               }
             ],
-            "gridPos": { "h": 9, "w": 4, "x": 12, "y": 9 },
+            "gridPos": { "h": 9, "w": 3, "x": 9, "y": 9 },
             "id": 7
           },
           {
@@ -116,7 +116,7 @@
                 "legendFormat": "{{outcome}}"
               }
             ],
-            "gridPos": { "h": 9, "w": 4, "x": 16, "y": 9 },
+            "gridPos": { "h": 9, "w": 3, "x": 12, "y": 9 },
             "id": 8
           },
           {
@@ -128,15 +128,39 @@
                 "legendFormat": "{{outcome}}"
               }
             ],
-            "gridPos": { "h": 9, "w": 4, "x": 20, "y": 9 },
+            "gridPos": { "h": 9, "w": 3, "x": 15, "y": 9 },
             "id": 9
+          },
+          {
+            "title": "Zone Analytics Projection",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum by (outcome) (rate(ecotrack_service_hop_events_total{hop=\"delivery_to_zone_analytics_projection\"}[5m]))",
+                "legendFormat": "{{outcome}}"
+              }
+            ],
+            "gridPos": { "h": 9, "w": 3, "x": 18, "y": 9 },
+            "id": 16
+          },
+          {
+            "title": "Anomaly Alert Projection",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum by (outcome) (rate(ecotrack_service_hop_events_total{hop=\"delivery_to_anomaly_alert_projection\"}[5m]))",
+                "legendFormat": "{{outcome}}"
+              }
+            ],
+            "gridPos": { "h": 9, "w": 3, "x": 21, "y": 9 },
+            "id": 17
           }
         ]
       },
       {
         "collapse": false,
         "height": "280px",
-        "title": "Lag and Backlog",
+        "title": "Lag, Backlog, and Connector Exports",
         "panels": [
           {
             "title": "Pipeline Backlog",
@@ -149,6 +173,10 @@
               {
                 "expr": "ecotrack_iot_validated_delivery_backlog_total",
                 "legendFormat": "validated delivery backlog"
+              },
+              {
+                "expr": "ecotrack_event_connector_backlog_total",
+                "legendFormat": "event connector backlog"
               }
             ],
             "gridPos": { "h": 9, "w": 8, "x": 0, "y": 18 },

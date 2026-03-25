@@ -9,5 +9,13 @@ export class AnalyticsService {
   async getSummary() {
     return this.repository.getSummary();
   }
+
+  async listZoneCurrentState(filters: { zoneId?: string; limit?: number } = {}) {
+    return this.repository.listZoneCurrentState(filters);
+  }
+
+  async listZoneAggregates(filters: { zoneId?: string; limit?: number } = {}) {
+    return this.repository.listZoneAggregates(filters);
+  }
 }
 

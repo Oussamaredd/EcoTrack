@@ -112,6 +112,7 @@ describe('PlanningRepository invariants', () => {
 
   it('persists ordered stop ETAs when creating a planned tour', async () => {
     const insertedStopRows: Array<Record<string, unknown>> = [];
+    const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
 
     const tx = {
       select: vi.fn().mockReturnValue({
@@ -151,7 +152,9 @@ describe('PlanningRepository invariants', () => {
             };
           }
 
-          return Promise.resolve(undefined);
+          return {
+            onConflictDoNothing,
+          };
         }),
       })),
     };
@@ -178,6 +181,7 @@ describe('PlanningRepository invariants', () => {
     expect(
       (insertedStopRows[1]?.['eta'] as Date).getTime(),
     ).toBeGreaterThan((insertedStopRows[0]?.['eta'] as Date).getTime());
+    expect(onConflictDoNothing).toHaveBeenCalledTimes(3);
   });
 
   it('recomputes report artifact when regenerating a report', async () => {

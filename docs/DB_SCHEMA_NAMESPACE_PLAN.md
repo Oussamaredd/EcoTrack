@@ -1,6 +1,6 @@
 # DB Schema Namespace Plan
 
-Last updated: 2026-03-20
+Last updated: 2026-03-24
 
 Related status doc:
 
@@ -12,13 +12,14 @@ This plan is based on:
 
 - `docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx`, especially CDC sections 4.x (use cases), 5.2 (Development modules), 7.1 to 7.2 (business concepts and OLTP constraints), and 10.1 (expected API surface).
 - `AGENTS.md`, especially the Temporary Specialty Scope Freeze limiting active implementation to Development plus partial Dev/Data for storage/query only.
-- The current database model in `database/schema/index.ts`, `database/migrations/meta/0017_snapshot.json`, and the latest migration `database/migrations/0017_optimal_shard.sql`.
+- The current database model in `database/schema/index.ts`, `database/migrations/meta/0023_snapshot.json`, and the latest migration `database/migrations/0023_tearful_loa.sql`.
 
 Current database facts:
 
-- 31 live tables are defined in the latest Drizzle snapshot.
+- 46 live tables are defined in the latest Drizzle snapshot.
 - The business model is already namespaced with `pgSchema()` usage across the monolith domains.
 - The `iot` schema now includes raw-event staging and validated-event storage in addition to sensor registry and measurement projection tables.
+- The `analytics` and `integration` schemas now extend the event pipeline with zone read models and connector export staging.
 - No PostgreSQL enums defined in Drizzle today.
 - No database views in the current schema plan.
 
@@ -41,8 +42,10 @@ Target rule: keep `public` empty for business tables after migration; reserve it
 | `core` | Core operational master data and geospatial assets | CDC 7.1 containers/zones, 10.1 containers/zones, PostGIS note | `zones`, `containers`, new `container_types` |
 | `iot` | OLTP storage for sensor registry, staged raw events, validated events, and operational measurements | CDC UC-T02, 7.1 IoT measurements, 10.1 measurement history | `sensor_devices`, `ingestion_events`, `validated_measurement_events`, `measurements` |
 | `ops` | Tour planning, execution, route output, and collection events | CDC UC-A01, UC-A02, UC-G01, 10.1 tours | `tours`, `tour_stops`, `tour_routes`, `collection_events` |
+| `analytics` | Event-driven zone aggregate read models derived from IoT measurements | Workbook M8 analytics aggregation, manager dashboards | `zone_aggregates_10m`, `zone_current_state` |
+| `integration` | Retry-safe staging for future event sink and archive adapters | Workbook M8 connector externalization seam | `event_connector_exports` |
 | `incident` | Citizen reports, anomaly catalog, anomaly handling, alert events | CDC UC-C01, UC-A03, UC-G02 | `citizen_reports`, `anomaly_types`, `anomaly_reports`, new `alert_events` |
-| `notify` | Notification intent and per-channel delivery tracking | CDC notifications, UC-C01, UC-G01, UC-AD02 | new `notifications`, new `notification_deliveries` |
+| `notify` | Notification intent, device registration, inbox state, and per-channel delivery tracking | CDC notifications, UC-C01, UC-G01, UC-AD02 | `notifications`, `notification_deliveries`, `notification_devices`, `notification_recipients` |
 | `billing` | Transactional billing, invoices, and billable-source allocations | Workbook M2.5 billing service, ops/incident billing inputs | `accounts`, `rate_rules`, `runs`, `invoices`, `invoice_line_items`, `source_allocations` |
 | `game` | Citizen engagement, points, badges, and challenges | CDC UC-C02, UC-C03, 5.2 gamification | `gamification_profiles`, `challenges`, `challenge_participations` |
 | `audit` | Immutable business traceability | CDC 7.2 traceability, UC-AD01, 5.2 administration | `audit_logs` |

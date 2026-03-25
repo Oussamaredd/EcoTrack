@@ -2,12 +2,15 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 
 import { withActiveSpan } from '../../observability/tracing.helpers.js';
 
+import type { CreateCollectionTourCommandInput } from './collection-domain.contracts.js';
 import type { CreateTourDto } from './dto/create-tour.dto.js';
 import type { ReportAnomalyDto } from './dto/report-anomaly.dto.js';
 import type { UpdateTourDto } from './dto/update-tour.dto.js';
 import type { ValidateTourStopDto } from './dto/validate-tour-stop.dto.js';
 import { RoutingClient } from './routing/routing.client.js';
+import { ToursCommandService } from './tours.command.service.js';
 import type { ToursRouteCoordinationPort } from './tours.contract.js';
+import { ToursQueryService } from './tours.query.service.js';
 import { ToursRepository } from './tours.repository.js';
 
 type TourListFilters = {
@@ -102,16 +105,18 @@ const MAX_ROUTE_ENDPOINT_DRIFT_KM = 0.5;
 @Injectable()
 export class ToursService implements ToursRouteCoordinationPort {
   constructor(
+    private readonly commandService: ToursCommandService,
+    private readonly queryService: ToursQueryService,
     private readonly repository: ToursRepository,
     private readonly routingClient: RoutingClient,
   ) {}
 
   async list(filters: TourListFilters) {
-    return this.repository.list(filters);
+    return this.queryService.list(filters);
   }
 
   async create(dto: CreateTourDto) {
-    const createdTour = await this.repository.create(dto);
+    const createdTour = await this.commandService.create(dto);
     const routeGeometry = await this.persistRouteForTour(createdTour.id);
 
     return routeGeometry
@@ -123,7 +128,7 @@ export class ToursService implements ToursRouteCoordinationPort {
   }
 
   async getAgentTour(agentUserId: string) {
-    const tour = (await this.repository.getAgentTour(agentUserId)) as AgentTourRecord | null;
+    const tour = (await this.queryService.getAgentTour(agentUserId)) as AgentTourRecord | null;
     if (!tour) {
       return null;
     }
@@ -140,13 +145,13 @@ export class ToursService implements ToursRouteCoordinationPort {
   }
 
   async startTour(tourId: string, actorUserId: string) {
-    return this.repository.startTour(tourId, actorUserId);
+    return this.commandService.startTour(tourId, actorUserId);
   }
 
   async validateStop(tourId: string, stopId: string, actorUserId: string, dto: ValidateTourStopDto) {
     return withActiveSpan(
       'collections.tour.validate_stop',
-      () => this.repository.validateStop(tourId, stopId, actorUserId, dto),
+      () => this.commandService.validateStop(tourId, stopId, actorUserId, dto),
       {
         attributes: {
           'tour.id': tourId,
@@ -160,19 +165,19 @@ export class ToursService implements ToursRouteCoordinationPort {
   }
 
   async listAnomalyTypes() {
-    return this.repository.listAnomalyTypes();
+    return this.queryService.listAnomalyTypes();
   }
 
   async reportAnomaly(tourId: string, actorUserId: string, dto: ReportAnomalyDto) {
-    return this.repository.reportAnomaly(tourId, actorUserId, dto);
+    return this.commandService.reportAnomaly(tourId, actorUserId, dto);
   }
 
   async getTourActivity(tourId: string) {
-    return this.repository.getTourActivity(tourId);
+    return this.queryService.getTourActivity(tourId);
   }
 
   async update(id: string, dto: UpdateTourDto) {
-    const updatedTour = await this.repository.update(id, dto);
+    const updatedTour = await this.commandService.update(id, dto);
 
     if (Array.isArray(dto.stopContainerIds) && dto.stopContainerIds.length > 0) {
       await this.persistRouteForTour(id);
@@ -185,7 +190,7 @@ export class ToursService implements ToursRouteCoordinationPort {
     return withActiveSpan(
       'collections.tour.rebuild_route',
       async () => {
-        const tour = await this.repository.getTourById(tourId);
+        const tour = await this.queryService.getTourById(tourId);
         if (!tour) {
           throw new NotFoundException('Tour not found');
         }
@@ -223,8 +228,20 @@ export class ToursService implements ToursRouteCoordinationPort {
     await this.persistRouteForTour(tourId);
   }
 
+  async createManagedTour(
+    command: CreateCollectionTourCommandInput,
+    actorUserId: string | null,
+  ) {
+    const createdTour = await this.commandService.createManagedTour(command, actorUserId);
+    if (createdTour?.id) {
+      await this.persistRouteForTour(createdTour.id);
+    }
+
+    return createdTour;
+  }
+
   async persistRouteForTour(tourId: string, preloadedStops?: AgentTourStop[]) {
-    const stops = preloadedStops ?? ((await this.repository.getTourRouteStops(tourId)) as AgentTourStop[]);
+    const stops = preloadedStops ?? ((await this.queryService.getTourRouteStops(tourId)) as AgentTourStop[]);
     const resolvedRoute = await this.resolveRouteGeometry(stops);
 
     if (!resolvedRoute) {

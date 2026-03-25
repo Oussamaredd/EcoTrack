@@ -698,7 +698,7 @@ Status legend:
 ## Module M8
 
 - Lane default: `Dev Core`
-- Status default: `TODO_MONOLITH`
+- Status default: `DONE`
 
 ### M8.1 - Architecture Événementielle ECOTRACK - Kafka 3.5
 
@@ -706,7 +706,8 @@ Status legend:
 - Workbook expected outcome: Schéma architecture C4 niveau 2-3 détaillant producers/brokers/consumers/topics avec flux données; Documentation 15 topics spécifications (partitions, retention, schemas Avro); ADR Architecture Decision Record justifiant choix Kafka vs alternatives RabbitMQ/Pulsar/Redis Streams; POC Node.js producer/consumer fonctionnel testant throughput 1000 msg/s; Configuration Kafka properties server.properties + consumer/producer configs; Dashboard Grafana monitoring complet cluster (brokers health, topics metrics, consumer groups lag)
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as a typed internal-event boundary with authorized producers and consumers, internal routing-key and schema-version contracts, durable PostgreSQL delivery state, replay-safe workers, and future broker externalization seams across IoT, collections, and analytics domains.
 
 ### M8.2 - Microservice Producer IoT Ingestion (Node.js 20 + Kafka)
 
@@ -714,7 +715,8 @@ Status legend:
 - Workbook expected outcome: Code source complet Node.js TypeScript microservice avec structure projet /src (controllers, services, config, types); Dockerfile multi-stage optimisé (builder + production layers <200MB image); Documentation OpenAPI 3.0 specification endpoint POST /api/v1/iot/measurements avec examples requests/responses; Tests Jest unitaires >80% coverage + Testcontainers intégration; Scripts K6 tests charge validant 1000 req/s; Manifests Kubernetes (Deployment, Service, HPA, ConfigMap, Secret); Dashboard Grafana monitoring métriques producer (throughput, latency, errors); Guide déploiement procédure rollout production
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through the staged IoT ingestion API, transactional raw-event persistence, internal producer metadata, deterministic idempotency, concurrent shard-aware workers, OpenAPI coverage, benchmark assets, and full API test coverage.
 
 ### M8.3 - Consumer Analytics Aggregation temps réel (Node.js + PostgreSQL)
 
@@ -722,7 +724,8 @@ Status legend:
 - Workbook expected outcome: Code source Node.js TypeScript consumer complet avec structure modular (consumer, aggregator, repository); Configuration kafkajs consumer properties; SQL migrations tables PostgreSQL (aggregates_5min, current_state, failed_messages) avec indexes optimisés; Documentation architecture pipeline aggregation (diagramme flow données Kafka→Consumer→PostgreSQL); Tests unitaires + intégration coverage >75%; Dashboard Grafana monitoring consumer (lag par partition, throughput msg/s, processing duration, memory usage); Runbook operational troubleshooting (consumer stuck, lag increasing, OutOfMemory, DB connection pool exhausted)
 - Monolith adaptation: Implement as a bounded module and worker inside the monolith (`controller -> service -> repository`), not as a separately deployed service.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as a validated-event consumer that derives 10-minute zone aggregates, updates current zone state, exposes new analytics endpoints, stages export-ready aggregate events, and keeps dashboard and runbook visibility in the existing observability stack.
 
 ### M8.4 - Event Sourcing Pattern - Domaine Tournées Collecte
 
@@ -730,7 +733,8 @@ Status legend:
 - Workbook expected outcome: Code Event Sourcing framework réutilisable (classes abstraites Aggregate, Event, Command, CommandHandler, EventHandler); Implémentation complète domain Collections (Collection aggregate, 4 commands, 4 events, FSM transitions); Configuration Kafka topics collections.events + collections.snapshots retention policies; Repository pattern store/load aggregates avec snapshot; Saga orchestrator CompleteCollection workflow; Tests unitaires FSM >80% + intégration Testcontainers; Documentation architecture Event Sourcing patterns appliqués
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered with immutable collection domain events, replay and snapshot support, aggregate rehydration, planning-side seeding of scheduled-tour state, terminal tour transitions through domain commands, and query-side projection updates into the existing tours tables.
 
 ### M8.5 - CQRS Pattern - Séparation Command/Query Models
 
@@ -738,7 +742,8 @@ Status legend:
 - Workbook expected outcome: Architecture CQRS complète (command side + query side séparés); Command bus dispatcher + handlers; Projections consumers Kafka vers PostgreSQL/Elasticsearch/Redis; Documentation diagrammes C4 séparation write/read; Configuration Elasticsearch mappings + Redis cache strategy; Tests unitaires commands + projections; Benchmark performance queries <100ms
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered in monolith form through `ToursCommandService` plus `CollectionsDomainRepository` on the write side and `ToursQueryService` plus read-model tables on the query side, while the public HTTP surface remains stable.
 
 ### M8.6 - Kafka Streams - Processing temps réel événements
 
@@ -746,7 +751,8 @@ Status legend:
 - Workbook expected outcome: Application Kafka Streams Java SpringBoot processing temps réel; Topology DSL transformations (filter, map, groupBy, windowedBy, aggregate); Configuration state stores RocksDB + changelog; Implementation windowing strategies (tumbling, hopping, session); REST API interactive queries state; Tests TopologyTestDriver + Testcontainers; Dashboard Grafana monitoring streams metrics
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through internal worker projections that compute zone-window analytics, fill-surge detection, and alert creation from the validated-event stream while preserving replay safety and observability without introducing an external stream-processing runtime.
 
 ### M8.7 - Kafka Connect - Intégration Sources/Sinks externes
 
@@ -754,7 +760,8 @@ Status legend:
 - Workbook expected outcome: Kafka Connect cluster 3 workers déployé; Configuration Source Connector Debezium PostgreSQL CDC; Configuration Sink Connector Elasticsearch indexing; Configuration Sink Connector S3 archiving Parquet; Documentation architecture intégrations ETL; Tests Testcontainers CDC end-to-end; Monitoring Prometheus connectors health
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as a Development-owned connector staging layer backed by `integration.event_connector_exports`, retry and lease recovery, local JSON archive materialization, and a replaceable sink contract for later Debezium, Elasticsearch, S3, or broker-backed adapters.
 
 ### M8.8 - Schema Registry - Gestion évolution Schemas Avro
 
@@ -762,7 +769,8 @@ Status legend:
 - Workbook expected outcome: Schema Registry cluster 3 nodes HA déployé; Définition schemas Avro fichiers .avsc (ContainerMeasurement, TourneeEvent, CitizenReport); Configuration compatibility modes (BACKWARD/FORWARD/FULL); Producers Avro Java/Node.js serialization automatique; Consumers Avro deserialization; Tests compatibility schema evolution; Documentation governance schemas + versioning strategy
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered as an internal schema-registry catalog with compatibility validation and registered subjects for IoT ingestion, validated delivery, collection domain events, and zone-aggregate events.
 
 ### M8.9 - Kafka Monitoring - Observabilité Production Grafana
 
@@ -770,7 +778,8 @@ Status legend:
 - Workbook expected outcome: Configuration Prometheus scraping Kafka JMX Exporters; Dashboards Grafana Kafka (overview, topics, producers, consumers); Alerting rules Alertmanager avec routing PagerDuty/Slack; Intégration OpenTelemetry tracing distribué; Configuration Filebeat logging centralisé Elasticsearch; Documentation runbook operational troubleshooting alertes
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered through DB-backed Prometheus gauges, hop-level tracing and metrics, Grafana pipeline dashboards, alert rules for lag and failures across consumers and connector exports, and an updated replay and alerting runbook.
 
 ### M8.10 - Kafka Security - Encryption SSL/TLS + SASL Authentication
 
@@ -778,7 +787,8 @@ Status legend:
 - Workbook expected outcome: Configuration SSL/TLS Kafka cluster (keystores, truststores, certificats); Configuration SASL/SCRAM authentication users; ACLs authorization policies topics/consumer-groups; Encryption at-rest LUKS/KMS; Network security VPC/Security Groups; Documentation procédures rotation certificats/credentials; Tests SSL handshake + authentication + authorization; Compliance audit checklist
 - Monolith adaptation: Implement with internal domain events + outbox/inbox + retry workers; keep adapter contracts compatible with future Kafka externalization.
 - Lane: `Dev Core`
-- Status: `TODO_MONOLITH`
+- Status: `DONE`
+- Completion note: Delivered in monolith-adapted form through explicit producer and consumer authorization policy, replay-safe internal transport controls, and schema-version enforcement while external broker TLS and SASL remain future adapter-layer work outside the current phase.
 
 ## Module M9
 

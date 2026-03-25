@@ -4,10 +4,13 @@ import { ConfigService } from '@nestjs/config';
 import { DEFAULT_IOT_CONFIG, type IotIngestionConfig } from '../../../config/iot-ingestion.js';
 
 import {
+  EVENT_ARCHIVE_CONNECTOR_CONSUMER,
+  VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER,
   VALIDATED_EVENT_ROLLUP_CONSUMER,
   VALIDATED_EVENT_CONSUMER_RECOVERY_INTERVAL_MS,
   VALIDATED_EVENT_CONSUMER_STALE_LEASE_WINDOW_MS,
   VALIDATED_EVENT_TIMESERIES_CONSUMER,
+  VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER,
   type ValidatedDeliveryRef,
   type ValidatedEventConsumerHealthStats,
 } from './validated-consumer.contracts.js';
@@ -20,6 +23,9 @@ export class ValidatedConsumerService implements OnModuleInit, OnModuleDestroy {
   private static readonly CONSUMERS = [
     VALIDATED_EVENT_TIMESERIES_CONSUMER,
     VALIDATED_EVENT_ROLLUP_CONSUMER,
+    VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER,
+    VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER,
+    EVENT_ARCHIVE_CONNECTOR_CONSUMER,
   ] as const;
   private readonly logger = new Logger(ValidatedConsumerService.name);
   private readonly config: IotIngestionConfig;

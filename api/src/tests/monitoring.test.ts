@@ -60,6 +60,15 @@ describe('Monitoring endpoints', () => {
               deliveryOldestPendingAgeMs: null,
               validatedLastHour: 1,
               completedLastHour: 1,
+              connectorExportsByStatus: {
+                pending: 0,
+                retry: 0,
+                processing: 0,
+                failed: 0,
+                completed: 1,
+              },
+              connectorOldestPendingAgeMs: null,
+              connectorLagByConnector: [],
               criticalContainers: 0,
               attentionContainers: 0,
               maxContainerFillLevel: 50,
@@ -156,6 +165,12 @@ describe('Monitoring endpoints', () => {
     expect(response.text).toContain('ecotrack_realtime_emitted_events_total 42');
     expect(response.text).toContain(
       'ecotrack_internal_consumer_lag_messages',
+    );
+    expect(response.text).toContain(
+      'ecotrack_event_connector_exports{status="completed"} 1',
+    );
+    expect(response.text).toContain(
+      'ecotrack_event_connector_backlog_total 0',
     );
     expect(response.text).toContain(
       'ecotrack_internal_consumer_lag_shard_skew',

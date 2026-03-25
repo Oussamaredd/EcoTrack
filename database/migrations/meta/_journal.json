@@ -162,6 +162,13 @@
       "when": 1774282200000,
       "tag": "0022_wiry_namor",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1774359637990,
+      "tag": "0023_tearful_loa",
+      "breakpoints": true
     }
   ]
 }

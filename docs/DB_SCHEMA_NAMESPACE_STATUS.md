@@ -1,6 +1,6 @@
 # DB Schema Namespace Rollout Status
 
-Last updated: 2026-03-21
+Last updated: 2026-03-24
 
 ## Purpose
 
@@ -25,6 +25,11 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 
 - `iot.measurement_rollups_10m` was added in `database/migrations/0021_damp_wendell_vaughn.sql` for workbook task `M3.11`.
 - The table stores Development-owned 10-minute rollups derived from the existing validated-event stream and supports the monolith lag, resilience, and operator dashboards without introducing warehouse or analytics-platform scope.
+
+2026-03-24 extension note:
+
+- `ops.collection_domain_events`, `ops.collection_domain_snapshots`, `analytics.zone_aggregates_10m`, `analytics.zone_current_state`, and `integration.event_connector_exports` were added in `database/migrations/0023_tearful_loa.sql` for workbook module `M8`.
+- These tables extend the Development-owned monolith event workflow with event-sourced collections commands, zone analytics read models, and retry-safe connector export staging without adding external broker, warehouse, or specialty-track infrastructure.
 
 Known readiness exceptions from the original rollout pass:
 

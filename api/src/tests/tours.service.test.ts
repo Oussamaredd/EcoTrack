@@ -45,7 +45,16 @@ describe('ToursService route geometry enrichment', () => {
   });
 
   const createService = (routingClientMock: ReturnType<typeof createRoutingClientMock>) => {
-    return new ToursService(repositoryMock as any, routingClientMock as unknown as RoutingClient);
+    return new ToursService(
+      {} as any,
+      {
+        getAgentTour: repositoryMock.getAgentTour,
+        getTourById: repositoryMock.getTourById,
+        getTourRouteStops: repositoryMock.getTourRouteStops,
+      } as any,
+      repositoryMock as any,
+      routingClientMock as unknown as RoutingClient,
+    );
   };
 
   it('returns API-owned road geometry and overrides route metrics when routing succeeds', async () => {

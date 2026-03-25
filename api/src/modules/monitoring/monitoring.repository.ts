@@ -4,6 +4,7 @@ import {
   alertEvents,
   auditLogs,
   containers,
+  eventConnectorExports,
   ingestionEvents,
   type DatabaseClient,
   validatedEventDeliveries,
@@ -13,6 +14,7 @@ import { DRIZZLE } from '../../database/database.constants.js';
 
 type QueueStatus = 'pending' | 'retry' | 'processing' | 'failed' | 'rejected' | 'validated';
 type DeliveryStatus = 'pending' | 'retry' | 'processing' | 'failed' | 'completed';
+type EventConnectorStatus = 'pending' | 'retry' | 'processing' | 'failed' | 'completed';
 
 const coerceTimestamp = (value: Date | string | null | undefined) => {
   if (!value) {
@@ -42,6 +44,9 @@ export class MonitoringRepository {
       ingestionShardRows,
       deliveryShardRows,
       deliveryLagRows,
+      connectorExportsByStatus,
+      connectorOldestPending,
+      connectorLagRows,
       recentAuditActions,
     ] = await Promise.all([
       this.countIngestionByStatus(),
@@ -57,6 +62,9 @@ export class MonitoringRepository {
       this.countIngestionBacklogByShard(),
       this.countDeliveryBacklogByShard(),
       this.getDeliveryLagByConsumer(),
+      this.countEventConnectorExportsByStatus(),
+      this.getOldestEventConnectorPendingAt(),
+      this.getEventConnectorLagByConnector(),
       this.countRecentAuditActions(),
     ]);
 
@@ -73,6 +81,12 @@ export class MonitoringRepository {
       })(),
       validatedLastHour,
       completedLastHour,
+      connectorExportsByStatus,
+      connectorOldestPendingAgeMs: (() => {
+        const timestamp = coerceTimestamp(connectorOldestPending);
+        return timestamp ? Math.max(0, Date.now() - timestamp.getTime()) : null;
+      })(),
+      connectorLagByConnector: connectorLagRows,
       criticalContainers,
       attentionContainers,
       maxContainerFillLevel,
@@ -427,6 +441,156 @@ export class MonitoringRepository {
         ...snapshot,
       }))
       .sort((left, right) => left.consumerName.localeCompare(right.consumerName));
+  }
+
+  private async countEventConnectorExportsByStatus() {
+    const rows = await this.db
+      .select({
+        status: eventConnectorExports.processingStatus,
+        count: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(eventConnectorExports)
+      .groupBy(eventConnectorExports.processingStatus);
+
+    return this.mapCountRows<EventConnectorStatus>(rows, [
+      'pending',
+      'retry',
+      'processing',
+      'failed',
+      'completed',
+    ]);
+  }
+
+  private async getOldestEventConnectorPendingAt() {
+    const [row] = await this.db
+      .select({ value: sql<Date | null>`min(${eventConnectorExports.createdAt})` })
+      .from(eventConnectorExports)
+      .where(
+        or(
+          eq(eventConnectorExports.processingStatus, 'pending'),
+          eq(eventConnectorExports.processingStatus, 'retry'),
+          eq(eventConnectorExports.processingStatus, 'processing'),
+        ),
+      );
+
+    return row?.value ?? null;
+  }
+
+  private async getEventConnectorLagByConnector() {
+    const [statusRows, oldestRows, completedRows] = await Promise.all([
+      this.db
+        .select({
+          connectorName: eventConnectorExports.connectorName,
+          status: eventConnectorExports.processingStatus,
+          count: sql<number>`count(*)`.mapWith(Number),
+        })
+        .from(eventConnectorExports)
+        .groupBy(eventConnectorExports.connectorName, eventConnectorExports.processingStatus),
+      this.db
+        .select({
+          connectorName: eventConnectorExports.connectorName,
+          value: sql<Date | null>`min(${eventConnectorExports.createdAt})`,
+        })
+        .from(eventConnectorExports)
+        .where(
+          or(
+            eq(eventConnectorExports.processingStatus, 'pending'),
+            eq(eventConnectorExports.processingStatus, 'retry'),
+            eq(eventConnectorExports.processingStatus, 'processing'),
+          ),
+        )
+        .groupBy(eventConnectorExports.connectorName),
+      this.db
+        .select({
+          connectorName: eventConnectorExports.connectorName,
+          value: sql<number>`count(*)`.mapWith(Number),
+        })
+        .from(eventConnectorExports)
+        .where(
+          and(
+            eq(eventConnectorExports.processingStatus, 'completed'),
+            sql`${eventConnectorExports.processedAt} > NOW() - INTERVAL '1 hour'`,
+          ),
+        )
+        .groupBy(eventConnectorExports.connectorName),
+    ]);
+
+    const lagByConnector = new Map<
+      string,
+      {
+        backlogTotal: number;
+        pendingCount: number;
+        retryCount: number;
+        processingCount: number;
+        failedCount: number;
+        oldestPendingAgeMs: number | null;
+        completedLastHour: number;
+      }
+    >();
+
+    for (const row of statusRows) {
+      const current = lagByConnector.get(row.connectorName) ?? {
+        backlogTotal: 0,
+        pendingCount: 0,
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        oldestPendingAgeMs: null,
+        completedLastHour: 0,
+      };
+      const count = row.count ?? 0;
+
+      if (row.status === 'pending') {
+        current.pendingCount = count;
+        current.backlogTotal += count;
+      } else if (row.status === 'retry') {
+        current.retryCount = count;
+        current.backlogTotal += count;
+      } else if (row.status === 'processing') {
+        current.processingCount = count;
+        current.backlogTotal += count;
+      } else if (row.status === 'failed') {
+        current.failedCount = count;
+      }
+
+      lagByConnector.set(row.connectorName, current);
+    }
+
+    for (const row of oldestRows) {
+      const current = lagByConnector.get(row.connectorName) ?? {
+        backlogTotal: 0,
+        pendingCount: 0,
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        oldestPendingAgeMs: null,
+        completedLastHour: 0,
+      };
+      const timestamp = coerceTimestamp(row.value);
+      current.oldestPendingAgeMs = timestamp ? Math.max(0, Date.now() - timestamp.getTime()) : null;
+      lagByConnector.set(row.connectorName, current);
+    }
+
+    for (const row of completedRows) {
+      const current = lagByConnector.get(row.connectorName) ?? {
+        backlogTotal: 0,
+        pendingCount: 0,
+        retryCount: 0,
+        processingCount: 0,
+        failedCount: 0,
+        oldestPendingAgeMs: null,
+        completedLastHour: 0,
+      };
+      current.completedLastHour = row.value ?? 0;
+      lagByConnector.set(row.connectorName, current);
+    }
+
+    return [...lagByConnector.entries()]
+      .map(([connectorName, snapshot]) => ({
+        connectorName,
+        ...snapshot,
+      }))
+      .sort((left, right) => left.connectorName.localeCompare(right.connectorName));
   }
 
   private async countRecentAuditActions() {

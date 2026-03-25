@@ -86,3 +86,35 @@ paths:
       responses:
         '200':
           description: Summary counters
+  /analytics/zones/current:
+    get:
+      tags: [Analytics]
+      summary: Retrieve the latest persisted current-state analytics by zone
+      parameters:
+        - in: query
+          name: zoneId
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Zone current-state payload
+  /analytics/zones/aggregates:
+    get:
+      tags: [Analytics]
+      summary: Retrieve recent 10-minute zone aggregate analytics
+      parameters:
+        - in: query
+          name: zoneId
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: limit
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          description: Zone aggregate payload

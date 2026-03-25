@@ -124,6 +124,28 @@ groups:
           description: "One or more validated-event deliveries have exhausted retries and remain failed."
           runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
+      - alert: EcoTrackEventConnectorBacklogHigh
+        expr: ecotrack_event_connector_backlog_total > 1000
+        for: 10m
+        labels:
+          severity: warning
+          team: iot
+        annotations:
+          summary: "Event connector backlog is high"
+          description: "Pending, retry, or processing event-connector exports exceeded 1000 for 10 minutes."
+          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+
+      - alert: EcoTrackEventConnectorFailuresPresent
+        expr: ecotrack_event_connector_exports{status="failed"} > 0
+        for: 10m
+        labels:
+          severity: critical
+          team: iot
+        annotations:
+          summary: "Failed event connector exports are present"
+          description: "One or more event-connector exports have exhausted retries and remain failed."
+          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+
       - alert: EcoTrackInternalConsumerLagHigh
         expr: ecotrack_internal_consumer_lag_oldest_pending_age_ms > 300000
         for: 5m

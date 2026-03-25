@@ -37,6 +37,15 @@ describe('ValidatedConsumerProcessorService', () => {
     markCompleted: vi.fn(),
     markRetryOrFailed: vi.fn(),
   };
+  const analyticsProjectionServiceMock = {
+    projectValidatedMeasurement: vi.fn(),
+  };
+  const anomalyAlertProjectionServiceMock = {
+    projectValidatedMeasurement: vi.fn(),
+  };
+  const eventConnectorsServiceMock = {
+    stageExport: vi.fn(),
+  };
 
   let service: ValidatedConsumerProcessorService;
   let loggerMock: {
@@ -65,6 +74,9 @@ describe('ValidatedConsumerProcessorService', () => {
           validatedEventId: 'validated-event-1',
         }),
       } as any,
+      analyticsProjectionServiceMock as any,
+      anomalyAlertProjectionServiceMock as any,
+      eventConnectorsServiceMock as any,
       {
         recordServiceHop: vi.fn(),
       } as any,
@@ -121,6 +133,9 @@ describe('ValidatedConsumerProcessorService', () => {
         assertConsumerAuthorized: vi.fn(),
       } as unknown as InternalEventPolicyService,
       rollupService as any,
+      analyticsProjectionServiceMock as any,
+      anomalyAlertProjectionServiceMock as any,
+      eventConnectorsServiceMock as any,
       {
         recordServiceHop: vi.fn(),
       } as any,

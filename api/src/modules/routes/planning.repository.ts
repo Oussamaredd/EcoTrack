@@ -1,12 +1,17 @@
+import { randomUUID } from 'node:crypto';
+
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import {
   alertEvents,
   anomalyReports,
   auditLogs,
+  collectionDomainEvents,
+  collectionDomainSnapshots,
   collectionEvents,
   containers,
   type DatabaseClient,
+  eventConnectorExports,
   measurementRollups10m,
   measurements,
   notificationDeliveries,
@@ -23,6 +28,11 @@ import {
 } from 'ecotrack-database';
 
 import { DRIZZLE } from '../../database/database.constants.js';
+import {
+  COLLECTIONS_COMMAND_SERVICE_PRODUCER,
+  COLLECTIONS_TOUR_SCHEDULED_EVENT,
+  INTERNAL_EVENT_SCHEMA_VERSION_V1,
+} from '../events/internal-events.catalog.js';
 
 import type { CreatePlannedTourDto } from './dto/create-planned-tour.dto.js';
 import type { GenerateReportDto } from './dto/generate-report.dto.js';
@@ -286,16 +296,31 @@ export class PlanningRepository {
         return match;
       });
       const stopEtas = this.computeStopEtas(orderedContainers, new Date(dto.scheduledFor));
+      const plannedStops = dto.orderedContainerIds.map((containerId, index) => ({
+        id: randomUUID(),
+        tourId: createdTour.id,
+        containerId,
+        stopOrder: index + 1,
+        status: 'pending' as const,
+        eta: stopEtas[index],
+      }));
 
-      await tx.insert(tourStops).values(
-        dto.orderedContainerIds.map((containerId, index) => ({
-          tourId: createdTour.id,
-          containerId,
-          stopOrder: index + 1,
-          status: 'pending',
-          eta: stopEtas[index],
+      await tx.insert(tourStops).values(plannedStops);
+      await this.seedScheduledCollectionDomainState(tx, {
+        tourId: createdTour.id,
+        name: createdTour.name,
+        status: 'planned',
+        scheduledFor: createdTour.scheduledFor,
+        zoneId: createdTour.zoneId,
+        assignedAgentId: createdTour.assignedAgentId,
+        actorUserId,
+        stops: plannedStops.map((stop) => ({
+          id: stop.id,
+          containerId: stop.containerId,
+          stopOrder: stop.stopOrder,
+          eta: stop.eta,
         })),
-      );
+      });
 
       await tx.insert(auditLogs).values({
         userId: actorUserId,
@@ -610,11 +635,43 @@ export class PlanningRepository {
       }
 
       await tx.insert(tourStops).values({
+        id: randomUUID(),
         tourId: emergencyTour.id,
         containerId: container.id,
         stopOrder: 1,
         status: 'pending',
         eta: emergencyTour.scheduledFor,
+      });
+      const [emergencyStop] = await tx
+        .select({
+          id: tourStops.id,
+          containerId: tourStops.containerId,
+          stopOrder: tourStops.stopOrder,
+          eta: tourStops.eta,
+        })
+        .from(tourStops)
+        .where(eq(tourStops.tourId, emergencyTour.id))
+        .limit(1);
+      if (!emergencyStop) {
+        throw new Error('Failed to create emergency tour stop');
+      }
+
+      await this.seedScheduledCollectionDomainState(tx, {
+        tourId: emergencyTour.id,
+        name: emergencyTour.name,
+        status: 'planned',
+        scheduledFor: emergencyTour.scheduledFor,
+        zoneId: emergencyTour.zoneId,
+        assignedAgentId: emergencyTour.assignedAgentId,
+        actorUserId,
+        stops: [
+          {
+            id: emergencyStop.id,
+            containerId: emergencyStop.containerId,
+            stopOrder: emergencyStop.stopOrder,
+            eta: emergencyStop.eta,
+          },
+        ],
       });
 
       await tx.insert(auditLogs).values({
@@ -1012,6 +1069,128 @@ export class PlanningRepository {
     }
 
     return updated;
+  }
+
+  private async seedScheduledCollectionDomainState(
+    tx: Parameters<DatabaseClient['transaction']>[0] extends (arg: infer T) => unknown ? T : never,
+    input: {
+      tourId: string;
+      name: string;
+      status: 'planned';
+      scheduledFor: Date;
+      zoneId: string | null;
+      assignedAgentId: string | null;
+      actorUserId: string | null;
+      stops: Array<{
+        id: string;
+        containerId: string;
+        stopOrder: number;
+        eta: Date | null;
+      }>;
+    },
+  ) {
+    const eventId = randomUUID();
+    const occurredAt = new Date();
+    const payload = {
+      tourId: input.tourId,
+      name: input.name,
+      status: input.status,
+      scheduledFor: input.scheduledFor.toISOString(),
+      zoneId: input.zoneId,
+      assignedAgentId: input.assignedAgentId,
+      stops: input.stops.map((stop) => ({
+        id: stop.id,
+        containerId: stop.containerId,
+        stopOrder: stop.stopOrder,
+        eta: stop.eta ? stop.eta.toISOString() : null,
+      })),
+      stopCount: input.stops.length,
+    };
+    const snapshotState = {
+      version: 1,
+      tourId: input.tourId,
+      name: input.name,
+      status: input.status,
+      scheduledFor: input.scheduledFor.toISOString(),
+      zoneId: input.zoneId,
+      assignedAgentId: input.assignedAgentId,
+      startedAt: null,
+      completedAt: null,
+      cancelledAt: null,
+      activeStopId: null,
+      lastCollectedAt: null,
+      stops: input.stops.map((stop) => ({
+        id: stop.id,
+        containerId: stop.containerId,
+        stopOrder: stop.stopOrder,
+        status: 'pending',
+        eta: stop.eta ? stop.eta.toISOString() : null,
+        completedAt: null,
+      })),
+    };
+
+    await tx
+      .insert(collectionDomainEvents)
+      .values({
+        id: eventId,
+        tourId: input.tourId,
+        aggregateVersion: 1,
+        eventName: COLLECTIONS_TOUR_SCHEDULED_EVENT,
+        eventType: 'tour_scheduled',
+        actorUserId: input.actorUserId,
+        routingKey: input.tourId,
+        schemaVersion: INTERNAL_EVENT_SCHEMA_VERSION_V1,
+        producerName: COLLECTIONS_COMMAND_SERVICE_PRODUCER,
+        producerTransactionId: randomUUID(),
+        payload,
+        occurredAt,
+      })
+      .onConflictDoNothing({
+        target: [collectionDomainEvents.tourId, collectionDomainEvents.aggregateVersion],
+      });
+
+    await tx
+      .insert(collectionDomainSnapshots)
+      .values({
+        id: randomUUID(),
+        tourId: input.tourId,
+        aggregateVersion: 1,
+        state: snapshotState,
+      })
+      .onConflictDoNothing({
+        target: [collectionDomainSnapshots.tourId, collectionDomainSnapshots.aggregateVersion],
+      });
+
+    await tx
+      .insert(eventConnectorExports)
+      .values({
+        connectorName: 'archive_files',
+        sourceType: 'collection_domain_event',
+        sourceRecordId: eventId,
+        eventName: COLLECTIONS_TOUR_SCHEDULED_EVENT,
+        routingKey: input.tourId,
+        schemaVersion: INTERNAL_EVENT_SCHEMA_VERSION_V1,
+        payload: {
+          sourceType: 'collection_domain_event',
+          eventId,
+          aggregateVersion: 1,
+          occurredAt: occurredAt.toISOString(),
+          envelope: {
+            eventName: COLLECTIONS_TOUR_SCHEDULED_EVENT,
+            routingKey: input.tourId,
+            schemaVersion: INTERNAL_EVENT_SCHEMA_VERSION_V1,
+            producerName: COLLECTIONS_COMMAND_SERVICE_PRODUCER,
+          },
+          payload,
+        },
+      })
+      .onConflictDoNothing({
+        target: [
+          eventConnectorExports.connectorName,
+          eventConnectorExports.sourceType,
+          eventConnectorExports.sourceRecordId,
+        ],
+      });
   }
 
   private async getBlockedContainerIdsForSchedule(zoneId: string, scheduledFor: Date) {

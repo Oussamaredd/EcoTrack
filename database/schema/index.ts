@@ -76,6 +76,46 @@ type IotMeasurementRollupPayload = {
   schemaVersion: string;
 };
 
+type CollectionDomainEventPayload = Record<string, unknown>;
+
+type CollectionSnapshotState = {
+  version: number;
+  tourId: string;
+  name: string;
+  status: string;
+  scheduledFor: string;
+  zoneId: string | null;
+  assignedAgentId: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  activeStopId: string | null;
+  lastCollectedAt: string | null;
+  stops: Array<{
+    id: string;
+    containerId: string;
+    stopOrder: number;
+    status: string;
+    eta: string | null;
+    completedAt: string | null;
+  }>;
+};
+
+type ZoneAggregateProjectionPayload = {
+  zoneId: string;
+  windowStart: string;
+  windowEnd: string;
+  measurementsCount: number;
+  averageFillLevelPercent: number;
+  minFillLevelPercent: number;
+  maxFillLevelPercent: number;
+  highFillCount: number;
+  trendSlopePerHour: number;
+  schemaVersion: string;
+};
+
+type ConnectorExportPayload = Record<string, unknown>;
+
 type BillingRateRuleFilters = {
   severity?: string;
   eventType?: string;
@@ -86,6 +126,8 @@ export const coreSchema = pgSchema('core');
 export const iotSchema = pgSchema('iot');
 export const opsSchema = pgSchema('ops');
 export const incidentSchema = pgSchema('incident');
+export const analyticsSchema = pgSchema('analytics');
+export const integrationSchema = pgSchema('integration');
 export const notifySchema = pgSchema('notify');
 export const gameSchema = pgSchema('game');
 export const auditSchema = pgSchema('audit');
@@ -542,6 +584,63 @@ export const collectionEvents = opsSchema.table(
   }),
 );
 
+export const collectionDomainEvents = opsSchema.table(
+  'collection_domain_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tourId: uuid('tour_id')
+      .notNull()
+      .references(() => tours.id, { onDelete: 'cascade' }),
+    aggregateVersion: integer('aggregate_version').notNull(),
+    eventName: text('event_name').notNull(),
+    eventType: text('event_type').notNull(),
+    actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+    routingKey: text('routing_key').default('').notNull(),
+    schemaVersion: text('schema_version').default('v1').notNull(),
+    producerName: text('producer_name').notNull(),
+    producerTransactionId: uuid('producer_transaction_id').defaultRandom().notNull(),
+    payload: jsonb('payload').$type<CollectionDomainEventPayload>().default(sql`'{}'::jsonb`).notNull(),
+    traceparent: text('traceparent'),
+    tracestate: text('tracestate'),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    tourVersionIdx: uniqueIndex('collection_domain_events_tour_version_idx').on(
+      table.tourId,
+      table.aggregateVersion,
+    ),
+    eventOccurredIdx: index('collection_domain_events_event_occurred_idx').on(
+      table.eventName,
+      table.occurredAt,
+    ),
+    routingOccurredIdx: index('collection_domain_events_routing_occurred_idx').on(
+      table.routingKey,
+      table.occurredAt,
+    ),
+  }),
+);
+
+export const collectionDomainSnapshots = opsSchema.table(
+  'collection_domain_snapshots',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    tourId: uuid('tour_id')
+      .notNull()
+      .references(() => tours.id, { onDelete: 'cascade' }),
+    aggregateVersion: integer('aggregate_version').notNull(),
+    state: jsonb('state').$type<CollectionSnapshotState>().default(sql`'{}'::jsonb`).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    tourVersionIdx: uniqueIndex('collection_domain_snapshots_tour_version_idx').on(
+      table.tourId,
+      table.aggregateVersion,
+    ),
+    tourCreatedIdx: index('collection_domain_snapshots_tour_created_idx').on(table.tourId, table.createdAt),
+  }),
+);
+
 export const gamificationProfiles = gameSchema.table('gamification_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
@@ -734,6 +833,7 @@ export const alertEvents = incidentSchema.table(
     ruleId: uuid('rule_id').references(() => alertRules.id, { onDelete: 'set null' }),
     containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
     zoneId: uuid('zone_id').references(() => zones.id, { onDelete: 'set null' }),
+    sourceEventKey: text('source_event_key'),
     eventType: text('event_type').notNull(),
     severity: text('severity').default('warning').notNull(),
     triggeredAt: timestamp('triggered_at', { withTimezone: true }).defaultNow().notNull(),
@@ -752,6 +852,112 @@ export const alertEvents = incidentSchema.table(
       table.containerId,
       table.currentStatus,
       table.triggeredAt,
+    ),
+    sourceEventKeyIdx: uniqueIndex('alert_events_source_event_key_idx').on(table.sourceEventKey),
+  }),
+);
+
+export const zoneAggregates10m = analyticsSchema.table(
+  'zone_aggregates_10m',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    zoneId: uuid('zone_id')
+      .notNull()
+      .references(() => zones.id, { onDelete: 'cascade' }),
+    windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+    windowEnd: timestamp('window_end', { withTimezone: true }).notNull(),
+    measurementsCount: integer('measurements_count').default(0).notNull(),
+    averageFillLevelPercent: integer('average_fill_level_percent').default(0).notNull(),
+    minFillLevelPercent: integer('min_fill_level_percent').default(0).notNull(),
+    maxFillLevelPercent: integer('max_fill_level_percent').default(0).notNull(),
+    highFillCount: integer('high_fill_count').default(0).notNull(),
+    trendSlopePerHour: integer('trend_slope_per_hour').default(0).notNull(),
+    schemaVersion: text('schema_version').default('v1').notNull(),
+    sourcePayload: jsonb('source_payload')
+      .$type<ZoneAggregateProjectionPayload>()
+      .default(sql`'{}'::jsonb`)
+      .notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    zoneWindowIdx: uniqueIndex('zone_aggregates_10m_zone_window_idx').on(table.zoneId, table.windowStart),
+    zoneWindowEndIdx: index('zone_aggregates_10m_zone_window_end_idx').on(table.zoneId, table.windowEnd),
+  }),
+);
+
+export const zoneCurrentState = analyticsSchema.table(
+  'zone_current_state',
+  {
+    zoneId: uuid('zone_id')
+      .primaryKey()
+      .references(() => zones.id, { onDelete: 'cascade' }),
+    latestAggregateId: uuid('latest_aggregate_id').references(() => zoneAggregates10m.id, {
+      onDelete: 'set null',
+    }),
+    windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+    windowEnd: timestamp('window_end', { withTimezone: true }).notNull(),
+    measurementsCount: integer('measurements_count').default(0).notNull(),
+    averageFillLevelPercent: integer('average_fill_level_percent').default(0).notNull(),
+    minFillLevelPercent: integer('min_fill_level_percent').default(0).notNull(),
+    maxFillLevelPercent: integer('max_fill_level_percent').default(0).notNull(),
+    highFillCount: integer('high_fill_count').default(0).notNull(),
+    trendSlopePerHour: integer('trend_slope_per_hour').default(0).notNull(),
+    schemaVersion: text('schema_version').default('v1').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    aggregateUpdatedIdx: index('zone_current_state_aggregate_updated_idx').on(
+      table.latestAggregateId,
+      table.updatedAt,
+    ),
+  }),
+);
+
+export const eventConnectorExports = integrationSchema.table(
+  'event_connector_exports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    connectorName: text('connector_name').notNull(),
+    sourceType: text('source_type').notNull(),
+    sourceRecordId: text('source_record_id').notNull(),
+    eventName: text('event_name').notNull(),
+    routingKey: text('routing_key').default('').notNull(),
+    schemaVersion: text('schema_version').default('v1').notNull(),
+    processingStatus: text('processing_status').default('pending').notNull(),
+    attemptCount: integer('attempt_count').default(0).notNull(),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).defaultNow().notNull(),
+    processingStartedAt: timestamp('processing_started_at', { withTimezone: true }),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    claimedByInstanceId: text('claimed_by_instance_id'),
+    outputLocation: text('output_location'),
+    payload: jsonb('payload').$type<ConnectorExportPayload>().default(sql`'{}'::jsonb`).notNull(),
+    traceparent: text('traceparent'),
+    tracestate: text('tracestate'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    connectorSourceIdx: uniqueIndex('event_connector_exports_connector_source_idx').on(
+      table.connectorName,
+      table.sourceType,
+      table.sourceRecordId,
+    ),
+    statusNextAttemptIdx: index('event_connector_exports_status_next_attempt_idx').on(
+      table.processingStatus,
+      table.nextAttemptAt,
+    ),
+    connectorStatusNextAttemptIdx: index('event_connector_exports_connector_status_next_attempt_idx').on(
+      table.connectorName,
+      table.processingStatus,
+      table.nextAttemptAt,
+    ),
+    eventCreatedIdx: index('event_connector_exports_event_created_idx').on(
+      table.eventName,
+      table.createdAt,
     ),
   }),
 );
@@ -1090,6 +1296,8 @@ export const zonesRelations = relations(zones, ({ many }) => ({
   containers: many(containers),
   tours: many(tours),
   alertEvents: many(alertEvents),
+  zoneAggregates10m: many(zoneAggregates10m),
+  zoneCurrentState: many(zoneCurrentState),
 }));
 
 export const containerTypesRelations = relations(containerTypes, ({ many }) => ({
@@ -1182,6 +1390,8 @@ export const toursRelations = relations(tours, ({ many, one }) => ({
   }),
   stops: many(tourStops),
   routeRecords: many(tourRoutes),
+  domainEvents: many(collectionDomainEvents),
+  domainSnapshots: many(collectionDomainSnapshots),
 }));
 
 export const tourStopsRelations = relations(tourStops, ({ one, many }) => ({
@@ -1227,6 +1437,24 @@ export const collectionEventsRelations = relations(collectionEvents, ({ one }) =
   actor: one(users, {
     fields: [collectionEvents.actorUserId],
     references: [users.id],
+  }),
+}));
+
+export const collectionDomainEventsRelations = relations(collectionDomainEvents, ({ one }) => ({
+  tour: one(tours, {
+    fields: [collectionDomainEvents.tourId],
+    references: [tours.id],
+  }),
+  actor: one(users, {
+    fields: [collectionDomainEvents.actorUserId],
+    references: [users.id],
+  }),
+}));
+
+export const collectionDomainSnapshotsRelations = relations(collectionDomainSnapshots, ({ one }) => ({
+  tour: one(tours, {
+    fields: [collectionDomainSnapshots.tourId],
+    references: [tours.id],
   }),
 }));
 
@@ -1285,6 +1513,24 @@ export const alertEventsRelations = relations(alertEvents, ({ one }) => ({
     fields: [alertEvents.acknowledgedByUserId],
     references: [users.id],
     relationName: 'alert_events_acknowledgedByUserId_users_id',
+  }),
+}));
+
+export const zoneAggregates10mRelations = relations(zoneAggregates10m, ({ one }) => ({
+  zone: one(zones, {
+    fields: [zoneAggregates10m.zoneId],
+    references: [zones.id],
+  }),
+}));
+
+export const zoneCurrentStateRelations = relations(zoneCurrentState, ({ one }) => ({
+  zone: one(zones, {
+    fields: [zoneCurrentState.zoneId],
+    references: [zones.id],
+  }),
+  latestAggregate: one(zoneAggregates10m, {
+    fields: [zoneCurrentState.latestAggregateId],
+    references: [zoneAggregates10m.id],
   }),
 }));
 
@@ -1477,6 +1723,8 @@ export type TourStop = typeof tourStops.$inferSelect;
 export type TourRoute = typeof tourRoutes.$inferSelect;
 export type CitizenReport = typeof citizenReports.$inferSelect;
 export type CollectionEvent = typeof collectionEvents.$inferSelect;
+export type CollectionDomainEvent = typeof collectionDomainEvents.$inferSelect;
+export type CollectionDomainSnapshot = typeof collectionDomainSnapshots.$inferSelect;
 export type GamificationProfile = typeof gamificationProfiles.$inferSelect;
 export type Challenge = typeof challenges.$inferSelect;
 export type ChallengeParticipation = typeof challengeParticipations.$inferSelect;
@@ -1489,6 +1737,8 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type AlertRule = typeof alertRules.$inferSelect;
 export type AlertEvent = typeof alertEvents.$inferSelect;
+export type ZoneAggregate10m = typeof zoneAggregates10m.$inferSelect;
+export type ZoneCurrentState = typeof zoneCurrentState.$inferSelect;
 export type BillingAccount = typeof billingAccounts.$inferSelect;
 export type BillingRateRule = typeof billingRateRules.$inferSelect;
 export type BillingRun = typeof billingRuns.$inferSelect;
@@ -1499,4 +1749,5 @@ export type Notification = typeof notifications.$inferSelect;
 export type NotificationDelivery = typeof notificationDeliveries.$inferSelect;
 export type NotificationDevice = typeof notificationDevices.$inferSelect;
 export type NotificationRecipient = typeof notificationRecipients.$inferSelect;
+export type EventConnectorExport = typeof eventConnectorExports.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
