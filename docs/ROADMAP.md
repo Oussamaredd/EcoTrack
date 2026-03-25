@@ -1,6 +1,6 @@
 # EcoTrack Development Roadmap (Dev Scope Only)
 
-Last update: 2026-03-23
+Last update: 2026-03-24
 Planning horizon: 8 completed delivery sprints, 3 follow-on completion sprints, and the remaining monolith backlog
 
 ## 1. Scope and Planning Basis
@@ -119,18 +119,20 @@ Checklist:
 
 ### Operational Dashboard
 
-Status: `PARTIAL`
+Status: `DONE`
 
-The dashboard foundation exists, but it required alignment toward EcoTrack-specific operational KPIs and realtime monitoring.
+The dashboard foundation is now aligned to EcoTrack-specific operational KPIs, manager heatmap monitoring, and realtime transport behavior.
 
 Evidence:
 - `app/src/pages/Dashboard.tsx`
-- `api/src/modules/dashboard/dashboard.controller.ts`
+- `app/src/components/dashboard/ManagerHeatmapPanel.tsx`
+- `api/src/modules/routes/planning.controller.ts`
+- `docs/features/Dashboard.md`
 
 Checklist:
 - [x] Dashboard foundation exists.
 - [x] Operational metrics endpoints exist.
-- [ ] Full domain alignment is still tracked through roadmap tasks.
+- [x] EcoTrack domain alignment and realtime monitoring are live.
 
 ### Health and Metrics Endpoints
 
@@ -1014,7 +1016,7 @@ Checklist:
 
 ### M3 - Event Workflow Hardening
 
-Status: `COMPLETE`
+Status: `DONE`
 Lane: `Dev Core`
 Open task IDs: none
 Completed task IDs: `M3.1`, `M3.2`, `M3.3`, `M3.4`, `M3.6`, `M3.7`, `M3.8`, `M3.9`, `M3.10`, `M3.11`, `M3.12`, `M3.13 (Dev baseline)`, `M3.14`, `M3.15`
@@ -1034,16 +1036,18 @@ Checklist:
 
 ### M4 - Platform and Deployment Baseline
 
-Status: `DEFERRED_PLATFORM`
+Status: `DONE`
 Lane: `Dev Platform`
-Open task IDs: `M4.1` to `M4.15`
+Completed task IDs: `M4.1` to `M4.15` (monolith-adapted baseline)
 
 Description: Replace Kubernetes-first assumptions with a monolith deployment baseline built around Docker Compose, CI/CD, secret templates, backup and restore, and rollout runbooks.
 
+Progress: The monolith deployment baseline now includes Docker Compose workflows, CI/CD validation, managed Cloudflare Pages plus Render plus Neon rollout runbooks, secret-template guidance, rollback and restore documentation, and future-facing Terraform compatibility points.
+
 Checklist:
-- [ ] Stabilize the monolith deployment baseline first.
-- [ ] Add Compose, CI/CD, backup, restore, and rollout operational support.
-- [ ] Keep Kubernetes and Terraform compatibility points as future-facing interfaces only.
+- [x] Stabilize the monolith deployment baseline first.
+- [x] Add Compose, CI/CD, backup, restore, and rollout operational support.
+- [x] Keep Kubernetes and Terraform compatibility points as future-facing interfaces only.
 
 ### M5 - Frontend Monolith Client Completion
 
@@ -1063,23 +1067,27 @@ Checklist:
 
 ### M6 - Security Governance and Hardening Handoff
 
-Status: `HANDOFF_SECURITY`
+Status: `PARTIAL`
 Lane: `Security Handoff`
 Open task IDs: `M6.1` to `M6.15`
 
 Description: Keep this module as a security governance, hardening, pentest, and SOC dependency pack outside the current development-only phase.
 
+Progress: Development-owned security baselines, observability hooks, and verification gates are in place, but governance, pentest, SOC, and broader hardening work remain a Security handoff under the active scope freeze.
+
 Checklist:
-- [ ] Keep Dev-owned integration hooks ready where needed.
+- [x] Keep Dev-owned integration hooks ready where needed.
 - [ ] Hand off security governance and hardening work when the scope freeze is lifted.
 
 ### M7 - Data and ML Handoff
 
-Status: `HANDOFF_DATA`
+Status: `PARTIAL`
 Lane: `Data Handoff`
 Open task IDs: `M7.1` to `M7.15`
 
 Description: Keep this module as the ML, MLOps, feature-store, and retraining dependency pack for a later phase.
+
+Progress: The current development data model stays future-ready for later model-facing integration, but ML, feature-store, training, and retraining delivery remain outside the active scope.
 
 Checklist:
 - [ ] Preserve API and data interfaces needed for future model integration.
@@ -1087,24 +1095,31 @@ Checklist:
 
 ### M8 - Internal Domain Events and Future Kafka Adapter Points
 
-Status: `TODO_MONOLITH`
+Status: `DONE`
 Lane: `Dev Core`
-Open task IDs: `M8.1` to `M8.10`
+Completed task IDs: `M8.1` to `M8.10` (monolith-adapted baseline)
 
 Description: Interpret event-architecture tasks as monolith internal domain-event contracts plus outbox workers, while keeping future Kafka adapter points optional.
 
+Progress: The monolith now exposes typed internal event contracts, durable PostgreSQL inbox and outbox-style worker flows, event-sourced collections commands with snapshots, a command/query split for tours, zone analytics and anomaly projections, archive-style connector exports, internal schema-registry coverage, replay-safe delivery pipelines, and future Kafka externalization points without introducing broker infrastructure.
+
 Checklist:
-- [ ] Define internal domain-event contracts for the monolith.
-- [ ] Add outbox worker behavior where needed.
-- [ ] Preserve optional adapter points for future service extraction.
+- [x] Define internal domain-event contracts for the monolith.
+- [x] Add event-sourced collection-tour write storage and snapshots.
+- [x] Split collection command and query responsibilities inside the monolith.
+- [x] Add outbox worker behavior where needed.
+- [x] Add zone analytics, anomaly-alert, and connector-export projections.
+- [x] Preserve optional adapter points for future service extraction.
 
 ### M9 - CI/CD and Ops Hardening for a Single Deployable Unit
 
-Status: `DEFERRED_PLATFORM`
+Status: `PARTIAL`
 Lane: `Dev Platform`
 Open task IDs: `M9.1` to `M9.10`
 
 Description: Adapt the operations backlog to a single deployable unit with reproducible builds, promotion rules, runtime monitoring, centralized logs, and optional GitOps or IaC templates.
+
+Progress: Reproducible builds, deployment validation, runtime monitoring, centralized logs, and Terraform compatibility points are now present, but broader promotion automation and GitOps-style controls remain intentionally lightweight.
 
 Checklist:
 - [ ] Stabilize promotion and deployment workflows for the monolith.
@@ -1129,11 +1144,13 @@ Checklist:
 
 ### M11 - Performance Backlog
 
-Status: `TODO_MONOLITH`
+Status: `PARTIAL`
 Lane: `Dev Performance`
 Open task IDs: `M11.1` to `M11.10`
 
 Description: Execute the remaining performance backlog around profiling, SQL tuning, caching, compression, lazy loading, connection pooling, and horizontal scaling readiness.
+
+Progress: Lazy loading, agent caching and offline fallback, and repo-owned K6 performance lanes are implemented, but dedicated profiling, deeper SQL and compression work, and scaling-readiness follow-through remain open.
 
 Checklist:
 - [ ] Profile hot paths across frontend and backend.
@@ -1142,14 +1159,16 @@ Checklist:
 
 ### M12 - Security Implementation Dependency Set
 
-Status: `HANDOFF_SECURITY`
+Status: `PARTIAL`
 Lane: `Security Handoff`
 Open task IDs: `M12.1` to `M12.10`
 
 Description: Track advanced auth hardening, encryption, headers, secret handling, auditing, and pentest work as a security dependency set for a later specialty phase.
 
+Progress: The current development baseline already includes headers, log redaction, rate limiting, request correlation, Semgrep, and negative-input safety tests, but advanced hardening and specialty validation remain a Security handoff.
+
 Checklist:
-- [ ] Keep current development implementations as the baseline.
+- [x] Keep current development implementations as the baseline.
 - [ ] Hand off advanced controls and validation to the Security specialty when allowed.
 
 ### M13 - Observability Stack
@@ -1160,10 +1179,13 @@ Open task IDs: `M13.1` to `M13.8`
 
 Description: Implement the remaining observability stack for the monolith runtime, including tracing, APM, KPIs, alerting, probes, synthetic checks, error tracking, and SLO or SLI reporting.
 
+Progress: Tracing, APM-style telemetry, Prometheus and Grafana dashboards, Alertmanager rules, client telemetry ingestion, and optional Sentry capture are in place, while synthetic monitoring and formal SLO or SLI reporting remain open.
+
 Checklist:
 - [x] Add tracing and APM coverage.
 - [x] Add business KPI and alerting visibility.
-- [ ] Add synthetic checks, error tracking, and SLO or SLI reporting.
+- [x] Add error tracking.
+- [ ] Add synthetic checks and SLO or SLI reporting.
 
 ### M14 - Documentation Operations Completion
 

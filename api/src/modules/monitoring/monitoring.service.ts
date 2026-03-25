@@ -563,6 +563,10 @@ export class MonitoringService {
         snapshot.deliveryByStatus.pending +
         snapshot.deliveryByStatus.retry +
         snapshot.deliveryByStatus.processing;
+      const connectorBacklog =
+        snapshot.connectorExportsByStatus.pending +
+        snapshot.connectorExportsByStatus.retry +
+        snapshot.connectorExportsByStatus.processing;
 
       lines.push('# HELP ecotrack_observability_snapshot_up Whether DB-backed observability metrics were collected.');
       lines.push('# TYPE ecotrack_observability_snapshot_up gauge');
@@ -611,6 +615,24 @@ export class MonitoringService {
       lines.push('# HELP ecotrack_iot_validated_delivery_processed_last_hour Total validated deliveries completed in the last hour.');
       lines.push('# TYPE ecotrack_iot_validated_delivery_processed_last_hour gauge');
       lines.push(`ecotrack_iot_validated_delivery_processed_last_hour ${snapshot.completedLastHour}`);
+
+      lines.push('# HELP ecotrack_event_connector_exports Gauge of internal event-connector exports by status.');
+      lines.push('# TYPE ecotrack_event_connector_exports gauge');
+      for (const [status, count] of Object.entries(snapshot.connectorExportsByStatus).sort(([left], [right]) =>
+        left.localeCompare(right),
+      )) {
+        lines.push(`ecotrack_event_connector_exports{status="${sanitizeLabelValue(status)}"} ${count}`);
+      }
+
+      lines.push('# HELP ecotrack_event_connector_backlog_total Total event-connector exports in pending, retry, or processing state.');
+      lines.push('# TYPE ecotrack_event_connector_backlog_total gauge');
+      lines.push(`ecotrack_event_connector_backlog_total ${connectorBacklog}`);
+
+      lines.push('# HELP ecotrack_event_connector_oldest_pending_age_ms Oldest runnable event-connector export age in milliseconds.');
+      lines.push('# TYPE ecotrack_event_connector_oldest_pending_age_ms gauge');
+      lines.push(
+        `ecotrack_event_connector_oldest_pending_age_ms ${snapshot.connectorOldestPendingAgeMs ?? 0}`,
+      );
 
       lines.push('# HELP ecotrack_iot_backpressure_active Indicates whether ingestion backlog crossed the configured threshold.');
       lines.push('# TYPE ecotrack_iot_backpressure_active gauge');
@@ -672,6 +694,29 @@ export class MonitoringService {
         );
         lines.push(
           `ecotrack_internal_consumer_failures_total{consumer="${sanitizeLabelValue(consumer.consumerName)}"} ${consumer.failedCount}`,
+        );
+      }
+
+      lines.push('# HELP ecotrack_event_connector_lag_messages Total event-connector backlog per connector.');
+      lines.push('# TYPE ecotrack_event_connector_lag_messages gauge');
+      lines.push('# HELP ecotrack_event_connector_completed_last_hour Total completed event-connector exports in the last hour by connector.');
+      lines.push('# TYPE ecotrack_event_connector_completed_last_hour gauge');
+      lines.push('# HELP ecotrack_event_connector_failures_total Total failed event-connector exports by connector.');
+      lines.push('# TYPE ecotrack_event_connector_failures_total gauge');
+      lines.push('# HELP ecotrack_event_connector_lag_oldest_pending_age_ms Oldest pending event-connector export age per connector.');
+      lines.push('# TYPE ecotrack_event_connector_lag_oldest_pending_age_ms gauge');
+      for (const connector of snapshot.connectorLagByConnector) {
+        lines.push(
+          `ecotrack_event_connector_lag_messages{connector="${sanitizeLabelValue(connector.connectorName)}"} ${connector.backlogTotal}`,
+        );
+        lines.push(
+          `ecotrack_event_connector_completed_last_hour{connector="${sanitizeLabelValue(connector.connectorName)}"} ${connector.completedLastHour}`,
+        );
+        lines.push(
+          `ecotrack_event_connector_failures_total{connector="${sanitizeLabelValue(connector.connectorName)}"} ${connector.failedCount}`,
+        );
+        lines.push(
+          `ecotrack_event_connector_lag_oldest_pending_age_ms{connector="${sanitizeLabelValue(connector.connectorName)}"} ${connector.oldestPendingAgeMs ?? 0}`,
         );
       }
 

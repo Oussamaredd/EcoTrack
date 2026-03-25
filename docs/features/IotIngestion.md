@@ -13,8 +13,9 @@ This implementation is optimized for the current Development scope:
 - The processing worker validates, normalizes, enriches, retries, and records validated results.
 - A dedicated validated-event consumer projects the durable event stream into `iot.measurements` and container status.
 - A second durable consumer projects 10-minute rich-event rollups into `iot.measurement_rollups_10m`.
+- Additional consumers derive zone analytics, anomaly alerts, and archive-ready connector exports from the same validated-event stream.
 - Internal event envelopes are stored with event name, routing key, schema version, explicit producer and consumer authorization policy, and active worker-claim metadata so the monolith remains compatible with later Kafka externalization.
-- A lightweight internal schema-registry catalog tracks the 5 future externalization subjects and compatibility rules without introducing Confluent or Apicurio infrastructure in the Development phase.
+- A lightweight internal schema-registry catalog tracks IoT, collections, and analytics subjects plus compatibility rules without introducing Confluent or Apicurio infrastructure in the Development phase.
 - Queue and recovery scheduling are shard-aware so same-device events stay ordered while different devices can scale in parallel.
 - Admin-only replay endpoints can requeue failed or retryable staged events and validated-event deliveries without bypassing durable state.
 - Backpressure protects the API during sustained spikes.
@@ -30,7 +31,7 @@ Direct MQTT transport and external brokers remain future extensions. The current
 3. The in-memory scheduler queues staged event IDs by virtual shard and the recovery loop re-enqueues runnable or stale leased rows using the same shard ordering.
 4. The processing worker claims staged rows, re-validates schema, enforces business rules, normalizes values, and enriches them with `sensor_devices`, `containers`, and container-type thresholds.
 5. Validated results are written to `iot.validated_measurement_events` with internal event-envelope metadata, and one durable delivery row is created in `iot.validated_event_deliveries` for each authorized consumer.
-6. The validated-event consumers claim runnable deliveries, continue the originating trace context, and project the event into `iot.measurements`, container fill-state updates, and `iot.measurement_rollups_10m`.
+6. The validated-event consumers claim runnable deliveries, continue the originating trace context, and project the event into `iot.measurements`, container fill-state updates, `iot.measurement_rollups_10m`, `analytics.zone_aggregates_10m`, `analytics.zone_current_state`, `incident.alert_events`, and `integration.event_connector_exports`.
 7. Rejected, retryable, failed, and validated states are stored back on `iot.ingestion_events`, while consumer completion and retry state live on `iot.validated_event_deliveries`.
 8. `GET /api/iot/v1/health` reports ingestion-worker backlog plus separate timeseries-consumer and rollup-consumer backlog, retry/failure state, and processed-volume visibility.
 
@@ -73,11 +74,14 @@ Worker-side business rules add:
 - The worker uses processing leases, retry state, and stale-lease recovery so interrupted events return to the runnable pool.
 - Status transitions are `pending -> processing -> validated|retry|failed|rejected`.
 - Durable downstream delivery rows are stored in `iot.validated_event_deliveries` and follow `pending -> processing -> completed|retry|failed`.
-- Two consumers currently own each validated event: `timeseries_projection` and `measurement_rollup_projection`.
+- Five consumers currently own each validated event: `timeseries_projection`, `measurement_rollup_projection`, `zone_analytics_projection`, `anomaly_alert_projection`, and `event_archive_connector`.
 - Validated events and durable deliveries persist `event_name`, `routing_key`, and `schema_version` so the internal contract can later be externalized behind a broker adapter without rewriting the IoT domain flow.
 - Internal event policy checks restrict which producers can emit and which consumers can project the durable event types currently owned by the monolith.
 - The validated-event consumer uses `validatedEventId + measuredAt` idempotency when projecting into `iot.measurements`.
 - The rollup consumer uses `validatedEventId` idempotency when projecting into `iot.measurement_rollups_10m`.
+- The zone analytics consumer uses `(zone_id, window_start)` upserts to keep one aggregate per 10-minute window and updates `analytics.zone_current_state` to the latest aggregate.
+- The anomaly-alert consumer uses `source_event_key` idempotency on `incident.alert_events` so replayed deliveries do not duplicate temperature, battery, or fill-surge alerts.
+- The archive connector stages exports in `integration.event_connector_exports` and materializes JSON artifacts under the local runtime temp directory while preserving a future sink-replacement seam.
 - Container operational state is only updated when no newer measurement already exists for the same container, preventing stale shard completion from regressing fill state.
 - Retry backoff is exponential with a Development-owned ceiling of 3 attempts.
 - Replay metadata (`replay_count`, `last_replayed_at`, `last_replayed_by_user_id`, `last_replay_reason`) is stored on both staged events and validated-event deliveries.
@@ -207,13 +211,20 @@ Worker safeguards currently use fixed in-code defaults:
 
 ## Internal Schema Registry
 
-The Development-owned internal schema registry keeps 5 future broker subjects versioned inside the `events` boundary:
+The Development-owned internal schema registry keeps future broker subjects versioned inside the `events` boundary:
 
 - `iot.ingestion.request`
 - `iot.ingestion.staged`
 - `iot.measurement.validated`
 - `iot.validated.delivery`
 - `iot.measurement.rollup.10m`
+- `collections.tour.scheduled`
+- `collections.tour.updated`
+- `collections.tour.started`
+- `collections.stop.validated`
+- `collections.tour.completed`
+- `collections.tour.cancelled`
+- `analytics.zone.aggregate.10m`
 
 Current compatibility coverage:
 
@@ -227,6 +238,7 @@ Local operator surfaces now include:
 - Grafana dashboard `EcoTrack IoT Event Pipeline`
 - Grafana dashboard `EcoTrack Security Signals Baseline`
 - Prometheus lag metrics per consumer: `ecotrack_internal_consumer_lag_messages`, `ecotrack_internal_consumer_lag_oldest_pending_age_ms`, and `ecotrack_internal_consumer_lag_shard_skew`
+- Prometheus connector-export metrics: `ecotrack_event_connector_exports`, `ecotrack_event_connector_backlog_total`, and `ecotrack_event_connector_lag_messages`
 - Service-hop metrics: `ecotrack_service_hop_events_total` and `ecotrack_service_hop_duration_ms`
 - Security-signal metrics: `ecotrack_http_request_status_total` and `ecotrack_security_signals_total`
 

@@ -55,6 +55,10 @@ ecotrack_service_hop_duration_ms
 ecotrack_internal_consumer_lag_messages
 ecotrack_internal_consumer_lag_oldest_pending_age_ms
 ecotrack_internal_consumer_lag_shard_skew
+ecotrack_event_connector_exports
+ecotrack_event_connector_backlog_total
+ecotrack_event_connector_oldest_pending_age_ms
+ecotrack_event_connector_lag_messages
 ecotrack_security_signals_total
 ecotrack_http_request_status_total
 ecotrack_admin_audit_actions_last_hour
@@ -70,6 +74,10 @@ deliveryId:"<delivery-id>"
 producerName:"iot_ingestion_worker"
 consumerName:"timeseries_projection"
 consumerName:"measurement_rollup_projection"
+consumerName:"zone_analytics_projection"
+consumerName:"anomaly_alert_projection"
+consumerName:"event_archive_connector"
+connectorName:"archive_files"
 ```
 
 Trace pivots:
@@ -118,6 +126,8 @@ The Development-owned alert baseline now includes:
 - `EcoTrackInternalConsumerLagHigh`
 - `EcoTrackInternalConsumerImbalanceHigh`
 - `EcoTrackInternalConsumerShardSkewHigh`
+- `EcoTrackEventConnectorBacklogHigh`
+- `EcoTrackEventConnectorFailuresPresent`
 - `EcoTrackAuthorizationDeniedSpike`
 - `EcoTrackLoginFailuresHigh`
 - `RealtimeWebSocketAuthFailuresHigh`
@@ -162,5 +172,6 @@ Each report captures:
 - If failed staged events grow while delivery failures remain zero, inspect ingestion worker logs and `iot.ingestion_events`.
 - If delivery failures grow, inspect consumer logs and `iot.validated_event_deliveries`.
 - If `ecotrack_internal_consumer_lag_shard_skew` spikes, inspect the busiest shard in the `EcoTrack IoT Event Pipeline` dashboard and compare `timeseries_projection` versus `measurement_rollup_projection`.
+- If `ecotrack_event_connector_backlog_total` or `ecotrack_event_connector_exports{status="failed"}` grows, inspect `integration.event_connector_exports`, the archive connector logs, and the temp export directory under the local runtime path.
 - If `EcoTrackAuthorizationDeniedSpike` or `EcoTrackLoginFailuresHigh` fires, inspect the `EcoTrack Security Signals Baseline` dashboard first and then pivot into logs by `traceId`, request path, or authenticated user context.
 - If `ecotrack_observability_snapshot_up == 0`, fix DB-backed monitoring first because alert fidelity is degraded.

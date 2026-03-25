@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, count, eq, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
 import {
   alertEvents,
   anomalyReports,
@@ -640,6 +640,17 @@ export class ToursRepository {
     return [...collectionRows, ...anomalyRows, ...auditRows].sort(
       (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
     );
+  }
+
+  async getLatestCollectionEventForStop(tourStopId: string) {
+    const [event] = await this.db
+      .select()
+      .from(collectionEvents)
+      .where(eq(collectionEvents.tourStopId, tourStopId))
+      .orderBy(desc(collectionEvents.collectedAt))
+      .limit(1);
+
+    return event ?? null;
   }
 
   async create(dto: CreateTourDto) {

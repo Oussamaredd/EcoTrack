@@ -6,15 +6,21 @@ import {
   extractContextFromTraceCarrier,
   withActiveSpan,
 } from '../../../observability/tracing.helpers.js';
+import { AnalyticsProjectionService } from '../../analytics/analytics-projection.service.js';
+import { AnomalyAlertProjectionService } from '../../analytics/anomaly-alert-projection.service.js';
+import { EventConnectorsService } from '../../events/event-connectors.service.js';
 import { InternalEventPolicyService } from '../../events/internal-events.policy.js';
 import { InternalEventRuntimeService } from '../../events/internal-events.runtime.js';
 import { MonitoringService } from '../../monitoring/monitoring.service.js';
 import { MeasurementRollupsService } from '../rollups/rollups.service.js';
 
 import {
+  EVENT_ARCHIVE_CONNECTOR_CONSUMER,
+  VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER,
   VALIDATED_EVENT_CONSUMER_MAX_RETRIES,
   VALIDATED_EVENT_ROLLUP_CONSUMER,
   VALIDATED_EVENT_TIMESERIES_CONSUMER,
+  VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER,
   type ClaimedValidatedEventDelivery,
 } from './validated-consumer.contracts.js';
 import { ValidatedConsumerRepository } from './validated-consumer.repository.js';
@@ -37,6 +43,9 @@ export class ValidatedConsumerProcessorService {
     private readonly internalEventRuntime: InternalEventRuntimeService,
     private readonly internalEventPolicy: InternalEventPolicyService,
     private readonly measurementRollupsService: MeasurementRollupsService,
+    private readonly analyticsProjectionService: AnalyticsProjectionService,
+    private readonly anomalyAlertProjectionService: AnomalyAlertProjectionService,
+    private readonly eventConnectorsService: EventConnectorsService,
     private readonly monitoringService: MonitoringService,
     private readonly logger: PinoLogger,
   ) {
@@ -108,6 +117,49 @@ export class ValidatedConsumerProcessorService {
           'completed',
           Date.now() - startedAt,
         );
+      } else if (delivery.consumerName === VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER) {
+        await this.analyticsProjectionService.projectValidatedMeasurement(delivery);
+        this.monitoringService.recordServiceHop(
+          'delivery_to_zone_analytics_projection',
+          'completed',
+          Date.now() - startedAt,
+        );
+      } else if (delivery.consumerName === VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER) {
+        await this.anomalyAlertProjectionService.projectValidatedMeasurement(delivery);
+        this.monitoringService.recordServiceHop(
+          'delivery_to_anomaly_alert_projection',
+          'completed',
+          Date.now() - startedAt,
+        );
+      } else if (delivery.consumerName === EVENT_ARCHIVE_CONNECTOR_CONSUMER) {
+        await this.eventConnectorsService.stageExport({
+          connectorName: 'archive_files',
+          sourceType: 'validated_measurement_event',
+          sourceRecordId: delivery.validatedEventId,
+          eventName: delivery.eventName,
+          routingKey: delivery.routingKey,
+          schemaVersion: delivery.schemaVersion,
+          payload: {
+            validatedEventId: delivery.validatedEventId,
+            measuredAt: delivery.measuredAt.toISOString(),
+            emittedAt: delivery.emittedAt.toISOString(),
+            deviceUid: delivery.deviceUid,
+            containerId: delivery.containerId,
+            fillLevelPercent: delivery.fillLevelPercent,
+            temperatureC: delivery.temperatureC,
+            batteryPercent: delivery.batteryPercent,
+            signalStrength: delivery.signalStrength,
+            measurementQuality: delivery.measurementQuality,
+            payload: delivery.normalizedPayload,
+          },
+          traceparent: delivery.traceparent,
+          tracestate: delivery.tracestate,
+        });
+        this.monitoringService.recordServiceHop(
+          'delivery_to_event_archive_connector',
+          'completed',
+          Date.now() - startedAt,
+        );
       } else {
         throw new Error(`Unsupported validated-event consumer '${delivery.consumerName}'.`);
       }
@@ -136,9 +188,7 @@ export class ValidatedConsumerProcessorService {
         nextAttemptAt,
       );
       this.monitoringService.recordServiceHop(
-        delivery.consumerName === VALIDATED_EVENT_ROLLUP_CONSUMER
-          ? 'delivery_to_rollup_projection'
-          : 'delivery_to_timeseries_projection',
+        this.resolveFailureHopName(delivery.consumerName),
         delivery.attemptCount >= VALIDATED_EVENT_CONSUMER_MAX_RETRIES ? 'failed' : 'retry',
         Date.now() - startedAt,
       );
@@ -170,5 +220,25 @@ export class ValidatedConsumerProcessorService {
     const retryIndex = Math.max(0, attemptCount - 1);
     const backoffMs = Math.min(30_000, 1_000 * 2 ** retryIndex);
     return new Date(Date.now() + backoffMs);
+  }
+
+  private resolveFailureHopName(consumerName: string) {
+    if (consumerName === VALIDATED_EVENT_ROLLUP_CONSUMER) {
+      return 'delivery_to_rollup_projection';
+    }
+
+    if (consumerName === VALIDATED_EVENT_ZONE_ANALYTICS_CONSUMER) {
+      return 'delivery_to_zone_analytics_projection';
+    }
+
+    if (consumerName === VALIDATED_EVENT_ANOMALY_ALERT_CONSUMER) {
+      return 'delivery_to_anomaly_alert_projection';
+    }
+
+    if (consumerName === EVENT_ARCHIVE_CONNECTOR_CONSUMER) {
+      return 'delivery_to_event_archive_connector';
+    }
+
+    return 'delivery_to_timeseries_projection';
   }
 }
