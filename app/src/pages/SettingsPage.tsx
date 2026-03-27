@@ -255,7 +255,11 @@ export default function SettingsPage() {
                 title="Upload profile picture"
               >
                 <span className="app-settings-avatar-preview" aria-hidden="true">
-                  {avatarPreviewUrl ? <img src={avatarPreviewUrl} alt="" /> : <span>{initials}</span>}
+                  {avatarPreviewUrl ? (
+                    <img src={avatarPreviewUrl} alt="" loading="lazy" decoding="async" />
+                  ) : (
+                    <span>{initials}</span>
+                  )}
                 </span>
               </button>
               <input

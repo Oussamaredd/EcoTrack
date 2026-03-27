@@ -1,5 +1,9 @@
+import { monitorEventLoopDelay } from 'node:perf_hooks';
+
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+
+import { CacheService } from '../performance/cache.service.js';
 
 import { HTTP_REQUEST_DURATION_BUCKETS_MS } from './http-metrics.utils.js';
 import { MonitoringRepository } from './monitoring.repository.js';
@@ -158,6 +162,7 @@ const deriveSecuritySignals = (metric: HttpRequestMetric): SecuritySignalMetric[
 
 @Injectable()
 export class MonitoringService {
+  private readonly eventLoopDelayMonitor = monitorEventLoopDelay({ resolution: 20 });
   private frontendErrorsTotal = 0;
   private frontendMetricsTotal = 0;
   private httpRequestsInFlight = 0;
@@ -196,7 +201,10 @@ export class MonitoringService {
   constructor(
     @Inject(ConfigService) private readonly configService: ConfigService,
     @Inject(MonitoringRepository) private readonly monitoringRepository: MonitoringRepository,
-  ) {}
+    @Inject(CacheService) private readonly cacheService: CacheService,
+  ) {
+    this.eventLoopDelayMonitor.enable();
+  }
 
   setRealtimeDiagnostics(snapshot: RealtimeDiagnosticsSnapshot) {
     this.realtimeDiagnostics = {
@@ -323,6 +331,11 @@ export class MonitoringService {
   }
 
   async renderPrometheusMetrics(): Promise<string> {
+    const cacheMetrics = this.cacheService.getMetricsSnapshot();
+    const eventLoopMeanMs = Number((this.eventLoopDelayMonitor.mean / 1_000_000).toFixed(3));
+    const eventLoopMaxMs = Number((this.eventLoopDelayMonitor.max / 1_000_000).toFixed(3));
+    const eventLoopP95Ms = Number((this.eventLoopDelayMonitor.percentile(95) / 1_000_000).toFixed(3));
+    const eventLoopP99Ms = Number((this.eventLoopDelayMonitor.percentile(99) / 1_000_000).toFixed(3));
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
     const lines: string[] = [
@@ -427,6 +440,37 @@ export class MonitoringService {
     lines.push('# HELP ecotrack_process_cpu_system_seconds_total CPU system time consumed by the API process.');
     lines.push('# TYPE ecotrack_process_cpu_system_seconds_total counter');
     lines.push(`ecotrack_process_cpu_system_seconds_total ${(cpuUsage.system / 1_000_000).toFixed(6)}`);
+    lines.push('# HELP ecotrack_event_loop_delay_ms Event loop delay statistics in milliseconds.');
+    lines.push('# TYPE ecotrack_event_loop_delay_ms gauge');
+    lines.push(`ecotrack_event_loop_delay_ms{quantile="mean"} ${Number.isFinite(eventLoopMeanMs) ? eventLoopMeanMs : 0}`);
+    lines.push(`ecotrack_event_loop_delay_ms{quantile="p95"} ${Number.isFinite(eventLoopP95Ms) ? eventLoopP95Ms : 0}`);
+    lines.push(`ecotrack_event_loop_delay_ms{quantile="p99"} ${Number.isFinite(eventLoopP99Ms) ? eventLoopP99Ms : 0}`);
+    lines.push(`ecotrack_event_loop_delay_ms{quantile="max"} ${Number.isFinite(eventLoopMaxMs) ? eventLoopMaxMs : 0}`);
+    lines.push('# HELP ecotrack_cache_reads_total Cache reads grouped by source tier.');
+    lines.push('# TYPE ecotrack_cache_reads_total counter');
+    lines.push(`ecotrack_cache_reads_total{tier="memory"} ${cacheMetrics.readsByTier.memory}`);
+    lines.push(`ecotrack_cache_reads_total{tier="redis"} ${cacheMetrics.readsByTier.redis}`);
+    lines.push(`ecotrack_cache_reads_total{tier="source"} ${cacheMetrics.readsByTier.source}`);
+    lines.push('# HELP ecotrack_cache_writes_total Cache writes grouped by storage tier.');
+    lines.push('# TYPE ecotrack_cache_writes_total counter');
+    lines.push(`ecotrack_cache_writes_total{tier="memory"} ${cacheMetrics.writesByTier.memory}`);
+    lines.push(`ecotrack_cache_writes_total{tier="redis"} ${cacheMetrics.writesByTier.redis}`);
+    lines.push('# HELP ecotrack_cache_invalidations_total Total namespace invalidations issued by the API.');
+    lines.push('# TYPE ecotrack_cache_invalidations_total counter');
+    lines.push(`ecotrack_cache_invalidations_total ${cacheMetrics.invalidationsTotal}`);
+    lines.push('# HELP ecotrack_cache_memory_entries Current number of active in-memory cache entries.');
+    lines.push('# TYPE ecotrack_cache_memory_entries gauge');
+    lines.push(`ecotrack_cache_memory_entries ${cacheMetrics.memoryEntries}`);
+    lines.push('# HELP ecotrack_cache_memory_evictions_total Total in-memory cache evictions.');
+    lines.push('# TYPE ecotrack_cache_memory_evictions_total counter');
+    lines.push(`ecotrack_cache_memory_evictions_total ${cacheMetrics.memoryEvictionsTotal}`);
+    lines.push('# HELP ecotrack_cache_backend_up Cache backend availability by tier.');
+    lines.push('# TYPE ecotrack_cache_backend_up gauge');
+    lines.push(`ecotrack_cache_backend_up{backend="memory"} ${cacheMetrics.enabled ? 1 : 0}`);
+    lines.push(`ecotrack_cache_backend_up{backend="redis"} ${cacheMetrics.redisConnected ? 1 : 0}`);
+    lines.push('# HELP ecotrack_cache_backend_errors_total Cache backend errors grouped by tier.');
+    lines.push('# TYPE ecotrack_cache_backend_errors_total counter');
+    lines.push(`ecotrack_cache_backend_errors_total{backend="redis"} ${cacheMetrics.redisErrorsTotal}`);
     lines.push('# HELP frontend_error_buffer_size Number of frontend errors retained in memory.');
     lines.push('# TYPE frontend_error_buffer_size gauge');
     lines.push(`frontend_error_buffer_size ${this.frontendErrors.length}`);

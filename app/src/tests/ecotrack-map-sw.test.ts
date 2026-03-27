@@ -115,7 +115,7 @@ describe("ecotrack service worker cache policy", () => {
     await runLifecycleEvent(harness.handlers.get("install"));
     await runLifecycleEvent(harness.handlers.get("activate"));
 
-    const shellCache = harness.cacheStores.get("ecotrack-app-shell-v1");
+    const shellCache = harness.cacheStores.get("ecotrack-app-shell-v2");
     expect(shellCache).toBeDefined();
     expect(Array.from(shellCache?.keys() ?? [])).toEqual(
       expect.arrayContaining([
@@ -133,7 +133,7 @@ describe("ecotrack service worker cache policy", () => {
     const harness = createServiceWorkerHarness();
     const shellCache = new Map<string, Response>();
     shellCache.set("https://app.ecotrack.test/", new Response("<html>cached shell</html>", { status: 200 }));
-    harness.cacheStores.set("ecotrack-app-shell-v1", shellCache);
+    harness.cacheStores.set("ecotrack-app-shell-v2", shellCache);
     harness.fetchMock.mockRejectedValue(new Error("offline"));
 
     let resolveNavigationResponse: ((response: Response) => void) | undefined;

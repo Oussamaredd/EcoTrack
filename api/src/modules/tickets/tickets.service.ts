@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
+import { CACHE_NAMESPACES } from '../performance/cache.constants.js';
+import { CacheService } from '../performance/cache.service.js';
+
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { UpdateTicketDto } from './dto/update-ticket.dto.js';
 import { TicketsRepository } from './tickets.repository.js';
@@ -22,7 +25,10 @@ type CommentActor = {
 
 @Injectable()
 export class TicketsService {
-  constructor(private readonly ticketsRepository: TicketsRepository) {}
+  constructor(
+    private readonly ticketsRepository: TicketsRepository,
+    private readonly cacheService: CacheService,
+  ) {}
 
   async findAll(filters: TicketFilters = {}) {
     return this.ticketsRepository.findAll(filters);
@@ -33,7 +39,9 @@ export class TicketsService {
   }
 
   async create(dto: CreateTicketDto) {
-    return this.ticketsRepository.create(dto);
+    const ticket = await this.ticketsRepository.create(dto);
+    await this.cacheService.invalidateNamespace(CACHE_NAMESPACES.dashboard);
+    return ticket;
   }
 
   async listComments(ticketId: string, pagination: { page: number; pageSize: number }) {
@@ -41,15 +49,21 @@ export class TicketsService {
   }
 
   async addComment(ticketId: string, body: string, actor: CommentActor) {
-    return this.ticketsRepository.addComment(ticketId, body, actor);
+    const comment = await this.ticketsRepository.addComment(ticketId, body, actor);
+    await this.cacheService.invalidateNamespace(CACHE_NAMESPACES.dashboard);
+    return comment;
   }
 
   async updateComment(ticketId: string, commentId: string, body: string, actor: CommentActor) {
-    return this.ticketsRepository.updateComment(ticketId, commentId, body, actor);
+    const comment = await this.ticketsRepository.updateComment(ticketId, commentId, body, actor);
+    await this.cacheService.invalidateNamespace(CACHE_NAMESPACES.dashboard);
+    return comment;
   }
 
   async deleteComment(ticketId: string, commentId: string, actor: CommentActor) {
-    return this.ticketsRepository.deleteComment(ticketId, commentId, actor);
+    const deleted = await this.ticketsRepository.deleteComment(ticketId, commentId, actor);
+    await this.cacheService.invalidateNamespace(CACHE_NAMESPACES.dashboard);
+    return deleted;
   }
 
   async listActivity(ticketId: string) {
@@ -57,11 +71,15 @@ export class TicketsService {
   }
 
   async update(id: string, dto: UpdateTicketDto) {
-    return this.ticketsRepository.update(id, dto);
+    const ticket = await this.ticketsRepository.update(id, dto);
+    await this.cacheService.invalidateNamespace(CACHE_NAMESPACES.dashboard);
+    return ticket;
   }
 
   async remove(id: string) {
-    return this.ticketsRepository.remove(id);
+    const ticket = await this.ticketsRepository.remove(id);
+    await this.cacheService.invalidateNamespace(CACHE_NAMESPACES.dashboard);
+    return ticket;
   }
 }
 

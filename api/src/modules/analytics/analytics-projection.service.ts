@@ -8,6 +8,8 @@ import {
 } from '../events/internal-events.catalog.js';
 import { InternalEventPolicyService } from '../events/internal-events.policy.js';
 import type { ClaimedValidatedEventDelivery } from '../iot/validated-consumer/validated-consumer.contracts.js';
+import { CACHE_NAMESPACES } from '../performance/cache.constants.js';
+import { CacheService } from '../performance/cache.service.js';
 
 import { AnalyticsRepository } from './analytics.repository.js';
 
@@ -21,6 +23,7 @@ export class AnalyticsProjectionService {
     private readonly schemaRegistry: InternalEventSchemaRegistryService,
     private readonly internalEventPolicy: InternalEventPolicyService,
     private readonly eventConnectors: EventConnectorsService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async projectValidatedMeasurement(delivery: ClaimedValidatedEventDelivery) {
@@ -120,6 +123,11 @@ export class AnalyticsProjectionService {
       traceparent: delivery.traceparent,
       tracestate: delivery.tracestate,
     });
+
+    await this.cacheService.invalidateNamespaces([
+      CACHE_NAMESPACES.analytics,
+      CACHE_NAMESPACES.planning,
+    ]);
 
     return aggregate;
   }

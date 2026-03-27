@@ -159,6 +159,8 @@ Agent tour execution notes:
 ### Manager Planning and Reports
 
 ```text
+GET /dashboard
+
 GET /planning/zones
 GET /planning/agents
 POST /planning/optimize-tour
@@ -179,6 +181,7 @@ POST /planning/reports/:reportId/regenerate
 ```
 
 Report generation supports:
+- `GET /api/dashboard` returns the workspace dashboard read model for authenticated users with `ecotrack.analytics.read` and now emits short-lived private cache headers.
 - `format: "pdf"` for binary PDF download
 - `format: "csv"` for Excel-compatible CSV download
 - local day-boundary reporting windows (`periodStart` / `periodEnd` should be sent using the manager's local timezone window, not forced UTC midnight)

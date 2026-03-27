@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecotrack-api
+  namespace: ecotrack
+  labels:
+    app.kubernetes.io/name: ecotrack-api
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ecotrack-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ecotrack-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/ecotrack/api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3001
+          env:
+            - name: API_PORT
+              value: "3001"
+            - name: NODE_ENV
+              value: "production"
+            - name: RESPONSE_COMPRESSION_ENABLED
+              value: "true"
+          envFrom:
+            - secretRef:
+                name: ecotrack-api-secrets
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /api/health/live
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi

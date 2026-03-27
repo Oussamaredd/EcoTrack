@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./hooks/useAuth";
 import { ToastProvider } from "./context/ToastContext";
 import { ErrorHandlingSetup } from "./components/ErrorHandlingSetup";
+import InstallAppBanner from "./components/InstallAppBanner";
 import { SentryScopeBridge } from "./monitoring/SentryScopeBridge";
 import AppRouter from "./routes/AppRouter";
 import { AppStateProvider } from "./state/AppStateProvider";
@@ -23,6 +24,7 @@ export default function App() {
         <AppStateProvider>
           <ToastProvider>
             <SentryScopeBridge />
+            <InstallAppBanner />
             <ErrorHandlingSetup>
               <AppRouter />
             </ErrorHandlingSetup>

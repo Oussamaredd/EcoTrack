@@ -12,6 +12,13 @@ The target hosting split is:
 - Render Web Service for the single Node/Nest runtime in `api`
 - Neon managed Postgres for the deployment database
 
+Terraform note for the current hosted baseline:
+
+- repo-owned Terraform scaffolding now lives in `infrastructure/tooling/terraform/`
+- the Terraform layout is split into standalone `cloudflare`, `render`, and `neon` stacks
+- those stacks are intended to model the current hosted resources and should import existing resources before first apply
+- app code, Drizzle migrations, runtime secrets, remote state backends, and multi-cloud modules remain outside this Terraform scope
+
 Out of scope for the first rollout:
 
 - Cloudflare Workers as an application runtime
@@ -286,7 +293,7 @@ GitHub Actions automation baseline (2026-03-26):
 
 - `push` to `main` now deploys the `development` environment automatically after the validation gate passes.
 - `workflow_dispatch` promotes `development`, `staging`, or `production` and supports `run_migrations` plus `skip_hosted_smoke` inputs.
-- GitHub Environments `deploy-dev`, `deploy-staging`, and `deploy-prod` own the deploy-hook URLs, smoke target URLs, approval rules, and target-specific secrets.
+- GitHub Environments `development`, `staging`, and `production` own the deploy-hook URLs, smoke target URLs, approval rules, and target-specific secrets.
 - Every release run writes a release manifest plus deploy-hook and smoke evidence under `tmp/ci/release`, uploads the files as GitHub artifacts, and publishes the markdown summaries in the workflow run.
 
 GitHub Environment contract:

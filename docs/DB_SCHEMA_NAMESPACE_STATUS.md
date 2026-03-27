@@ -31,6 +31,11 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 - `ops.collection_domain_events`, `ops.collection_domain_snapshots`, `analytics.zone_aggregates_10m`, `analytics.zone_current_state`, and `integration.event_connector_exports` were added in `database/migrations/0023_tearful_loa.sql` for workbook module `M8`.
 - These tables extend the Development-owned monolith event workflow with event-sourced collections commands, zone analytics read models, and retry-safe connector export staging without adding external broker, warehouse, or specialty-track infrastructure.
 
+2026-03-26 extension note:
+
+- `database/migrations/0024_hard_bullseye.sql` added operational read-path indexes for `incident.citizen_reports`, `notify.notifications`, `notify.notification_deliveries`, and `analytics.zone_current_state` for workbook module `M11.3`.
+- These indexes are Development-owned monolith performance artifacts and are paired with the SQL baseline pack in `infrastructure/performance/postgresql`.
+
 Known readiness exceptions from the original rollout pass:
 
 - the worktree still had broad unrelated local changes across `app`, `api`, `database`, `docs`, environment templates, and `package-lock.json`

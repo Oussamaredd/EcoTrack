@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MonitoringController } from '../modules/monitoring/monitoring.controller.js';
 import { MonitoringRepository } from '../modules/monitoring/monitoring.repository.js';
 import { MonitoringService } from '../modules/monitoring/monitoring.service.js';
+import { CacheService } from '../modules/performance/cache.service.js';
 
 describe('Monitoring endpoints', () => {
   let app: INestApplication;
@@ -31,6 +32,38 @@ describe('Monitoring endpoints', () => {
 
               if (key === 'iotIngestion.IOT_VALIDATED_CONSUMER_SHARD_COUNT') {
                 return 12;
+              }
+
+              if (key === 'cache.enabled') {
+                return true;
+              }
+
+              if (key === 'cache.prefix') {
+                return 'ecotrack';
+              }
+
+              if (key === 'cache.maxMemoryEntries') {
+                return 100;
+              }
+
+              if (key === 'cache.defaultTtlSeconds') {
+                return 60;
+              }
+
+              if (key === 'cache.dashboardTtlSeconds') {
+                return 30;
+              }
+
+              if (key === 'cache.planningTtlSeconds') {
+                return 20;
+              }
+
+              if (key === 'cache.analyticsTtlSeconds') {
+                return 60;
+              }
+
+              if (key === 'cache.citizenTtlSeconds') {
+                return 30;
               }
 
               return undefined;
@@ -80,6 +113,30 @@ describe('Monitoring endpoints', () => {
             }),
           },
         },
+        {
+          provide: CacheService,
+          useValue: {
+            getMetricsSnapshot: () => ({
+              enabled: true,
+              invalidationsTotal: 1,
+              maxMemoryEntries: 100,
+              memoryEntries: 3,
+              memoryEvictionsTotal: 0,
+              namespaceCount: 2,
+              readsByTier: {
+                memory: 4,
+                redis: 0,
+                source: 1,
+              },
+              redisConnected: false,
+              redisErrorsTotal: 0,
+              writesByTier: {
+                memory: 2,
+                redis: 0,
+              },
+            }),
+          },
+        },
       ],
     }).compile();
 
@@ -97,7 +154,7 @@ describe('Monitoring endpoints', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('POST /api/errors accepts frontend errors', async () => {
@@ -160,6 +217,9 @@ describe('Monitoring endpoints', () => {
     expect(response.text).toContain('frontend_metrics_total');
     expect(response.text).toMatch(/frontend_errors_by_type_total\{type="NETWORK"\}\s+1/);
     expect(response.text).toMatch(/frontend_metrics_by_type_total\{type="navigation"\}\s+1/);
+    expect(response.text).toContain('ecotrack_event_loop_delay_ms{quantile="p95"}');
+    expect(response.text).toContain('ecotrack_cache_reads_total{tier="source"}');
+    expect(response.text).toContain('ecotrack_cache_backend_up{backend="memory"} 1');
     expect(response.text).toContain('ecotrack_realtime_active_connections{transport="sse"} 2');
     expect(response.text).toContain('ecotrack_realtime_active_connections{transport="ws"} 1');
     expect(response.text).toContain('ecotrack_realtime_emitted_events_total 42');

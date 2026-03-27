@@ -545,21 +545,35 @@ export const tourRoutes = opsSchema.table('tour_routes', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const citizenReports = incidentSchema.table('citizen_reports', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
-  containerCodeSnapshot: text('container_code_snapshot'),
-  containerLabelSnapshot: text('container_label_snapshot'),
-  reporterUserId: uuid('reporter_user_id').references(() => users.id, { onDelete: 'set null' }),
-  status: text('status').default('submitted').notNull(),
-  description: text('description'),
-  photoUrl: text('photo_url'),
-  latitude: text('latitude'),
-  longitude: text('longitude'),
-  reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const citizenReports = incidentSchema.table(
+  'citizen_reports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
+    containerCodeSnapshot: text('container_code_snapshot'),
+    containerLabelSnapshot: text('container_label_snapshot'),
+    reporterUserId: uuid('reporter_user_id').references(() => users.id, { onDelete: 'set null' }),
+    status: text('status').default('submitted').notNull(),
+    description: text('description'),
+    photoUrl: text('photo_url'),
+    latitude: text('latitude'),
+    longitude: text('longitude'),
+    reportedAt: timestamp('reported_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    containerReportedAtIdx: index('citizen_reports_container_reported_at_idx').on(
+      table.containerId,
+      table.reportedAt,
+    ),
+    reporterStatusReportedAtIdx: index('citizen_reports_reporter_status_reported_at_idx').on(
+      table.reporterUserId,
+      table.status,
+      table.reportedAt,
+    ),
+  }),
+);
 
 export const collectionEvents = opsSchema.table(
   'collection_events',
@@ -912,6 +926,7 @@ export const zoneCurrentState = analyticsSchema.table(
       table.latestAggregateId,
       table.updatedAt,
     ),
+    updatedAtIdx: index('zone_current_state_updated_at_idx').on(table.updatedAt),
   }),
 );
 
@@ -1150,6 +1165,7 @@ export const notifications = notifySchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
+    createdAtIdx: index('notifications_created_at_idx').on(table.createdAt),
     statusScheduledIdx: index('notifications_status_scheduled_idx').on(table.status, table.scheduledAt),
   }),
 );
@@ -1176,6 +1192,10 @@ export const notificationDeliveries = notifySchema.table(
       table.channel,
       table.deliveryStatus,
       table.lastAttemptAt,
+    ),
+    notificationCreatedIdx: index('notification_deliveries_notification_created_idx').on(
+      table.notificationId,
+      table.createdAt,
     ),
   }),
 );

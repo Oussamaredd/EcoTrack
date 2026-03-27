@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ecotrack-api
+  namespace: ecotrack
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ecotrack-api
+  namespaceSelector:
+    matchNames:
+      - ecotrack
+  endpoints:
+    - port: http
+      path: /api/metrics
+      interval: 30s

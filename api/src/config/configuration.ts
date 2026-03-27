@@ -61,7 +61,21 @@ export type AppConfig = {
     };
   };
   database: {
+    directUrl: string;
+    maxConnections: number;
+    poolerUrl: string | null;
     url: string;
+  };
+  cache: {
+    analyticsTtlSeconds: number;
+    citizenTtlSeconds: number;
+    dashboardTtlSeconds: number;
+    defaultTtlSeconds: number;
+    enabled: boolean;
+    maxMemoryEntries: number;
+    planningTtlSeconds: number;
+    prefix: string;
+    redisUrl: string | null;
   };
   logging: {
     level: string;
@@ -78,6 +92,13 @@ export type AppConfig = {
       serviceName: string;
       exporterOtlpEndpoint: string;
       samplingRatio: number;
+    };
+  };
+  transport: {
+    compression: {
+      enabled: boolean;
+      level: number;
+      thresholdBytes: number;
     };
   };
   routing: {
@@ -101,7 +122,21 @@ export default (): AppConfig => ({
     },
   },
   database: {
-    url: requireEnv('DATABASE_URL'),
+    directUrl: requireEnv('DATABASE_URL'),
+    maxConnections: toPositiveInt(process.env.DATABASE_POOL_MAX, 5),
+    poolerUrl: process.env.DATABASE_POOLER_URL?.trim() || null,
+    url: process.env.DATABASE_POOLER_URL?.trim() || requireEnv('DATABASE_URL'),
+  },
+  cache: {
+    analyticsTtlSeconds: toPositiveInt(process.env.CACHE_ANALYTICS_TTL_SECONDS, 60),
+    citizenTtlSeconds: toPositiveInt(process.env.CACHE_CITIZEN_TTL_SECONDS, 30),
+    dashboardTtlSeconds: toPositiveInt(process.env.CACHE_DASHBOARD_TTL_SECONDS, 30),
+    defaultTtlSeconds: toPositiveInt(process.env.CACHE_DEFAULT_TTL_SECONDS, 60),
+    enabled: process.env.CACHE_ENABLED?.trim().toLowerCase() !== 'false',
+    maxMemoryEntries: toPositiveInt(process.env.CACHE_MAX_MEMORY_ENTRIES, 250),
+    planningTtlSeconds: toPositiveInt(process.env.CACHE_PLANNING_TTL_SECONDS, 20),
+    prefix: process.env.CACHE_PREFIX?.trim() || 'ecotrack',
+    redisUrl: process.env.CACHE_REDIS_URL?.trim() || null,
   },
   logging: {
     level: normalizeLogLevel(process.env.LOG_LEVEL),
@@ -124,6 +159,16 @@ export default (): AppConfig => ({
           ? parsed
           : DEFAULT_OTEL_TRACES_SAMPLER_RATIO;
       })(),
+    },
+  },
+  transport: {
+    compression: {
+      enabled: process.env.RESPONSE_COMPRESSION_ENABLED?.trim().toLowerCase() !== 'false',
+      level: (() => {
+        const parsed = Number(process.env.RESPONSE_COMPRESSION_LEVEL);
+        return Number.isInteger(parsed) && parsed >= -1 && parsed <= 9 ? parsed : 6;
+      })(),
+      thresholdBytes: toPositiveInt(process.env.RESPONSE_COMPRESSION_THRESHOLD_BYTES, 1024),
     },
   },
   routing: {

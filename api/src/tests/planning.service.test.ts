@@ -7,6 +7,10 @@ describe('PlanningService stream hardening', () => {
   const monitoringServiceMock = {
     setRealtimeDiagnostics: vi.fn(),
   };
+  const cacheServiceMock = {
+    getOrLoad: vi.fn(async ({ loader }: { loader: () => Promise<unknown> }) => loader()),
+    invalidateNamespaces: vi.fn().mockResolvedValue(undefined),
+  };
   const toursRouteCoordinatorMock = {
     ensureRouteForTour: vi.fn().mockResolvedValue(undefined),
   };
@@ -34,6 +38,7 @@ describe('PlanningService stream hardening', () => {
       repositoryMock as any,
       authServiceMock as any,
       monitoringServiceMock as any,
+      cacheServiceMock as any,
       toursRouteCoordinatorMock as any,
     );
     const capturedEvents: PlanningStreamEvent[] = [];
@@ -77,6 +82,7 @@ describe('PlanningService stream hardening', () => {
       repositoryMock as any,
       authServiceMock as any,
       monitoringServiceMock as any,
+      cacheServiceMock as any,
       toursRouteCoordinatorMock as any,
     );
 
@@ -158,6 +164,7 @@ describe('PlanningService stream hardening', () => {
       {} as any,
       {} as any,
       monitoringServiceMock as any,
+      cacheServiceMock as any,
       toursRouteCoordinatorMock as any,
     );
 
@@ -202,6 +209,7 @@ describe('PlanningService stream hardening', () => {
       repositoryMock as any,
       {} as any,
       monitoringServiceMock as any,
+      cacheServiceMock as any,
       toursRouteCoordinatorMock as any,
     );
     const loggerErrorSpy = vi

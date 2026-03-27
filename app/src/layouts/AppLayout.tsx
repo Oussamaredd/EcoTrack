@@ -567,6 +567,7 @@ export default function AppLayout() {
                   <img
                     src={profileImageUrl ?? ""}
                     alt=""
+                    decoding="async"
                     onError={() => setHasAvatarError(true)}
                   />
                 ) : (

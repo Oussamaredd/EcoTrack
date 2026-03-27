@@ -179,10 +179,10 @@ Agent tour mapping note:
 
 ## Optional CD Release Keys
 
-- GitHub Actions release environments are `deploy-dev`, `deploy-staging`, and `deploy-prod`.
+- GitHub Actions deploy jobs target the GitHub Environments `development`, `staging`, and `production`.
 - Store `CD_*` release keys in GitHub Actions environment vars or secrets, not in committed runtime env files.
-- `CD_DEPLOY_APP_URL` sets the hosted frontend root URL used by the release manifest and hosted smoke checks.
-- `CD_DEPLOY_API_HEALTH_URL` sets the hosted API readiness URL used by the release manifest and hosted smoke checks.
+- `CD_DEPLOY_APP_URL` sets the hosted frontend root URL used by deploy summaries and hosted smoke checks.
+- `CD_DEPLOY_API_HEALTH_URL` sets the hosted API readiness URL used by deploy summaries and hosted smoke checks.
 - `CD_DEPLOY_FRONTEND_HEALTH_URL` optionally adds a dedicated frontend health probe to the hosted smoke run.
 - `CD_DEPLOY_OAUTH_ENTRY_URL` optionally adds an OAuth redirect check to the hosted smoke run.
 - `CD_DEPLOY_EXPECTED_OAUTH_CALLBACK_URL` sets the expected callback destination for the OAuth smoke assertion.

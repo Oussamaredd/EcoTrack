@@ -803,7 +803,7 @@ Status legend:
 - Monolith adaptation: Implement through existing monorepo CI/CD and release automation for a single deployable monolith artifact.
 - Lane: `Dev Platform`
 - Status: `DONE`
-- Completion note: Delivered through `.github/workflows/CI.yaml`, `.github/workflows/CD.yml`, `infrastructure/scripts/ci/pre-deploy-validation.sh`, and the repo-owned release scripts under `infrastructure/scripts/ci/`. The current baseline now includes pre-deploy validation, environment-scoped deploy jobs (`deploy-dev`, `deploy-staging`, `deploy-prod`), optional migration execution, deploy-hook automation, hosted smoke checks, release evidence artifacts, and a documented rollback-by-ref procedure for the single deployable monolith.
+- Completion note: Delivered through `.github/workflows/CI.yaml`, `.github/workflows/CD.yml`, `infrastructure/scripts/ci/pre-deploy-validation.sh`, and the repo-owned release scripts under `infrastructure/scripts/ci/`. The current baseline now includes pre-deploy validation, environment-scoped deploy jobs (`deploy-development`, `deploy-staging`, `deploy-production`), optional migration execution, deploy-hook automation, hosted smoke checks, release evidence artifacts, and a documented rollback-by-ref procedure for the single deployable monolith.
 
 ### M9.2 - Infrastructure as Code Terraform AWS/Azure Multi-Cloud
 
@@ -812,7 +812,7 @@ Status legend:
 - Monolith adaptation: Deliver monolith-equivalent deployment controls (Docker/CI/runbooks) and document cluster/IaC specifics as deferred platform extensions.
 - Lane: `Dev Platform`
 - Status: `DEFERRED_PLATFORM`
-- Deferral note: Current scope keeps Terraform as a future-compatible interface only. The repo now documents that compatibility point in `infrastructure/tooling/terraform/README.md`, while the supported deployment path remains Cloudflare Pages + Render + Neon instead of repo-managed multi-cloud infrastructure.
+- Deferral note: Current scope now includes repo-owned Terraform scaffolding for the existing Cloudflare Pages, Render, and Neon resources in `infrastructure/tooling/terraform/`, but the broader multi-cloud module/workspace/backend rollout remains deferred. The supported deployment path still stays Cloudflare Pages + Render + Neon instead of repo-managed AWS/Azure platform fleets.
 
 ### M9.3 - Configuration Management Ansible Automation
 

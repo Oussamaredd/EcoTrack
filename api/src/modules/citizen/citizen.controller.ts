@@ -17,6 +17,7 @@ import {
 import { parsePaginationParams } from '../../common/http/pagination.js';
 import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
 import type { RequestWithAuthUser } from '../auth/authorization.types.js';
+import { ResponseCache } from '../performance/http-response-cache.decorator.js';
 
 import { CitizenService } from './citizen.service.js';
 import { CreateCitizenReportDto } from './dto/create-citizen-report.dto.js';
@@ -42,6 +43,13 @@ export class CitizenController {
   }
 
   @Get('notifications')
+  @ResponseCache({
+    cacheTags: ['citizen-notifications'],
+    maxAgeSeconds: 30,
+    scope: 'private',
+    staleWhileRevalidateSeconds: 60,
+    vary: ['Authorization', 'Cookie'],
+  })
   async notifications(
     @Req() request: RequestWithAuthUser,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
@@ -63,11 +71,25 @@ export class CitizenController {
   }
 
   @Get('profile')
+  @ResponseCache({
+    cacheTags: ['citizen-profile'],
+    maxAgeSeconds: 30,
+    scope: 'private',
+    staleWhileRevalidateSeconds: 60,
+    vary: ['Authorization', 'Cookie'],
+  })
   async profile(@Req() request: RequestWithAuthUser) {
     return this.citizenService.getProfile(this.requireUserId(request));
   }
 
   @Get('history')
+  @ResponseCache({
+    cacheTags: ['citizen-history'],
+    maxAgeSeconds: 30,
+    scope: 'private',
+    staleWhileRevalidateSeconds: 60,
+    vary: ['Authorization', 'Cookie'],
+  })
   async history(
     @Req() request: RequestWithAuthUser,
     @Query('page') pageParam?: string,
@@ -92,6 +114,13 @@ export class CitizenController {
   }
 
   @Get('challenges')
+  @ResponseCache({
+    cacheTags: ['citizen-challenges'],
+    maxAgeSeconds: 30,
+    scope: 'private',
+    staleWhileRevalidateSeconds: 60,
+    vary: ['Authorization', 'Cookie'],
+  })
   async challenges(@Req() request: RequestWithAuthUser) {
     const items = await this.citizenService.listChallenges(this.requireUserId(request));
     return { challenges: items };
