@@ -13,12 +13,14 @@ export class DatabaseService implements OnModuleDestroy, OnApplicationShutdown {
 
   constructor(private readonly configService: ConfigService) {
     const databaseUrl = this.configService.get<string>('database.url');
+    const maxConnections = this.configService.get<number>('database.maxConnections') ?? 5;
 
     if (!databaseUrl) {
       throw new Error('DATABASE_URL is required to initialize the database connection.');
     }
 
     this.instance = createDatabaseInstance({
+      maxConnections,
       url: databaseUrl,
     });
   }

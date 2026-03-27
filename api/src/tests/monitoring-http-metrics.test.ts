@@ -16,6 +16,7 @@ import { HttpMetricsMiddleware } from '../modules/monitoring/http-metrics.middle
 import { MonitoringController } from '../modules/monitoring/monitoring.controller.js';
 import { MonitoringRepository } from '../modules/monitoring/monitoring.repository.js';
 import { MonitoringService } from '../modules/monitoring/monitoring.service.js';
+import { CacheService } from '../modules/performance/cache.service.js';
 
 @Controller('tickets')
 class TicketMetricsTestController {
@@ -52,6 +53,38 @@ class FailingMetricsTestController {
 
           if (key === 'iotIngestion.IOT_VALIDATED_CONSUMER_SHARD_COUNT') {
             return 12;
+          }
+
+          if (key === 'cache.enabled') {
+            return true;
+          }
+
+          if (key === 'cache.prefix') {
+            return 'ecotrack';
+          }
+
+          if (key === 'cache.maxMemoryEntries') {
+            return 100;
+          }
+
+          if (key === 'cache.defaultTtlSeconds') {
+            return 60;
+          }
+
+          if (key === 'cache.dashboardTtlSeconds') {
+            return 30;
+          }
+
+          if (key === 'cache.planningTtlSeconds') {
+            return 20;
+          }
+
+          if (key === 'cache.analyticsTtlSeconds') {
+            return 60;
+          }
+
+          if (key === 'cache.citizenTtlSeconds') {
+            return 30;
           }
 
           return undefined;
@@ -101,6 +134,30 @@ class FailingMetricsTestController {
         }),
       },
     },
+    {
+      provide: CacheService,
+      useValue: {
+        getMetricsSnapshot: () => ({
+          enabled: true,
+          invalidationsTotal: 0,
+          maxMemoryEntries: 100,
+          memoryEntries: 2,
+          memoryEvictionsTotal: 0,
+          namespaceCount: 1,
+          readsByTier: {
+            memory: 3,
+            redis: 0,
+            source: 1,
+          },
+          redisConnected: false,
+          redisErrorsTotal: 0,
+          writesByTier: {
+            memory: 2,
+            redis: 0,
+          },
+        }),
+      },
+    },
   ],
 })
 class TestMonitoringModule implements NestModule {
@@ -123,7 +180,7 @@ describe('HTTP metrics middleware', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('records normalized request counters, errors, and runtime gauges', async () => {

@@ -8,6 +8,8 @@ import {
   type ToursRouteCoordinationPort,
 } from '../collections/tours.contract.js';
 import { MonitoringService } from '../monitoring/monitoring.service.js';
+import { CACHE_NAMESPACES } from '../performance/cache.constants.js';
+import { CacheService } from '../performance/cache.service.js';
 
 import type { CreatePlannedTourDto } from './dto/create-planned-tour.dto.js';
 import type { GenerateReportDto } from './dto/generate-report.dto.js';
@@ -73,6 +75,7 @@ export class PlanningService {
     private readonly repository: PlanningRepository,
     private readonly authService: AuthService,
     private readonly monitoringService: MonitoringService,
+    private readonly cacheService: CacheService,
     @Inject(TOURS_ROUTE_COORDINATION_PORT)
     private readonly toursRouteCoordinator: ToursRouteCoordinationPort,
   ) {
@@ -111,6 +114,7 @@ export class PlanningService {
           await this.toursRouteCoordinator.ensureRouteForTour(tourId);
         }
 
+        await this.invalidatePlanningCaches(true);
         this.publishStreamEvent(
           REALTIME_EVENT_NAMES.tourUpdated,
           {
@@ -148,26 +152,48 @@ export class PlanningService {
   }
 
   async getManagerDashboard() {
-    return this.repository.getManagerDashboard();
+    return this.cacheService.getOrLoad({
+      key: 'manager-dashboard',
+      loader: () => this.repository.getManagerDashboard(),
+      namespace: CACHE_NAMESPACES.planning,
+      profile: 'planning',
+    });
   }
 
   async getManagerHeatmap(filters: {
     zoneId?: string | null;
     riskTier?: 'all' | 'low' | 'medium' | 'high';
   }) {
-    return this.repository.getManagerHeatmap(filters);
+    return this.cacheService.getOrLoad({
+      key: `manager-heatmap:${JSON.stringify(filters)}`,
+      loader: () => this.repository.getManagerHeatmap(filters),
+      namespace: CACHE_NAMESPACES.planning,
+      profile: 'planning',
+    });
   }
 
   async listAlerts(filters: { status?: string; severity?: string; limit: number }) {
-    return this.repository.listAlerts(filters);
+    return this.cacheService.getOrLoad({
+      key: `alerts:${JSON.stringify(filters)}`,
+      loader: () => this.repository.listAlerts(filters),
+      namespace: CACHE_NAMESPACES.planning,
+      profile: 'planning',
+    });
   }
 
   async acknowledgeAlert(alertId: string, actorUserId: string) {
-    return this.repository.acknowledgeAlert(alertId, actorUserId);
+    const alert = await this.repository.acknowledgeAlert(alertId, actorUserId);
+    await this.invalidatePlanningCaches();
+    return alert;
   }
 
   async listNotifications(limit: number) {
-    return this.repository.listNotifications(limit);
+    return this.cacheService.getOrLoad({
+      key: `notifications:${limit}`,
+      loader: () => this.repository.listNotifications(limit),
+      namespace: CACHE_NAMESPACES.planning,
+      profile: 'planning',
+    });
   }
 
   async triggerEmergencyCollection(dto: TriggerEmergencyCollectionDto, actorUserId: string) {
@@ -185,6 +211,7 @@ export class PlanningService {
           await this.toursRouteCoordinator.ensureRouteForTour(emergencyTourId);
         }
 
+        await this.invalidatePlanningCaches(true);
         this.publishStreamEvent(
           REALTIME_EVENT_NAMES.emergencyCreated,
           {
@@ -214,19 +241,33 @@ export class PlanningService {
   }
 
   async generateReport(dto: GenerateReportDto, actorUserId: string) {
-    return this.repository.generateReport(dto, actorUserId);
+    const report = await this.repository.generateReport(dto, actorUserId);
+    await this.invalidatePlanningCaches();
+    return report;
   }
 
   async listReportHistory() {
-    return this.repository.listReportHistory();
+    return this.cacheService.getOrLoad({
+      key: 'report-history',
+      loader: () => this.repository.listReportHistory(),
+      namespace: CACHE_NAMESPACES.planning,
+      profile: 'planning',
+    });
   }
 
   async getReportById(reportId: string) {
-    return this.repository.getReportById(reportId);
+    return this.cacheService.getOrLoad({
+      key: `report:${reportId}`,
+      loader: () => this.repository.getReportById(reportId),
+      namespace: CACHE_NAMESPACES.planning,
+      profile: 'planning',
+    });
   }
 
   async regenerateReport(reportId: string, actorUserId: string) {
-    return this.repository.regenerateReport(reportId, actorUserId);
+    const report = await this.repository.regenerateReport(reportId, actorUserId);
+    await this.invalidatePlanningCaches();
+    return report;
   }
 
   issueStreamSession(authUser: RequestWithAuthUser['authUser']) {
@@ -364,7 +405,7 @@ export class PlanningService {
   }
 
   async getRealtimeDashboardSnapshotEvent(): Promise<PlanningStreamEvent> {
-    const dashboard = (await this.repository.getManagerDashboard()) as {
+    const dashboard = (await this.getManagerDashboard()) as {
       ecoKpis?: { containers?: number; zones?: number; tours?: number };
       thresholds?: { criticalFillPercent?: number };
       criticalContainers?: unknown[];
@@ -480,6 +521,15 @@ export class PlanningService {
     }
 
     return 'Unknown error';
+  }
+
+  private async invalidatePlanningCaches(includeAnalytics = false) {
+    const namespaces: string[] = [CACHE_NAMESPACES.planning];
+    if (includeAnalytics) {
+      namespaces.push(CACHE_NAMESPACES.analytics);
+    }
+
+    await this.cacheService.invalidateNamespaces(namespaces);
   }
 }
 

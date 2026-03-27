@@ -169,6 +169,13 @@
       "when": 1774359637990,
       "tag": "0023_tearful_loa",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1774530897524,
+      "tag": "0024_hard_bullseye",
+      "breakpoints": true
     }
   ]
 }

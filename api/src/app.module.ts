@@ -31,6 +31,7 @@ import { ContainersModule } from './modules/iot/containers.module.js';
 import { IngestionModule } from './modules/iot/ingestion/ingestion.module.js';
 import { MeasurementRollupsModule } from './modules/iot/rollups/rollups.module.js';
 import { MonitoringModule } from './modules/monitoring/monitoring.module.js';
+import { PerformanceModule } from './modules/performance/performance.module.js';
 import { CitizenReportsModule } from './modules/reports/citizen-reports.module.js';
 import { PlanningModule } from './modules/routes/planning.module.js';
 import { TicketsModule } from './modules/tickets/tickets.module.js';
@@ -284,6 +285,7 @@ const getTraceFields = (request: Request) => {
         ],
       }),
     }),
+    PerformanceModule,
     DatabaseModule,
     AuthModule,
     HealthModule,

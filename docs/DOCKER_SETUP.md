@@ -37,6 +37,7 @@ npm run smoke-test
 ## Expected Core State
 
 - `ticket_db`: healthy
+- `ecotrack_redis`: healthy
 - `ticket_backend`: healthy
 - `ticket_frontend`: healthy
 
@@ -59,10 +60,29 @@ npm run db:migrate:seed --workspace=ecotrack-database
 ## Policy
 
 - `backend` consumes `DATABASE_URL` from `.env.docker`.
+- `backend` consumes `CACHE_REDIS_URL=redis://redis:6379` from `.env.docker` when Redis-backed caching is enabled.
 - Compose DB host is `ticket_db`.
+- Compose Redis host is `redis`.
 - Canonical DB name is `ticketdb`.
 - No credential values should be hardcoded in compose service definitions.
 - `.env.docker` must use canonical keys only; deprecated aliases such as `CLIENT_ORIGIN` fail validation.
+- `DATABASE_POOLER_URL` is optional in Docker dev; leave it blank unless you add a separate PgBouncer container or external pooler.
+
+## Performance Validation
+
+From repo root:
+
+```bash
+npm run perf:autocannon -- --url http://localhost:3001/api/health/ready --scenario docker-health
+npm run perf:clinic:doctor
+npm run perf:pgbench -- --database-url "$DATABASE_URL"
+```
+
+Operational notes:
+
+- `perf:clinic:*` expects a built API (`npm run build --workspace=ecotrack-api`).
+- `perf:pgbench` targets the direct database URL, not `DATABASE_POOLER_URL`.
+- Cloudflare purge automation is not part of the Docker loop; it requires `CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_API_TOKEN`.
 
 ## Realtime Transport Edge Policy
 

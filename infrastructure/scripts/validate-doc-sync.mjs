@@ -156,7 +156,8 @@ const getRootVersionPair = () => {
 };
 
 const pathStartsWith = (file, prefix) => file === prefix || file.startsWith(`${prefix}/`);
-const isDocsFile = (file) => file === 'CHANGELOG.md' || pathStartsWith(file, 'docs');
+const isDocsFile = (file) =>
+  file === 'CHANGELOG.md' || file === 'README.md' || pathStartsWith(file, 'docs');
 const isTestFile = (file) =>
   /(^|\/)(tests?|__tests__)\//.test(file) || /\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs)$/.test(file);
 

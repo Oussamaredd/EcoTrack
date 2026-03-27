@@ -43,6 +43,7 @@ async function bootstrap() {
       nestCommon,
       nestCore,
       expressModule,
+      compressionModule,
       helmetModule,
       nestPino,
       appModuleImport,
@@ -56,6 +57,7 @@ async function bootstrap() {
       import('@nestjs/common'),
       import('@nestjs/core'),
       import('express'),
+      import('compression'),
       import('helmet'),
       import('nestjs-pino'),
       import('./app.module.js'),
@@ -70,6 +72,7 @@ async function bootstrap() {
     const { Logger: NestLogger, ValidationPipe } = nestCommon;
     const { NestFactory } = nestCore;
     const { json, urlencoded } = expressModule;
+    const compression = compressionModule.default;
     const helmet = helmetModule.default;
     const { Logger } = nestPino;
     const { AppModule } = appModuleImport;
@@ -79,6 +82,7 @@ async function bootstrap() {
     const { resolveCorsOrigins } = corsOriginsImport;
     const { HealthService } = healthServiceImport;
     const { attachRootHealthRoutes } = rootHealthRoutesImport;
+    const { shouldCompressResponse } = await import('./modules/performance/response-compression.js');
 
     const app = await NestFactory.create(AppModule, {
       bufferLogs: true,
@@ -102,6 +106,28 @@ async function bootstrap() {
         contentSecurityPolicy: false,
       }),
     );
+    if (process.env.RESPONSE_COMPRESSION_ENABLED?.trim().toLowerCase() !== 'false') {
+      const thresholdBytes = Number(process.env.RESPONSE_COMPRESSION_THRESHOLD_BYTES ?? 1024);
+      const level = Number(process.env.RESPONSE_COMPRESSION_LEVEL ?? 6);
+      app.use(
+        compression({
+          filter: (request, response) => {
+            if (
+              !shouldCompressResponse({
+                acceptHeader: request.headers.accept,
+                requestPath: request.originalUrl ?? request.url,
+              })
+            ) {
+              return false;
+            }
+
+            return compression.filter(request, response);
+          },
+          level: Number.isInteger(level) && level >= -1 && level <= 9 ? level : 6,
+          threshold: Number.isFinite(thresholdBytes) && thresholdBytes > 0 ? thresholdBytes : 1024,
+        }),
+      );
+    }
 
     app.setGlobalPrefix('api');
     app.useGlobalPipes(

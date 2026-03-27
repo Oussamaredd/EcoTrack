@@ -1,12 +1,18 @@
 import { Injectable } from '@nestjs/common';
 
+import { CACHE_NAMESPACES, createCitizenCacheNamespace } from '../performance/cache.constants.js';
+import { CacheService } from '../performance/cache.service.js';
+
 import { CitizenRepository } from './citizen.repository.js';
 import type { CreateCitizenReportDto } from './dto/create-citizen-report.dto.js';
 import type { RegisterNotificationDeviceDto } from './dto/register-notification-device.dto.js';
 
 @Injectable()
 export class CitizenService {
-  constructor(private readonly repository: CitizenRepository) {}
+  constructor(
+    private readonly repository: CitizenRepository,
+    private readonly cacheService: CacheService,
+  ) {}
 
   async createReport(userId: string, dto: CreateCitizenReportDto) {
     const createdReport = await this.repository.createReport(userId, dto);
@@ -15,27 +21,55 @@ export class CitizenService {
       await this.dispatchPushNotification(createdReport.citizenNotificationId);
     }
 
+    await this.cacheService.invalidateNamespaces([
+      CACHE_NAMESPACES.analytics,
+      CACHE_NAMESPACES.planning,
+      createCitizenCacheNamespace(userId),
+    ]);
+
     return createdReport;
   }
 
   async getProfile(userId: string) {
-    return this.repository.getProfile(userId);
+    return this.cacheService.getOrLoad({
+      key: 'profile',
+      loader: () => this.repository.getProfile(userId),
+      namespace: createCitizenCacheNamespace(userId),
+      profile: 'citizen',
+    });
   }
 
   async getHistory(userId: string, limit: number, offset: number) {
-    return this.repository.getHistory(userId, limit, offset);
+    return this.cacheService.getOrLoad({
+      key: `history:${limit}:${offset}`,
+      loader: () => this.repository.getHistory(userId, limit, offset),
+      namespace: createCitizenCacheNamespace(userId),
+      profile: 'citizen',
+    });
   }
 
   async listChallenges(userId: string) {
-    return this.repository.listChallenges(userId);
+    return this.cacheService.getOrLoad({
+      key: 'challenges',
+      loader: () => this.repository.listChallenges(userId),
+      namespace: createCitizenCacheNamespace(userId),
+      profile: 'citizen',
+    });
   }
 
   async enrollInChallenge(userId: string, challengeId: string) {
-    return this.repository.enrollInChallenge(userId, challengeId);
+    const enrollment = await this.repository.enrollInChallenge(userId, challengeId);
+    await this.cacheService.invalidateNamespace(createCitizenCacheNamespace(userId));
+    return enrollment;
   }
 
   async updateChallengeProgress(userId: string, challengeId: string, progressDelta: number) {
-    return this.repository.updateChallengeProgress(userId, challengeId, progressDelta);
+    const updatedProgress = await this.repository.updateChallengeProgress(userId, challengeId, progressDelta);
+    await this.cacheService.invalidateNamespaces([
+      CACHE_NAMESPACES.analytics,
+      createCitizenCacheNamespace(userId),
+    ]);
+    return updatedProgress;
   }
 
   async registerNotificationDevice(userId: string, dto: RegisterNotificationDeviceDto) {
@@ -43,11 +77,18 @@ export class CitizenService {
   }
 
   async listNotifications(userId: string, limit: number) {
-    return this.repository.listUserNotifications(userId, limit);
+    return this.cacheService.getOrLoad({
+      key: `notifications:${limit}`,
+      loader: () => this.repository.listUserNotifications(userId, limit),
+      namespace: createCitizenCacheNamespace(userId),
+      profile: 'citizen',
+    });
   }
 
   async markNotificationRead(userId: string, notificationId: string) {
-    return this.repository.markUserNotificationRead(userId, notificationId);
+    const notification = await this.repository.markUserNotificationRead(userId, notificationId);
+    await this.cacheService.invalidateNamespace(createCitizenCacheNamespace(userId));
+    return notification;
   }
 
   private async dispatchPushNotification(notificationId: string) {

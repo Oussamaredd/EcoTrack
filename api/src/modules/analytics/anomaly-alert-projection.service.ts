@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
 import type { ClaimedValidatedEventDelivery } from '../iot/validated-consumer/validated-consumer.contracts.js';
+import { CACHE_NAMESPACES } from '../performance/cache.constants.js';
+import { CacheService } from '../performance/cache.service.js';
 
 import { AnalyticsRepository } from './analytics.repository.js';
 
@@ -12,7 +14,10 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 
 @Injectable()
 export class AnomalyAlertProjectionService {
-  constructor(private readonly repository: AnalyticsRepository) {}
+  constructor(
+    private readonly repository: AnalyticsRepository,
+    private readonly cacheService: CacheService,
+  ) {}
 
   async projectValidatedMeasurement(delivery: ClaimedValidatedEventDelivery) {
     const zoneContext = await this.repository.resolveZoneContext(delivery.containerId);
@@ -98,9 +103,18 @@ export class AnomalyAlertProjectionService {
       }
     }
 
-    return {
+    const result = {
       createdAlerts: createdAlertIds.length,
       alertIds: createdAlertIds,
     };
+
+    if (createdAlertIds.length > 0) {
+      await this.cacheService.invalidateNamespaces([
+        CACHE_NAMESPACES.analytics,
+        CACHE_NAMESPACES.planning,
+      ]);
+    }
+
+    return result;
   }
 }

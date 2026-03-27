@@ -22,6 +22,7 @@ import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
 import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
 import { PermissionsGuard } from '../auth/permissions.guard.js';
+import { ResponseCache } from '../performance/http-response-cache.decorator.js';
 
 import { CreatePlannedTourDto } from './dto/create-planned-tour.dto.js';
 import { GenerateReportDto } from './dto/generate-report.dto.js';
@@ -78,12 +79,26 @@ export class PlanningController {
 
   @Get('dashboard')
   @RequirePermissions('ecotrack.analytics.read')
+  @ResponseCache({
+    cacheTags: ['planning', 'planning-dashboard'],
+    maxAgeSeconds: 20,
+    scope: 'private',
+    staleWhileRevalidateSeconds: 40,
+    vary: ['Authorization', 'Cookie'],
+  })
   async dashboard() {
     return this.planningService.getManagerDashboard();
   }
 
   @Get('heatmap')
   @RequirePermissions('ecotrack.analytics.read')
+  @ResponseCache({
+    cacheTags: ['planning', 'planning-heatmap'],
+    maxAgeSeconds: 20,
+    scope: 'private',
+    staleWhileRevalidateSeconds: 40,
+    vary: ['Authorization', 'Cookie'],
+  })
   async heatmap(
     @Query('zoneId') zoneId?: string,
     @Query('riskTier') riskTier?: string,
@@ -107,6 +122,13 @@ export class PlanningController {
 
   @Get('alerts')
   @RequirePermissions('ecotrack.analytics.read')
+  @ResponseCache({
+    cacheTags: ['planning', 'planning-alerts'],
+    maxAgeSeconds: 20,
+    scope: 'private',
+    staleWhileRevalidateSeconds: 40,
+    vary: ['Authorization', 'Cookie'],
+  })
   async alerts(
     @Query('status') status?: string,
     @Query('severity') severity?: string,
@@ -132,6 +154,13 @@ export class PlanningController {
 
   @Get('notifications')
   @RequirePermissions('ecotrack.analytics.read')
+  @ResponseCache({
+    cacheTags: ['planning', 'planning-notifications'],
+    maxAgeSeconds: 20,
+    scope: 'private',
+    staleWhileRevalidateSeconds: 40,
+    vary: ['Authorization', 'Cookie'],
+  })
   async notifications(@Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number) {
     return {
       notifications: await this.planningService.listNotifications(limit ?? 50),
@@ -276,6 +305,13 @@ export class PlanningController {
 
   @Get('reports/history')
   @RequirePermissions('ecotrack.analytics.read')
+  @ResponseCache({
+    cacheTags: ['planning', 'planning-report-history'],
+    maxAgeSeconds: 20,
+    scope: 'private',
+    staleWhileRevalidateSeconds: 40,
+    vary: ['Authorization', 'Cookie'],
+  })
   async reportHistory() {
     return { reports: await this.planningService.listReportHistory() };
   }

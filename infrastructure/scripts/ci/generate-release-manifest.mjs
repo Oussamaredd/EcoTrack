@@ -40,12 +40,6 @@ const manifest = {
     runId: trim(process.env.GITHUB_RUN_ID) ?? null,
     runAttempt: trim(process.env.GITHUB_RUN_ATTEMPT) ?? null,
   },
-  deployment: {
-    appUrl: trim(process.env.CD_DEPLOY_APP_URL),
-    apiHealthUrl: trim(process.env.CD_DEPLOY_API_HEALTH_URL),
-    frontendHookConfigured: Boolean(trim(process.env.CD_FRONTEND_DEPLOY_HOOK_URL)),
-    backendHookConfigured: Boolean(trim(process.env.CD_BACKEND_DEPLOY_HOOK_URL)),
-  },
 };
 
 const markdownLines = [
@@ -58,10 +52,6 @@ const markdownLines = [
   `- Git SHA: \`${manifest.release.gitSha ?? 'n/a'}\``,
   `- Trigger: \`${manifest.release.eventName}\``,
   `- Actor: \`${manifest.release.actor ?? 'n/a'}\``,
-  `- App URL configured: \`${manifest.deployment.appUrl ?? 'no'}\``,
-  `- API health URL configured: \`${manifest.deployment.apiHealthUrl ?? 'no'}\``,
-  `- Frontend deploy hook configured: \`${manifest.deployment.frontendHookConfigured}\``,
-  `- Backend deploy hook configured: \`${manifest.deployment.backendHookConfigured}\``,
 ];
 
 await fs.mkdir(outputDir, { recursive: true });

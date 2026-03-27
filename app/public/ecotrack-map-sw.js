@@ -1,9 +1,25 @@
 const TILE_CACHE_NAME = "ecotrack-map-tiles-v2";
-const APP_SHELL_CACHE_NAME = "ecotrack-app-shell-v1";
-const STATIC_ASSET_CACHE_NAME = "ecotrack-app-static-v1";
+const APP_SHELL_CACHE_NAME = "ecotrack-app-shell-v2";
+const STATIC_ASSET_CACHE_NAME = "ecotrack-app-static-v2";
 const TILE_CACHE_EVENT = "ECOTRACK_CONFIGURE_TILE_CACHE";
+const APP_SHELL_REFRESH_SYNC_TAG = "ecotrack-refresh-shell";
 const CACHE_NAMES = [TILE_CACHE_NAME, APP_SHELL_CACHE_NAME, STATIC_ASSET_CACHE_NAME];
-const APP_SHELL_PATHS = [".", "./login", "./app", "./app/agent/tour", "./app/dashboard"];
+const APP_SHELL_PATHS = [
+  ".",
+  "./login",
+  "./app",
+  "./app/agent/tour",
+  "./app/dashboard",
+  "./app/manager/planning",
+  "./app/citizen/profile",
+];
+const STATIC_ASSET_PATHS = [
+  "./manifest.json",
+  "./branding/ecotrack-logo-96.png",
+  "./branding/ecotrack-logo-192.png",
+  "./ecotrack-icon-192.png",
+  "./ecotrack-icon-512.png",
+];
 
 let allowedTileOrigins = [];
 
@@ -115,6 +131,20 @@ const precacheAppShell = async () => {
   );
 };
 
+const precacheStaticAssets = async () => {
+  const cache = await caches.open(STATIC_ASSET_CACHE_NAME);
+
+  await Promise.allSettled(
+    STATIC_ASSET_PATHS.map(async (relativePath) => {
+      const requestUrl = new URL(relativePath, self.registration.scope);
+      const response = await fetch(requestUrl, { cache: "no-store" });
+      if (response.ok) {
+        await cache.put(requestUrl, response.clone());
+      }
+    }),
+  );
+};
+
 const cleanupOldCaches = async () => {
   const cacheNames = await caches.keys();
   await Promise.all(
@@ -183,7 +213,7 @@ const handleNavigationRequest = async (request) => {
 };
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(precacheAppShell());
+  event.waitUntil(Promise.all([precacheAppShell(), precacheStaticAssets()]));
   self.skipWaiting();
 });
 
@@ -207,6 +237,66 @@ self.addEventListener("message", (event) => {
 
   allowedTileOrigins = event.data.origins.filter(
     (origin) => typeof origin === "string" && origin.length > 0,
+  );
+});
+
+self.addEventListener("sync", (event) => {
+  if (event.tag !== APP_SHELL_REFRESH_SYNC_TAG) {
+    return;
+  }
+
+  event.waitUntil(Promise.all([precacheAppShell(), precacheStaticAssets()]));
+});
+
+self.addEventListener("push", (event) => {
+  const payload = (() => {
+    try {
+      return event.data?.json() ?? {};
+    } catch {
+      return {
+        body: event.data?.text?.() ?? "",
+      };
+    }
+  })();
+  const title =
+    typeof payload.title === "string" && payload.title.trim().length > 0
+      ? payload.title
+      : "EcoTrack update";
+  const body =
+    typeof payload.body === "string" && payload.body.trim().length > 0
+      ? payload.body
+      : "A new EcoTrack update is ready.";
+  const targetUrl =
+    typeof payload.url === "string" && payload.url.trim().length > 0
+      ? payload.url
+      : "/app";
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      badge: "./ecotrack-icon-192.png",
+      body,
+      data: {
+        url: targetUrl,
+      },
+      icon: "./ecotrack-icon-192.png",
+      tag: "ecotrack-runtime-update",
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const targetUrl = new URL(event.notification.data?.url ?? "/app", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ includeUncontrolled: true, type: "window" }).then((clientList) => {
+      const existingClient = clientList.find((client) => "focus" in client);
+      if (existingClient && "navigate" in existingClient) {
+        return existingClient.navigate(targetUrl).then(() => existingClient.focus());
+      }
+
+      return self.clients.openWindow(targetUrl);
+    }),
   );
 });
 

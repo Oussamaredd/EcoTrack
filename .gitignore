@@ -68,6 +68,12 @@ infrastructure/environments/.env.production
 infrastructure/.terraform/
 infrastructure/*.tfstate
 infrastructure/*.tfstate.*
+infrastructure/tooling/terraform/**/.terraform/
+infrastructure/tooling/terraform/**/*.tfstate
+infrastructure/tooling/terraform/**/*.tfstate.*
+infrastructure/tooling/terraform/**/terraform.tfvars
+infrastructure/tooling/terraform/**/*.auto.tfvars
+infrastructure/tooling/terraform/**/*.auto.tfvars.json
 
 # Coverage reports
 coverage/

@@ -61,6 +61,7 @@ Authenticated shell behavior:
   - Mobile (`max-width: 720px`): overlay drawer with dimmed backdrop; supports close via toggle, `Esc`, backdrop click, and route navigation.
   - Accessibility: toggle uses `aria-expanded` + `aria-controls`; mobile drawer traps focus while open, sets initial focus into the drawer, restores focus to toggle on close, and prevents background scroll.
 - Main content header is sticky and keeps both the page name and account identity (avatar + name) visible while scrolling.
+- When a profile photo is configured, the shell account chip reuses that avatar; otherwise it falls back to the default user glyph.
 - The page title in the sticky header is derived from the active route, including support/ticket compatibility routes and role-specific workspace pages.
 - Non-dashboard `/app/*` workspace pages use full main-section width (`width: 100%`) with container-aware responsive styles, so grid/tab/detail layouts reflow when sidebar width changes (expanded vs compressed), not only on viewport breakpoints.
 - Sign Out returns users to the landing page (`/`).
@@ -70,7 +71,13 @@ Authenticated shell behavior:
 - Settings form behavior:
   - Display name changes are validated client-side before submission.
   - Profile photos accept PNG, JPEG, or WEBP uploads up to 1 MB and are stored as profile/avatar URLs or data URLs.
+  - Removing a profile photo clears the stored avatar preview and returns the shell/header avatar to its fallback state.
   - Password changes are available only for `local` accounts; Google SSO accounts are shown provider guidance instead.
+
+PWA install behavior:
+
+- Browsers that emit `beforeinstallprompt` can show an install banner that lets authenticated users install the app shell for faster relaunch and offline access to cached tours and maps.
+- Dismissing the install banner is session-scoped and the banner is suppressed once the app is already running in standalone mode.
 
 ## Frontend edge behavior (`app/nginx.conf`)
 

@@ -2,6 +2,7 @@ import { MAP_TILE_ALLOWED_ORIGINS } from "./mapConfig";
 
 const MAP_SERVICE_WORKER_FILE = "ecotrack-map-sw.js";
 const MAP_SERVICE_WORKER_CONFIG_EVENT = "ECOTRACK_CONFIGURE_TILE_CACHE";
+const APP_SHELL_REFRESH_SYNC_TAG = "ecotrack-refresh-shell";
 
 let hasRegisteredMapServiceWorker = false;
 
@@ -23,6 +24,19 @@ const postTileCacheConfig = (serviceWorker: ServiceWorker | null) => {
 
 const configureRegistration = async (registration: ServiceWorkerRegistration) => {
   postTileCacheConfig(registration.active ?? registration.waiting ?? registration.installing ?? null);
+
+  const syncCapableRegistration = registration as ServiceWorkerRegistration & {
+    sync?: {
+      register: (tag: string) => Promise<void>;
+    };
+  };
+  if (syncCapableRegistration.sync?.register) {
+    try {
+      await syncCapableRegistration.sync.register(APP_SHELL_REFRESH_SYNC_TAG);
+    } catch {
+      // Background sync support is optional across browsers.
+    }
+  }
 
   if ("serviceWorker" in navigator) {
     const readyRegistration = await navigator.serviceWorker.ready;
