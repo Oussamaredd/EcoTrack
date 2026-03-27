@@ -124,7 +124,7 @@ Environment strategy for this phase:
   - canonical managed database: `ticketdb`
   - repo Drizzle migrations and seed flow applied against the direct Neon connection string
   - local API readiness verified against the managed database baseline
-  - see `docs/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the exact validated state
+  - see `docs/operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the exact validated state
 
 Checklist:
 

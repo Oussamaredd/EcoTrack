@@ -7,8 +7,8 @@ This folder stores original source documents used for planning and traceability.
 - `docs/specs/inputs/ECOTRACK_M2_DEV.xlsx`
 
 ## Usage Rules
-- Treat files in `inputs/` as read-only reference artifacts.
-- Build actionable work items in markdown files (for example `ROADMAP.md`) rather than editing binary files.
+- Keep the canonical source files only at their `inputs/` paths and leave them ignored in Git.
+- Build actionable work items in markdown files (for example `docs/planning/roadmaps/ROADMAP.md`) rather than editing binary files.
 - Current project implementation scope is Development specialty only; Security and Data specialty requirements are tracked as future dependencies.
 - Treat CDC specs as executable contracts, not docs-only references:
   - canonical governance file: `docs/specs/source-of-truth.dev.json`

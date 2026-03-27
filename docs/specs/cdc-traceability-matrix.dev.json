@@ -384,7 +384,7 @@
         "Workbook:M14.7"
       ],
       "specFiles": [
-        "docs/ROADMAP.md"
+        "docs/planning/roadmaps/ROADMAP.md"
       ],
       "contract": {
         "backendEndpoints": [
@@ -425,7 +425,7 @@
         "Workbook:M14.7"
       ],
       "specFiles": [
-        "docs/ROADMAP.md"
+        "docs/planning/roadmaps/ROADMAP.md"
       ],
       "contract": {
         "backendEndpoints": [

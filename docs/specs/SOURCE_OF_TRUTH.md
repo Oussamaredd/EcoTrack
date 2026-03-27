@@ -39,5 +39,5 @@ Last updated: 2026-03-05
 1. Update use case contract or implementation.
 2. Update `cdc-traceability-matrix.dev.json` to reflect endpoints/tests/status.
 3. Run `npm run validate-specs`.
-4. Run required workspace checks from `AGENTS.md` matrix.
+4. Run the required workspace checks for the affected layer, and run the full root validation suite for cross-layer, env, or CI changes.
 5. Update this file only when governance rules change.

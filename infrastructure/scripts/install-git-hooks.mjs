@@ -7,6 +7,26 @@ const repoRoot = path.resolve(scriptDir, '..', '..');
 const hooksDir = path.join(repoRoot, '.githooks');
 const preCommitHook = path.join(hooksDir, 'pre-commit');
 const dotGitPath = path.join(repoRoot, '.git');
+const preCommitHookSource = `#!/bin/sh
+
+set -eu
+
+changed_files="$(git diff --cached --name-only --diff-filter=ACMRD | paste -sd, -)"
+
+if [ -z "$changed_files" ]; then
+  exit 0
+fi
+
+previous_version="$(
+  git show HEAD:package.json 2>/dev/null | node -e "let source=''; process.stdin.on('data', (chunk) => { source += chunk; }); process.stdin.on('end', () => { try { process.stdout.write(JSON.parse(source).version || ''); } catch { process.stdout.write(''); } });"
+)"
+
+next_version="$(
+  node -e "const fs = require('node:fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); process.stdout.write(pkg.version || '');"
+)"
+
+node ./infrastructure/scripts/validate-doc-sync.mjs --files "$changed_files" --previous-version "$previous_version" --next-version "$next_version"
+`;
 
 const resolveGitDirectory = () => {
   if (!fs.existsSync(dotGitPath)) {
@@ -47,6 +67,11 @@ if (!gitDirectory) {
 }
 
 fs.mkdirSync(hooksDir, { recursive: true });
+const currentPreCommitHook = fs.existsSync(preCommitHook) ? fs.readFileSync(preCommitHook, 'utf8') : '';
+
+if (currentPreCommitHook !== preCommitHookSource) {
+  fs.writeFileSync(preCommitHook, preCommitHookSource, 'utf8');
+}
 
 if (fs.existsSync(preCommitHook)) {
   try {
@@ -64,4 +89,4 @@ if (nextConfig !== currentConfig) {
   fs.writeFileSync(gitConfigPath, nextConfig, 'utf8');
 }
 
-console.log('install-git-hooks: configured local git hooks path to .githooks');
+console.log('install-git-hooks: generated local .githooks/pre-commit and configured core.hooksPath');

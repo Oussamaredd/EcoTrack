@@ -1,7 +1,7 @@
 # Environment Setup Guide
 
 This guide uses the canonical env architecture and strict frontend/backend separation.
-For the current runtime port and origin contract, use `docs/ENV.md` as the active source of truth.
+For the current runtime port and origin contract, use `docs/environment/reference/ENV.md` as the active source of truth.
 
 ## Workflow Mapping
 

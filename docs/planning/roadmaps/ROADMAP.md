@@ -6,8 +6,8 @@ Planning horizon: 8 completed delivery sprints, 3 follow-on completion sprints, 
 ## 1. Scope and Planning Basis
 
 ### Inputs Used
-- `C:\Users\sofca\Downloads\ECOTRACK_CDC_COMMUN_V2 .docx`
-- `C:\Users\sofca\Downloads\ECOTRACK_M2_DEV.xlsx`
+- `docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx`
+- `docs/specs/inputs/ECOTRACK_M2_DEV.xlsx`
 - `docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx`
 - `docs/specs/inputs/ECOTRACK_M2_DEV.xlsx`
 - Current repository implementation across `app`, `api`, `database`, `infrastructure`, and `docs`
@@ -127,7 +127,7 @@ Evidence:
 - `app/src/pages/Dashboard.tsx`
 - `app/src/components/dashboard/ManagerHeatmapPanel.tsx`
 - `api/src/modules/routes/planning.controller.ts`
-- `docs/features/Dashboard.md`
+- `docs/product/features/Dashboard.md`
 
 Checklist:
 - [x] Dashboard foundation exists.
@@ -821,9 +821,9 @@ Progress: Documentation now reflects the final status of the UI completion work 
 Depends on: Sprint 8, Sprint 9, and Sprint 10 feature tasks
 
 Primary files:
-- `docs/ROADMAP.md`
-- `docs/FRONTEND_ROUTES.md`
-- `docs/features/*.md`
+- `docs/planning/roadmaps/ROADMAP.md`
+- `docs/product/FRONTEND_ROUTES.md`
+- `docs/product/features/*.md`
 
 Checklist:
 - [x] Story statuses reflect actual implementation state.
@@ -848,7 +848,7 @@ npm run typecheck --workspace=ecotrack-app
 npm run test --workspace=ecotrack-app
 ```
 
-If a task crosses layers such as `app`, `api`, `database`, env, or CI, run the full monorepo validation set defined in `AGENTS.md`.
+If a task crosses layers such as `app`, `api`, `database`, env, or CI, run the full monorepo validation set: `npm run validate-env:all`, `npm run lint`, `npm run typecheck`, and `npm run test`.
 
 ## 6. WebSocket Rollout Phase
 
@@ -977,8 +977,8 @@ Progress: The documentation set now describes the final transport order and roll
 Depends on: `WS-RT-001`, `WS-RT-002`, `WS-RT-003`, `WS-RT-004`, `WS-QA-001`
 
 Primary files:
-- `docs/ROADMAP.md`
-- `docs/features/Dashboard.md`
+- `docs/planning/roadmaps/ROADMAP.md`
+- `docs/product/features/Dashboard.md`
 - `docs/specs/*.md`
 
 Checklist:

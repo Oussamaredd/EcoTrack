@@ -1,62 +1,69 @@
 # Project Documentation
 
-Documentation is split by purpose so day-to-day navigation stays predictable.
+Documentation is organized by document type and responsibility so architecture, API docs, setup guides, reference material, roadmaps, plans, tasks, runbooks, and checklists are easy to distinguish.
 
 ## Start Here
 - `../README.md` - repository quick start and canonical command surface
 - `../LICENSE` - canonical public-use terms and attribution notice for the repository
 - `../CHANGELOG.md` - canonical release history from the documented baseline forward
-- `ROADMAP.md` - development roadmap, sprint status, and canonical progress tracking
-- `ROADMAP.md` section "UI Completion Execution Plan (Live)" - agent-dispatch sprint plan for remaining UI gaps
-- `ADR-0002_FRONTEND_STATE_ARCHITECTURE.md` - accepted state-management boundary for shared frontend workflow state
-- `ARCHITECTURE_OVERVIEW.md` - layer boundaries, architecture contract, and Mermaid system views
-- `ENVIRONMENT_SETUP.md` - local/Docker/deploy environment setup
-- `RELEASE_VERSIONING.md` - semantic versioning and release bookkeeping process
-- `CODE_ANNOTATION_CONVENTIONS.md` - TSDoc/JSDoc expectations for shared and exported code
+- `architecture/ARCHITECTURE_OVERVIEW.md` - five-layer architecture contract and system views
+- `planning/roadmaps/ROADMAP.md` - main development roadmap, sprint status, and canonical progress tracking
+- `planning/roadmaps/PLATFORM_MICRO_ROADMAP.md` - scoped platform and DevOps roadmap companion
+- `environment/setup/ENVIRONMENT_SETUP.md` - local, Docker, and deploy setup flow
+- `governance/RELEASE_VERSIONING.md` - semantic versioning and release bookkeeping process
 
-## Environment and Configuration
-- `ENV.md` - current source of truth for env rules, browser origins, and the port contract
-- `ENV_INVENTORY.md` - env variable inventory reference snapshot
-- `ENV_CONFLICTS.md` - historical conflict matrix and normalization notes
-- `ENV_CANONICAL_DECISIONS.md` - decision record behind the current canonical env model
-- `SECURITY.md` - secret management and leakage safeguards
-- `DB_SCHEMA_NAMESPACE_PLAN.md` - approved namespace migration and additive-entity design for the database
-- `DB_SCHEMA_NAMESPACE_STATUS.md` - preserved implementation status for the DB namespace rollout, including done, partial, and open items
+## Architecture
+- `architecture/ARCHITECTURE_OVERVIEW.md` - layer boundaries, architecture contract, and Mermaid system views
+- `architecture/ADR-0002_FRONTEND_STATE_ARCHITECTURE.md` - accepted frontend state-management decision record
 
-## Runtime and Operations
-- `DOCKER_SETUP.md` - compose workflow and expected service states
-- `ELK.md` - observability stack notes
-- `runbooks/EXTENDED_QUALITY_GATES.md` - K6, Stryker, Percy, and Lighthouse execution paths for extended CI quality lanes
-- `runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md` - phased deployment plan for Cloudflare Pages, Render, and Neon
-- `runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` - current Neon Phase 3 baseline, validated resources, and direct-connection workflow
-- `.github/workflows/CI.yaml` - canonical `CI Integration` workflow for PR/main with path-aware lanes, a required Semgrep SAST job for `api/src` and `database/schema`, `full_run` override, manual `run_extended_quality` lanes, Sonar scan/gate, and a final required aggregator job
-- `npm run ci:release:manifest`, `npm run ci:release:deploy-hooks`, and `npm run ci:release:smoke` - repo-owned release helpers used by the deployment workflow
-- `.github/workflows/docs-pages.yml` - docs-only GitHub Pages publishing workflow using `docs/` as the site source
-- SonarCloud CI scanner lane in `CI.yaml` runs only when `SONAR_TOKEN` is configured and Sonar automatic analysis is disabled for the project
-- Sonar coverage gate currently excludes `database/**`, selected frontend auth/bootstrap routing files, and selected API passive/bootstrap files (for example DTO/module/type-only wiring and a small set of tracing/worker bootstrap files) pending dedicated coverage instrumentation alignment in the broader app/api source set
-- Preflight now enforces `node infrastructure/scripts/validate-sonar-coverage-alignment.mjs`, which compares the full branch diff against workspace Vitest coverage includes and `sonar.coverage.exclusions`; each changed `app/src/**` or `api/src/**` source file must live in exactly one lane
-- `.github/workflows/CD.yml` - canonical `CD Deployment` workflow with environment-gated release automation, hosted smoke checks, and release evidence artifacts
-- `runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md` - Sprint 6 accessibility/responsive audit baseline
-- `runbooks/CORS_ORIGIN_MANAGEMENT.md` - CORS origin registry, rollout, and operations policy
-- `runbooks/DEMO_READINESS.md` - checklist and script for demo preparation
-- `runbooks/OAUTH_CALLBACK_REMEDIATION.md` - historical OAuth callback remediation record plus current troubleshooting notes
+## API And Product
+- `api/API_DOCUMENTATION.md` - API contract and examples
+- `api/openapi/` - OpenAPI reference specs for roadmap phases
+- `product/FRONTEND_ROUTES.md` - route map
+- `product/features/` - feature-level behavior notes
+- `product/features/DesignSystem.md` - cross-app UI primitive contract and reuse inventory
+- `product/guides/` - end-user quick guides for citizen, agent, and manager roles
 
-## Product and API
-- `API_DOCUMENTATION.md` - API contract and examples
-- `FRONTEND_ROUTES.md` - route map
-- `openapi/` - OpenAPI reference specs for roadmap phases
-- `guides/` - end-user quick guides (citizen/agent/manager)
-- `features/` - feature-level behavior notes
-- `features/DesignSystem.md` - cross-app UI primitive contract and reuse inventory
-- `specs/` - source requirement inputs and planning references
-- `specs/mobile-platform-integration-contract.md` - mobile/client integration contract for the future Expo layer
-- `specs/mobile-layer-rollout-plan.md` - architecture-first rollout plan for adapting `poemapp` into EcoTrack
+## Environment Reference
+- `environment/reference/ENV.md` - current source of truth for env rules, browser origins, and the port contract
+- `environment/reference/ENV_INVENTORY.md` - env variable inventory reference snapshot
+- `environment/reference/ENV_CONFLICTS.md` - historical conflict matrix and normalization notes
+- `environment/reference/ENV_CANONICAL_DECISIONS.md` - decision history behind the canonical env model
 
-## Local Source Inputs
-- `ECOTRACK_CDC_COMMUN_V2 .docx` and `ECOTRACK_M2_DEV.xlsx` are local working inputs used to derive tracked documentation.
-- Keep decisions and implementation-ready outputs in tracked Markdown files such as `DB_SCHEMA_NAMESPACE_PLAN.md`.
-- `PR_TASKS.md` - active deployment rollout tracker showing what is done in planning and what remains open for implementation
-- Keep `PR_TASKS.md` only while its checklist still has open items; remove it after the checklist is fully closed.
+## Setup Guides
+- `environment/setup/ENVIRONMENT_SETUP.md` - local, Docker, and deploy environment setup
+- `environment/setup/DOCKER_SETUP.md` - compose workflow and expected service states
+
+## Planning
+- `planning/roadmaps/ROADMAP.md` - strategic and sprint roadmap
+- `planning/roadmaps/PLATFORM_MICRO_ROADMAP.md` - platform lane roadmap
+- `planning/plans/landing-plan.md` - scoped landing-page execution plan
+- `planning/tasks/PR_TASKS.md` - active deployment rollout task tracker
+
+## Governance And Standards
+- `governance/RELEASE_VERSIONING.md` - release bookkeeping and versioning policy
+- `governance/CODE_ANNOTATION_CONVENTIONS.md` - TSDoc and JSDoc expectations for shared and exported code
+- `governance/SECURITY.md` - secret-management and leakage safeguards
+- `governance/checklists/DOD_CHECKLIST.md` - definition-of-done and quality checklist
+
+## Data And Operations
+- `data/DB_SCHEMA_NAMESPACE_PLAN.md` - approved namespace migration and additive-entity design
+- `data/DB_SCHEMA_NAMESPACE_STATUS.md` - preserved implementation status for the DB namespace rollout
+- `operations/observability/ELK.md` - observability stack notes
+- `operations/runbooks/` - incident, rollout, quality, and platform runbooks
+- `operations/runbooks/EXTENDED_QUALITY_GATES.md` - K6, Stryker, Percy, and Lighthouse execution paths
+- `operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md` - phased Cloudflare Pages, Render, and Neon rollout plan
+- `operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` - current managed Postgres baseline
+
+## Specs And Inputs
+- `specs/README.md` - entry point for source specs and planning inputs
+- `specs/SOURCE_OF_TRUTH.md` - executable-spec governance, scope, and update workflow
+- `specs/source-of-truth.dev.json` - machine-readable source-of-truth contract
+- `specs/cdc-traceability-matrix.dev.json` - machine-readable Development-specialty CDC matrix
+- `specs/cdc-traceability-matrix.dev.md` - human-readable Development-specialty CDC matrix
+- `specs/mobile-platform-integration-contract.md` - platform and mobile integration contract
+- `specs/mobile-layer-rollout-plan.md` - architecture-first mobile rollout plan
+- `specs/inputs/` - canonical source documents used by specs and traceability and kept local-only via Git ignore rules
 
 ## Historical Baselines
 - `baselines/` - captured validation outputs used during remediation phases
@@ -119,7 +126,7 @@ npm run build --workspace=ecotrack-app
 Frontend bundle budgets are enforced during `ecotrack-app` builds via `app/scripts/check-bundle-size.mjs`.
 Use `ECOTRACK_ENTRY_CHUNK_BUDGET_KB` and `ECOTRACK_LOGO_BUDGET_KB` to override default limits in CI or local runs.
 UI theme contract checks are enforced during `ecotrack-app` lint via `app/scripts/validate-theme-contract.mjs`.
-Doc-sync checks are enforced via `npm run validate-doc-sync` and the managed `.githooks/pre-commit` hook that repo-root installs configure automatically through the root `prepare` script.
+Doc-sync checks are enforced via `npm run validate-doc-sync` and the managed local `pre-commit` hook that repo-root installs generate under `.githooks/` through the root `prepare` script. `.githooks/` is ignored and remains local-only.
 
 Database:
 ```bash
@@ -141,5 +148,7 @@ npm run infra:down
 ## Maintenance Rules
 - Keep docs aligned with the current command surface and env policies.
 - Prefer updating existing pages over creating duplicates.
-- Keep incident-specific execution plans in `docs/runbooks/`.
+- Keep category boundaries clear: roadmaps, plans, tasks, setup guides, reference docs, runbooks, and checklists should stay in their dedicated folders.
+- Keep incident-specific execution plans in `docs/operations/runbooks/`.
+- Keep local-only raw source artifacts only at their canonical `docs/specs/inputs/` paths and out of Git.
 - Keep disposable local and CI artifacts under `tmp/`; avoid root-level timestamped temp folders and root `temp-*.log` files.

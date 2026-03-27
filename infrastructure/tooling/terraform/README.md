@@ -136,4 +136,4 @@ terraform validate
   the values accepted by the active Render provider for the imported service.
 - The supported deployment path remains the hosted Cloudflare Pages + Render +
   Neon baseline documented in
-  `docs/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md`.
+  `docs/operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md`.

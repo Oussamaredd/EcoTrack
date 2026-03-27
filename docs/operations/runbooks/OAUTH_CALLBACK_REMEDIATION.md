@@ -1,6 +1,6 @@
 # OAuth Callback Failure (Port/Path Mismatch) Remediation
 
-This runbook records a resolved incident and the remediation path that led to the current contract. For the steady-state rules, use the Port Contract in `README.md` and the env/OAuth contract in `docs/ENV.md`. Use this file when troubleshooting a regression or auditing why the current rules exist.
+This runbook records a resolved incident and the remediation path that led to the current contract. For the steady-state rules, use the Port Contract in `README.md` and the env/OAuth contract in `docs/environment/reference/ENV.md`. Use this file when troubleshooting a regression or auditing why the current rules exist.
 
 ## Context
 Google OAuth login initiation works, but callback completion fails in local/dev flows.
@@ -133,9 +133,9 @@ npm run test --workspace=ecotrack-api
 - [x] Goal: Eliminate operator error during OAuth setup.
 - [x] Scope (files expected):
   - `README.md`
-  - `docs/ENV.md`
-  - `docs/ENVIRONMENT_SETUP.md`
-  - `docs/API_DOCUMENTATION.md`
+  - `docs/environment/reference/ENV.md`
+  - `docs/environment/setup/ENVIRONMENT_SETUP.md`
+  - `docs/api/API_DOCUMENTATION.md`
 - [x] Step: Document exact callback URI(s) per workflow.
 - [x] Step: Document that Google Console Authorized redirect URI must exactly match runtime callback URI (scheme + host + port + path).
 - [x] Step: Remove outdated examples that omit `/api` or use the legacy non-canonical path.

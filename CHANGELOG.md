@@ -12,9 +12,9 @@ Historical work completed before 2026-03-11 was not backfilled release-by-releas
 - An in-repo `mobile` Expo workspace with live auth/session restore, citizen reporting/history/challenges flows, agent tour execution actions, manager report export actions, secure storage, media/location adapters, and mobile-specific tests.
 - Mobile API base helper scripts for LAN, Android emulator, iOS simulator, and tunnel-based Expo startup.
 - Repository-local git hook installation plus automated doc-sync validation support for commits and CI.
-- C4-style Mermaid architecture diagrams in `docs/ARCHITECTURE_OVERVIEW.md`.
-- A code annotation convention guide in `docs/CODE_ANNOTATION_CONVENTIONS.md`.
-- A release and versioning guide in `docs/RELEASE_VERSIONING.md`.
+- C4-style Mermaid architecture diagrams in `docs/architecture/ARCHITECTURE_OVERVIEW.md`.
+- A code annotation convention guide in `docs/governance/CODE_ANNOTATION_CONVENTIONS.md`.
+- A release and versioning guide in `docs/governance/RELEASE_VERSIONING.md`.
 - Additional API and app regression coverage around citizen reporting, manager planning, permissions, tickets, and agent tour behavior.
 - A root `LICENSE` file with the MIT License naming Oussama Radouane as the EcoTrack copyright holder.
 

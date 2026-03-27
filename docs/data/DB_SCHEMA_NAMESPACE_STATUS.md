@@ -4,11 +4,11 @@ Last updated: 2026-03-24
 
 ## Purpose
 
-This document preserves the implementation status that previously lived in `docs/PR_TASKS.md` before `PR_TASKS.md` was repurposed for the active deployment-platform rollout.
+This document preserves the implementation status that previously lived in `docs/planning/tasks/PR_TASKS.md` before that task tracker was repurposed for the active deployment-platform rollout.
 
 Use this file together with:
 
-- `docs/DB_SCHEMA_NAMESPACE_PLAN.md` for the approved target model
+- `docs/data/DB_SCHEMA_NAMESPACE_PLAN.md` for the approved target model
 - repository history for the exact implementation diffs
 
 ## Current Readiness Status
@@ -71,7 +71,7 @@ Status summary:
 
 Checklist:
 
-- [x] Treat `docs/DB_SCHEMA_NAMESPACE_PLAN.md` as the approved namespace design baseline.
+- [x] Treat `docs/data/DB_SCHEMA_NAMESPACE_PLAN.md` as the approved namespace design baseline.
 - [x] Confirm the original 22-table inventory from the accepted pre-namespace snapshot.
 - [ ] Confirm no external consumers depend on hardcoded `public.<table>` names, or explicitly list the ones that do.
 - [ ] Capture a dev database backup or restore point before any schema move migration is applied.
@@ -269,7 +269,7 @@ Status summary:
 Checklist:
 
 - [ ] Worktree was clean or intentionally isolated before schema implementation started.
-- [x] Namespace refactor matches `docs/DB_SCHEMA_NAMESPACE_PLAN.md`.
+- [x] Namespace refactor matches `docs/data/DB_SCHEMA_NAMESPACE_PLAN.md`.
 - [x] Required new in-scope tables are present.
 - [x] No out-of-scope DW, ETL, ML, or cyber artifacts were added.
 - [x] Database migration path is hand-authored where needed and reviewable.

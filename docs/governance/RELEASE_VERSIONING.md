@@ -35,7 +35,7 @@ Before a public GitHub release or main-branch push, keep these root artifacts al
 
 ## Release Procedure
 
-1. Run the required validations for the changed paths from `AGENTS.md`.
+1. Run the required validations for the changed paths; use scoped workspace checks for single-layer changes and the full root suite (`npm run validate-env:all`, `npm run lint`, `npm run typecheck`, `npm run test`) for cross-layer, env, or CI changes.
 2. Confirm the public repo legal baseline (`LICENSE`, `README.md`, root `package.json`, `CHANGELOG.md`) is current.
 3. Move the relevant `Unreleased` notes in `CHANGELOG.md` into a new dated version section.
 4. Bump the root version in `package.json`.

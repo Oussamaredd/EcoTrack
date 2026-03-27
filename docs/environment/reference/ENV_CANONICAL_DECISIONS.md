@@ -3,7 +3,7 @@
 Date: 2026-02-11
 Status: Approved
 
-This file records the decision history behind the current env model. For active runtime rules and the live port contract, use `docs/ENV.md`.
+This file records the decision history behind the current env model. For active runtime rules and the live port contract, use `docs/environment/reference/ENV.md`.
 
 ## 1) Canonical Keys
 

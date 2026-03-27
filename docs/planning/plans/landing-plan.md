@@ -40,7 +40,7 @@
 5. Existing `LandingPage` also hard-redirects when authenticated:
    - `app/src/pages/LandingPage.tsx:10` uses `window.location.href = '/dashboard'`.
 6. Docs drift exists:
-   - `docs/FRONTEND_ROUTES.md:16` says `/` is public landing, but runtime behavior differs.
+   - `docs/product/FRONTEND_ROUTES.md:16` says `/` is public landing, but runtime behavior differs.
 
 ### Additional technical constraints observed
 - shadcn baseline appears missing:
@@ -248,7 +248,7 @@ Apply to landing root in this order:
 - Add deprecation guidance for migrated routes:
   - Emit one-time `console.warn` in development when a legacy route is used (include old path and new path).
   - Optionally show a non-blocking in-app notice after redirect ("Bookmark updated: use /app/...").
-  - Track planned removal window in docs (`docs/FRONTEND_ROUTES.md`) so bookmark updates can be communicated.
+  - Track planned removal window in docs (`docs/product/FRONTEND_ROUTES.md`) so bookmark updates can be communicated.
 
 ## Component/File Structure Plan
 
@@ -390,7 +390,7 @@ Apply to landing root in this order:
 - [x] Run `npm run lint --workspace=ecotrack-app`.
 - [x] Run `npm run test --workspace=ecotrack-app`.
 - [x] Run `npm run build --workspace=ecotrack-app`.
-- [x] Update `docs/FRONTEND_ROUTES.md` with final public/auth/protected route map.
+- [x] Update `docs/product/FRONTEND_ROUTES.md` with final public/auth/protected route map.
 
 ## Acceptance Criteria
 - Running locally opens marketing landing at `/` when unauthenticated.

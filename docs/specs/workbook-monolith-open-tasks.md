@@ -389,7 +389,7 @@ Status legend:
 - Monolith adaptation: Implement in `app` with responsive/accessibility constraints and stable API consumption from the monolith backend.
 - Lane: `Dev App`
 - Status: `DONE`
-- Completion note: Delivered with `docs/ADR-0002_FRONTEND_STATE_ARCHITECTURE.md`, centralized query keys and invalidation helpers in `app/src/state`, and shared auth/shell/planning/dashboard/notifications slices wired into the app provider tree.
+- Completion note: Delivered with `docs/architecture/ADR-0002_FRONTEND_STATE_ARCHITECTURE.md`, centralized query keys and invalidation helpers in `app/src/state`, and shared auth/shell/planning/dashboard/notifications slices wired into the app provider tree.
 
 ### M5.7 - Développement de la Vue Carte Thermique (Heatmap)
 
@@ -443,7 +443,7 @@ Status legend:
 - Monolith adaptation: Implement in `app` with responsive/accessibility constraints and stable API consumption from the monolith backend.
 - Lane: `Dev App`
 - Status: `DONE`
-- Completion note: Delivered as a cross-app contract documented in `docs/features/DesignSystem.md`, with reuse demonstrated across web dashboard/planning and mobile settings/history/report flows.
+- Completion note: Delivered as a cross-app contract documented in `docs/product/features/DesignSystem.md`, with reuse demonstrated across web dashboard/planning and mobile settings/history/report flows.
 
 ## Module M6
 
@@ -875,7 +875,7 @@ Status legend:
 - Monolith adaptation: Implement centralized observability for monolith runtime (logs/metrics/traces/errors) with dashboards and operator alerts.
 - Lane: `Dev Platform`
 - Status: `DONE`
-- Completion note: Delivered through `api/src/modules/monitoring/**`, `infrastructure/tooling/monitoring/**`, `infrastructure/docker-compose.yml`, `docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md`, and the deployment/env documentation updates. The supported path now includes API Prometheus metrics, Grafana dashboards, Alertmanager routing, release smoke validation, documented ownership, and explicit retention/tuning expectations for the single deployable monolith.
+- Completion note: Delivered through `api/src/modules/monitoring/**`, `infrastructure/tooling/monitoring/**`, `infrastructure/docker-compose.yml`, `docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md`, and the deployment/env documentation updates. The supported path now includes API Prometheus metrics, Grafana dashboards, Alertmanager routing, release smoke validation, documented ownership, and explicit retention/tuning expectations for the single deployable monolith.
 
 ### M9.10 - Logging Centralisé ELK Stack (Elasticsearch + Logstash + Kibana)
 
@@ -884,7 +884,7 @@ Status legend:
 - Monolith adaptation: Adapt CI/CD and ops work to single-deployable monolith delivery before multi-cluster evolution.
 - Lane: `Dev Platform`
 - Status: `DONE`
-- Completion note: Delivered through structured API log shipping in `api/src/app.module.ts` and `api/src/observability/logstash-stream.ts`, the `obs` ELK stack in `infrastructure/docker-compose.yml`, and the updated `docs/ELK.md` production-path guidance. The baseline now defines searchable release-aware logs, supported shipping configuration, retention expectations, validation steps, and ownership for centralized logs on the monolith path.
+- Completion note: Delivered through structured API log shipping in `api/src/app.module.ts` and `api/src/observability/logstash-stream.ts`, the `obs` ELK stack in `infrastructure/docker-compose.yml`, and the updated `docs/operations/observability/ELK.md` production-path guidance. The baseline now defines searchable release-aware logs, supported shipping configuration, retention expectations, validation steps, and ownership for centralized logs on the monolith path.
 
 ## Module M10
 
@@ -1197,7 +1197,7 @@ Status legend:
 - Monolith adaptation: Document and enforce monolith architecture/process standards in versioned project docs.
 - Lane: `Dev Docs`
 - Status: `DONE`
-- Completion note: Delivered in `docs/ARCHITECTURE_OVERVIEW.md` with Mermaid system, container, and backend flow views for the modular-monolith architecture.
+- Completion note: Delivered in `docs/architecture/ARCHITECTURE_OVERVIEW.md` with Mermaid system, container, and backend flow views for the modular-monolith architecture.
 
 ### M14.4 - Code Comments JSDoc TSDoc Annotations Types
 
@@ -1206,7 +1206,7 @@ Status legend:
 - Monolith adaptation: Document and enforce monolith architecture/process standards in versioned project docs.
 - Lane: `Dev Docs`
 - Status: `DONE`
-- Completion note: Delivered in `docs/CODE_ANNOTATION_CONVENTIONS.md` and anchored by representative TSDoc usage in shared helper files under `api`, `app`, and `mobile`.
+- Completion note: Delivered in `docs/governance/CODE_ANNOTATION_CONVENTIONS.md` and anchored by representative TSDoc usage in shared helper files under `api`, `app`, and `mobile`.
 
 ### M14.6 - Changelog Releases Versioning Semantic Git Tags
 
@@ -1215,4 +1215,4 @@ Status legend:
 - Monolith adaptation: Document and enforce monolith architecture/process standards in versioned project docs.
 - Lane: `Dev Docs`
 - Status: `DONE`
-- Completion note: Delivered through the root `CHANGELOG.md`, `docs/RELEASE_VERSIONING.md`, and doc index updates that define the repository release bookkeeping path.
+- Completion note: Delivered through the root `CHANGELOG.md`, `docs/governance/RELEASE_VERSIONING.md`, and doc index updates that define the repository release bookkeeping path.

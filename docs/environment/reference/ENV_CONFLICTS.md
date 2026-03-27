@@ -2,7 +2,7 @@
 
 Last updated: 2026-03-05
 
-This page is a historical normalization record. The active runtime policy lives in `docs/ENV.md`; use this file to understand prior conflicts, deprecated aliases, and why certain cleanup rules exist.
+This page is a historical normalization record. The active runtime policy lives in `docs/environment/reference/ENV.md`; use this file to understand prior conflicts, deprecated aliases, and why certain cleanup rules exist.
 
 ## Conflict Matrix
 
