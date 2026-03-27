@@ -2,7 +2,7 @@
 
 Last updated: 2026-03-26
 
-This inventory is a reference snapshot, not the day-to-day policy document. For the active runtime contract, use `docs/ENV.md`.
+This inventory is a reference snapshot, not the day-to-day policy document. For the active runtime contract, use `docs/environment/reference/ENV.md`.
 
 ## Discovery Scope
 
@@ -178,6 +178,6 @@ Visibility legend:
 ## Notes
 
 - No secret values are included in this inventory; this file is key-only.
-- Canonical naming and deprecation decisions are finalized in `docs/ENV_CANONICAL_DECISIONS.md`.
-- Local browser traffic should follow the Port Contract in `docs/ENV.md` instead of inferring browser origins from `API_PORT`.
+- Canonical naming and deprecation decisions are finalized in `docs/environment/reference/ENV_CANONICAL_DECISIONS.md`.
+- Local browser traffic should follow the Port Contract in `docs/environment/reference/ENV.md` instead of inferring browser origins from `API_PORT`.
 

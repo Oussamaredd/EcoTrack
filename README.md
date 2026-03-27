@@ -71,7 +71,7 @@ Mobile API base helpers:
 - `npm run mobile:env:ios-simulator` writes the iOS simulator API URL into `mobile/.env.local`.
 - `npm run mobile:start:tunnel` starts Expo with a tunnelled JS bundle while still requiring a reachable backend API origin.
 
-Repo-root installs run a `prepare` step that configures the repository-local git hooks path to `.githooks`, so doc-sync checks run automatically on `git commit`. If hooks ever need to be reinstalled manually, run `npm run hooks:install`.
+Repo-root installs run a `prepare` step that configures the repository-local git hooks path to `.githooks` and generates the managed local `pre-commit` hook there, so doc-sync checks run automatically on `git commit`. `.githooks/` is intentionally ignored and stays local-only. If hooks ever need to be reinstalled manually, run `npm run hooks:install`.
 
 Install contract:
 
@@ -227,7 +227,7 @@ Database name policy: committed connection-string templates target `ticketdb`.
 
 ## Architecture Contract
 
-See `docs/ARCHITECTURE_OVERVIEW.md` for the five-layer contract and Mermaid system/container/component views.
+See `docs/architecture/ARCHITECTURE_OVERVIEW.md` for the five-layer contract and Mermaid system/container/component views.
 
 Mobile planning references:
 
@@ -241,10 +241,10 @@ See `docs/README.md` for organized documentation by domain (setup, env, operatio
 Release and contributor references:
 
 - `CHANGELOG.md`
-- `docs/RELEASE_VERSIONING.md`
-- `docs/CODE_ANNOTATION_CONVENTIONS.md`
-- `docs/runbooks/EXTENDED_QUALITY_GATES.md`
-- `.githooks/pre-commit`
+- `docs/governance/RELEASE_VERSIONING.md`
+- `docs/governance/CODE_ANNOTATION_CONVENTIONS.md`
+- `docs/operations/runbooks/EXTENDED_QUALITY_GATES.md`
+- `npm run hooks:install` and `infrastructure/scripts/install-git-hooks.mjs` for the managed local pre-commit hook
 
 ## CI/CD
 
@@ -252,7 +252,7 @@ Release and contributor references:
 - `CI.yaml` image scanning is vulnerability-only (`--scanners vuln`) with an explicit timeout and a restored/primed Trivy DB cache before the image scans run; keep runtime image bases patched so the `HIGH`/`CRITICAL` Trivy gate stays actionable instead of failing on stale base packages or secret-scan noise.
 - `CD.yml`: canonical `CD Deployment` workflow; `main` auto-promotes `development`, `workflow_dispatch` promotes `development|staging|production`, deploy jobs bind to the matching GitHub Environments (`development`, `staging`, `production`), and each release run writes manifest/deploy-hook/smoke evidence artifacts plus a rollback-by-ref summary. GitHub Pages app deployment is retired and reserved for future docs-only follow-up work
 - Phase-4 readiness is preserved through optional CI variables (`CI_ENABLE_*`) and manual extended-quality artifact/report lanes that can be promoted to blocking checks later.
-- The extended-quality pack now produces repo-native K6 summaries, focused Stryker reports, Percy snapshot runs, and filesystem Lighthouse reports; see `docs/runbooks/EXTENDED_QUALITY_GATES.md`.
+- The extended-quality pack now produces repo-native K6 summaries, focused Stryker reports, Percy snapshot runs, and filesystem Lighthouse reports; see `docs/operations/runbooks/EXTENDED_QUALITY_GATES.md`.
 
 ## Ownership and License
 

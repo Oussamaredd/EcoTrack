@@ -10,7 +10,7 @@ groups:
         annotations:
           summary: "EcoTrack API metrics target is down"
           description: "Prometheus cannot scrape the EcoTrack API metrics endpoint for more than 1 minute."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackApiP95LatencyHigh
         expr: histogram_quantile(0.95, sum by (le) (rate(ecotrack_http_request_duration_ms_bucket[5m]))) > 500
@@ -21,7 +21,7 @@ groups:
         annotations:
           summary: "API latency p95 is above 500ms"
           description: "The 95th percentile API latency has stayed above 500ms for 10 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackApi5xxRateHigh
         expr: sum(rate(ecotrack_http_request_errors_total{status_class="5xx"}[5m])) > 0.05
@@ -32,7 +32,7 @@ groups:
         annotations:
           summary: "High 5xx error rate on the API"
           description: "The EcoTrack API is returning more than 0.05 server errors per second for 10 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackObservabilitySnapshotDown
         expr: ecotrack_observability_snapshot_up == 0
@@ -43,7 +43,7 @@ groups:
         annotations:
           summary: "DB-backed observability snapshot collection is failing"
           description: "The monitoring service cannot collect DB-backed operational gauges."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
   - name: ecotrack.iot.pipeline
     rules:
@@ -56,7 +56,7 @@ groups:
         annotations:
           summary: "IoT ingestion backpressure is active"
           description: "The staged-ingestion backlog crossed the configured backpressure threshold and new requests are being rejected."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackIotIngestionBacklogHigh
         expr: ecotrack_iot_ingestion_backlog_total > 5000
@@ -67,7 +67,7 @@ groups:
         annotations:
           summary: "IoT staged-event backlog is high"
           description: "Pending, retry, or processing staged ingestion events exceeded 5000 for 10 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackIotIngestionQueueAgeHigh
         expr: ecotrack_iot_ingestion_oldest_pending_age_ms > 300000
@@ -78,7 +78,7 @@ groups:
         annotations:
           summary: "Oldest staged ingestion event is stale"
           description: "The oldest runnable staged ingestion event has been waiting for more than 5 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackIotIngestionFailuresPresent
         expr: ecotrack_iot_ingestion_events{status="failed"} > 0
@@ -89,7 +89,7 @@ groups:
         annotations:
           summary: "Failed staged ingestion events are present"
           description: "One or more staged ingestion events have exhausted retries and remain failed."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackValidatedDeliveryBacklogHigh
         expr: ecotrack_iot_validated_delivery_backlog_total > 5000
@@ -100,7 +100,7 @@ groups:
         annotations:
           summary: "Validated delivery backlog is high"
           description: "Pending, retry, or processing validated-event deliveries exceeded 5000 for 10 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackValidatedDeliveryQueueAgeHigh
         expr: ecotrack_iot_validated_delivery_oldest_pending_age_ms > 300000
@@ -111,7 +111,7 @@ groups:
         annotations:
           summary: "Oldest validated-event delivery is stale"
           description: "The oldest runnable validated-event delivery has been waiting for more than 5 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackValidatedDeliveryFailuresPresent
         expr: ecotrack_iot_validated_delivery_events{status="failed"} > 0
@@ -122,7 +122,7 @@ groups:
         annotations:
           summary: "Failed validated-event deliveries are present"
           description: "One or more validated-event deliveries have exhausted retries and remain failed."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackEventConnectorBacklogHigh
         expr: ecotrack_event_connector_backlog_total > 1000
@@ -133,7 +133,7 @@ groups:
         annotations:
           summary: "Event connector backlog is high"
           description: "Pending, retry, or processing event-connector exports exceeded 1000 for 10 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackEventConnectorFailuresPresent
         expr: ecotrack_event_connector_exports{status="failed"} > 0
@@ -144,7 +144,7 @@ groups:
         annotations:
           summary: "Failed event connector exports are present"
           description: "One or more event-connector exports have exhausted retries and remain failed."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackInternalConsumerLagHigh
         expr: ecotrack_internal_consumer_lag_oldest_pending_age_ms > 300000
@@ -155,7 +155,7 @@ groups:
         annotations:
           summary: "Internal consumer lag is above 5 minutes"
           description: "One or more internal validated-event consumers have had pending work waiting longer than 5 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackInternalConsumerImbalanceHigh
         expr: ecotrack_internal_consumer_lag_messages > (avg(ecotrack_internal_consumer_lag_messages) * 2) and ecotrack_internal_consumer_lag_messages > 250
@@ -166,7 +166,7 @@ groups:
         annotations:
           summary: "One internal consumer is falling materially behind"
           description: "A validated-event consumer backlog is more than double the peer average and above 250 queued deliveries."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackInternalConsumerShardSkewHigh
         expr: ecotrack_internal_consumer_lag_shard_skew > 250
@@ -177,7 +177,7 @@ groups:
         annotations:
           summary: "Internal consumer shard skew is high"
           description: "One validated-event consumer has materially uneven shard backlog distribution."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
   - name: ecotrack.operational.state
     rules:
@@ -190,7 +190,7 @@ groups:
         annotations:
           summary: "Critical-fill containers detected"
           description: "At least one container is in critical fill state for more than 5 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackContainerMaxFillAboveNinety
         expr: ecotrack_containers_max_fill_percent > 90
@@ -201,7 +201,7 @@ groups:
         annotations:
           summary: "Container fill level above 90 percent"
           description: "The highest observed container fill level is above 90 percent."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackCriticalAlertEventsOpen
         expr: ecotrack_alert_events_open_total{severity="critical"} > 0
@@ -212,7 +212,7 @@ groups:
         annotations:
           summary: "Critical alert events remain open"
           description: "There are persisted critical alert events that remain open."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
   - name: ecotrack.frontend.realtime
     rules:
@@ -225,7 +225,7 @@ groups:
         annotations:
           summary: "High frontend error ingestion rate"
           description: "Frontend error ingestion rate is above 0.2 events per second for 10 minutes."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: RealtimeWebSocketAuthFailuresHigh
         expr: increase(ecotrack_realtime_connection_events_total{transport="ws",action="auth_failure"}[10m]) > 20
@@ -236,7 +236,7 @@ groups:
         annotations:
           summary: "High WebSocket auth failure rate"
           description: "WebSocket realtime auth failures exceeded 20 in a 10-minute window."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
   - name: ecotrack.security.baseline
     rules:
@@ -249,7 +249,7 @@ groups:
         annotations:
           summary: "403 authorization denials are spiking"
           description: "Authorization-denied responses exceeded 20 in a rolling 10-minute window."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
 
       - alert: EcoTrackLoginFailuresHigh
         expr: increase(ecotrack_security_signals_total{signal="login_failure"}[10m]) > 10
@@ -260,4 +260,4 @@ groups:
         annotations:
           summary: "Login failures are elevated"
           description: "Derived login-failure signals exceeded 10 in a 10-minute window."
-          runbook: "docs/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"
+          runbook: "docs/operations/runbooks/IOT_EVENT_REPLAY_AND_ALERTING.md"

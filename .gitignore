@@ -21,8 +21,7 @@ dist-ssr
 .npm-cache/
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+.vscode/
 .idea
 .DS_Store
 *.suo
@@ -33,6 +32,10 @@ dist-ssr
 
 # Codex local workspace files
 .codex/
+AGENTS.md
+
+# Managed local git hooks
+.githooks/
 
 # Environment files
 .env
@@ -87,5 +90,5 @@ temp_dev_*
 *.pid
 
 # Local planning source artifacts
-docs/ECOTRACK_CDC_COMMUN_V2 .docx
-docs/ECOTRACK_M2_DEV.xlsx
+docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx
+docs/specs/inputs/ECOTRACK_M2_DEV.xlsx

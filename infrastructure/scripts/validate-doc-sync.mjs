@@ -173,12 +173,12 @@ const rules = [
         file === 'app/src/main.tsx' ||
         file === 'app/nginx.conf'),
     docMatcher: (file) =>
-      file === 'docs/FRONTEND_ROUTES.md' ||
-      pathStartsWith(file, 'docs/features') ||
-      file === 'docs/ARCHITECTURE_OVERVIEW.md' ||
+      file === 'docs/product/FRONTEND_ROUTES.md' ||
+      pathStartsWith(file, 'docs/product/features') ||
+      file === 'docs/architecture/ARCHITECTURE_OVERVIEW.md' ||
       file === 'README.md',
     acceptedDocs:
-      'docs/FRONTEND_ROUTES.md, docs/features/**, docs/ARCHITECTURE_OVERVIEW.md, README.md',
+      'docs/product/FRONTEND_ROUTES.md, docs/product/features/**, docs/architecture/ARCHITECTURE_OVERVIEW.md, README.md',
   },
   {
     id: 'api-contract',
@@ -189,11 +189,12 @@ const rules = [
         /^api\/src\/modules\/.+contract\.ts$/.test(file) ||
         /^api\/src\/modules\/.+\/dto\/.+\.ts$/.test(file)),
     docMatcher: (file) =>
-      file === 'docs/API_DOCUMENTATION.md' ||
-      pathStartsWith(file, 'docs/openapi') ||
-      pathStartsWith(file, 'docs/features') ||
+      file === 'docs/api/API_DOCUMENTATION.md' ||
+      pathStartsWith(file, 'docs/api/openapi') ||
+      pathStartsWith(file, 'docs/product/features') ||
       file === 'README.md',
-    acceptedDocs: 'docs/API_DOCUMENTATION.md, docs/openapi/**, docs/features/**, README.md',
+    acceptedDocs:
+      'docs/api/API_DOCUMENTATION.md, docs/api/openapi/**, docs/product/features/**, README.md',
   },
   {
     id: 'database-shape',
@@ -203,12 +204,12 @@ const rules = [
       pathStartsWith(file, 'database/migrations') ||
       pathStartsWith(file, 'database/seeds'),
     docMatcher: (file) =>
-      file === 'docs/DB_SCHEMA_NAMESPACE_PLAN.md' ||
-      file === 'docs/DB_SCHEMA_NAMESPACE_STATUS.md' ||
-      file === 'docs/API_DOCUMENTATION.md' ||
-      file === 'docs/ROADMAP.md',
+      file === 'docs/data/DB_SCHEMA_NAMESPACE_PLAN.md' ||
+      file === 'docs/data/DB_SCHEMA_NAMESPACE_STATUS.md' ||
+      file === 'docs/api/API_DOCUMENTATION.md' ||
+      file === 'docs/planning/roadmaps/ROADMAP.md',
     acceptedDocs:
-      'docs/DB_SCHEMA_NAMESPACE_PLAN.md, docs/DB_SCHEMA_NAMESPACE_STATUS.md, docs/API_DOCUMENTATION.md, docs/ROADMAP.md',
+      'docs/data/DB_SCHEMA_NAMESPACE_PLAN.md, docs/data/DB_SCHEMA_NAMESPACE_STATUS.md, docs/api/API_DOCUMENTATION.md, docs/planning/roadmaps/ROADMAP.md',
   },
   {
     id: 'env-runtime',
@@ -230,14 +231,14 @@ const rules = [
       file === 'api/src/main.ts' ||
       file === 'api/src/app.module.ts',
     docMatcher: (file) =>
-      file === 'docs/ENV.md' ||
-      file === 'docs/ENVIRONMENT_SETUP.md' ||
-      file === 'docs/DOCKER_SETUP.md' ||
+      file === 'docs/environment/reference/ENV.md' ||
+      file === 'docs/environment/setup/ENVIRONMENT_SETUP.md' ||
+      file === 'docs/environment/setup/DOCKER_SETUP.md' ||
       file === 'docs/README.md' ||
-      pathStartsWith(file, 'docs/runbooks') ||
+      pathStartsWith(file, 'docs/operations/runbooks') ||
       file === 'README.md',
     acceptedDocs:
-      'docs/ENV.md, docs/ENVIRONMENT_SETUP.md, docs/DOCKER_SETUP.md, docs/README.md, docs/runbooks/**, README.md',
+      'docs/environment/reference/ENV.md, docs/environment/setup/ENVIRONMENT_SETUP.md, docs/environment/setup/DOCKER_SETUP.md, docs/README.md, docs/operations/runbooks/**, README.md',
   },
   {
     id: 'workflow-process',
@@ -245,8 +246,10 @@ const rules = [
     matchFile: (file) =>
       pathStartsWith(file, '.github/workflows') || file === 'AGENTS.md' || pathStartsWith(file, '.githooks'),
     docMatcher: (file) =>
-      file === 'docs/README.md' || file === 'docs/RELEASE_VERSIONING.md' || file === 'README.md',
-    acceptedDocs: 'docs/README.md, docs/RELEASE_VERSIONING.md, README.md',
+      file === 'docs/README.md' ||
+      file === 'docs/governance/RELEASE_VERSIONING.md' ||
+      file === 'README.md',
+    acceptedDocs: 'docs/README.md, docs/governance/RELEASE_VERSIONING.md, README.md',
   },
 ];
 

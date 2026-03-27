@@ -4,14 +4,14 @@ Last updated: 2026-03-24
 
 Related status doc:
 
-- `docs/DB_SCHEMA_NAMESPACE_STATUS.md`
+- `docs/data/DB_SCHEMA_NAMESPACE_STATUS.md`
 
 ## Scope And Assumptions
 
 This plan is based on:
 
 - `docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx`, especially CDC sections 4.x (use cases), 5.2 (Development modules), 7.1 to 7.2 (business concepts and OLTP constraints), and 10.1 (expected API surface).
-- `AGENTS.md`, especially the Temporary Specialty Scope Freeze limiting active implementation to Development plus partial Dev/Data for storage/query only.
+- The current implementation-scope freeze limiting active work to Development-owned deliverables, with database storage/query changes only where needed to support that scope.
 - The current database model in `database/schema/index.ts`, `database/migrations/meta/0023_snapshot.json`, and the latest migration `database/migrations/0023_tearful_loa.sql`.
 
 Current database facts:

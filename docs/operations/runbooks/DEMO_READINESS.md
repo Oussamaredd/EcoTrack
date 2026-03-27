@@ -77,8 +77,8 @@ npm run test:coverage
 
 ## Artifacts to Confirm Before Demo
 
-- Roadmap and sprint status: `docs/ROADMAP.md`
-- API references: `docs/API_DOCUMENTATION.md`, `docs/openapi/`
-- Accessibility baseline: `docs/runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md`
-- Role quick guides: `docs/guides/`
+- Roadmap and sprint status: `docs/planning/roadmaps/ROADMAP.md`
+- API references: `docs/api/API_DOCUMENTATION.md`, `docs/api/openapi/`
+- Accessibility baseline: `docs/operations/runbooks/ACCESSIBILITY_RESPONSIVE_AUDIT.md`
+- Role quick guides: `docs/product/guides/`
 

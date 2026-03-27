@@ -6,7 +6,7 @@ Execution policy:
 - `infrastructure/scripts/validate-env.mjs` validates environment templates and policy constraints used by CI/CD.
 - `infrastructure/scripts/validate-doc-sync.mjs` enforces path-aware documentation updates for runtime, schema, env, workflow, and release changes.
 - `infrastructure/scripts/validate-spec-contracts.mjs` enforces CDC traceability matrix integrity and executable-spec contracts.
-- `infrastructure/scripts/install-git-hooks.mjs` configures the repo-local git hooks path to `.githooks`.
+- `infrastructure/scripts/install-git-hooks.mjs` configures the repo-local git hooks path to `.githooks` and generates the managed local `pre-commit` hook.
 - `infrastructure/scripts/ci/run-k6-scenarios.mjs` runs the repo-owned K6 scenario pack and exports summaries under `tmp/ci/k6`.
 - `infrastructure/scripts/ci/generate-release-manifest.mjs` writes a repo-owned release manifest and markdown summary under `tmp/ci/release`.
 - `infrastructure/scripts/ci/run-deploy-hooks.mjs` triggers optional frontend/backend deploy hooks and records their outcomes under `tmp/ci/release`.

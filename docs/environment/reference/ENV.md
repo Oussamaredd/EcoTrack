@@ -30,7 +30,7 @@ Neon managed baseline note:
 - For Neon-backed migration and seed operations, `DATABASE_URL` must be the direct Neon connection string, not the pooled `-pooler` hostname.
 - `DATABASE_POOLER_URL`, when used, is for runtime traffic only and should point at a PgBouncer or provider pooler listener.
 - Store Neon connection strings only in local untracked env files or deployment/provider secret stores.
-- See `docs/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the bootstrap and validation workflow.
+- See `docs/operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the bootstrap and validation workflow.
 
 ## Canonical Keys
 
@@ -223,7 +223,7 @@ Agent tour mapping note:
 - staging: allow only controlled staging frontend origin(s).
 - production: allow only owned production frontend origin(s).
 
-Use `docs/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-control, and rollout steps.
+Use `docs/operations/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, change-control, and rollout steps.
 
 ## API Readiness Endpoint
 
@@ -347,8 +347,8 @@ docker compose --env-file infrastructure/environments/.env.docker -f infrastruct
 
 ## References
 
-- Inventory: `docs/ENV_INVENTORY.md`
-- Conflicts: `docs/ENV_CONFLICTS.md`
-- Decisions: `docs/ENV_CANONICAL_DECISIONS.md`
+- Inventory: `docs/environment/reference/ENV_INVENTORY.md`
+- Conflicts: `docs/environment/reference/ENV_CONFLICTS.md`
+- Decisions: `docs/environment/reference/ENV_CANONICAL_DECISIONS.md`
 
 

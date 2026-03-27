@@ -35,7 +35,7 @@ Update these files together when origin policy changes:
 - `infrastructure/environments/.env.development.example`
 - `infrastructure/environments/.env.staging.example`
 - `infrastructure/environments/.env.production.example`
-- `docs/ENV.md`
+- `docs/environment/reference/ENV.md`
 
 ## Phase 3 - Validation Guardrails
 

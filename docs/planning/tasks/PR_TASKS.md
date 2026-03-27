@@ -4,11 +4,11 @@ Last updated: 2026-03-07
 
 ## Related Planning Docs
 
-- `docs/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md`
-- `docs/ENV.md`
-- `docs/ENVIRONMENT_SETUP.md`
-- `docs/ARCHITECTURE_OVERVIEW.md`
-- `docs/DB_SCHEMA_NAMESPACE_STATUS.md` for the preserved status of the previous DB namespace rollout checklist
+- `docs/operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md`
+- `docs/environment/reference/ENV.md`
+- `docs/environment/setup/ENVIRONMENT_SETUP.md`
+- `docs/architecture/ARCHITECTURE_OVERVIEW.md`
+- `docs/data/DB_SCHEMA_NAMESPACE_STATUS.md` for the preserved status of the previous DB namespace rollout checklist
 
 ## Current Readiness Status
 
@@ -55,7 +55,7 @@ This task covers the planning work completed in this pass. It records the target
 - [x] Exclude Cloudflare Workers from the current runtime plan.
 - [x] Record GitHub Pages as docs-only follow-up work instead of live app hosting.
 - [x] Record PostGIS as a later scoped database change rather than part of the first rollout.
-- [x] Add a dedicated deployment rollout plan markdown file under `docs/runbooks/`.
+- [x] Add a dedicated deployment rollout plan markdown file under `docs/operations/runbooks/`.
 - [x] Ensure the docs index points to the rollout plan and to this active PR task file.
 
 ## Task 1 - Freeze Deployment Ownership
@@ -242,7 +242,7 @@ This task is intentionally deferred until Development and Data scope require it.
 - [x] The deployment target stack is documented.
 - [x] The rollout is organized into phases with detailed descriptions.
 - [x] The docs include a dedicated markdown plan for the rollout.
-- [x] `docs/PR_TASKS.md` reflects completed planning work versus open implementation work.
+- [x] `docs/planning/tasks/PR_TASKS.md` reflects completed planning work versus open implementation work.
 - [x] The docs index includes the new rollout plan and the active PR task tracker.
 - [x] Platform configuration has been implemented for the Phase 3 Neon baseline.
 - [x] GitHub Pages has been retired as the app host.

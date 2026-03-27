@@ -4,7 +4,7 @@
 
 EcoTrack exposes a REST API for citizen reporting, agent tour execution, manager planning, support workflows, and admin governance.
 
-- Browser-facing base URL: `<frontend-origin>/api` (resolve the current local origin from the Port Contract in `README.md` or `docs/ENV.md`)
+- Browser-facing base URL: `<frontend-origin>/api` (resolve the current local origin from the Port Contract in `README.md` or `docs/environment/reference/ENV.md`)
 - Direct API base URL (local-native backend diagnostics only): `http://localhost:3001/api`
 - In Docker, the backend `3001` port is internal-only; browser traffic must enter through the `3000` edge
 - Auth mode: JWT bearer token (`Authorization: Bearer <token>`) with cookie support for web auth flows
@@ -360,8 +360,8 @@ Tracing notes:
 
 ## OpenAPI References
 
-- Sprint 0 contract draft: `docs/openapi/ecotrack-sprint0.yaml`
-- Domain modules reference: `docs/openapi/ecotrack-domain-modules.yaml`
+- Sprint 0 contract draft: `docs/api/openapi/ecotrack-sprint0.yaml`
+- Domain modules reference: `docs/api/openapi/ecotrack-domain-modules.yaml`
 
 ## Error Shape
 
