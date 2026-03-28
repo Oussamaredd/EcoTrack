@@ -47,6 +47,7 @@ npm run quality:mobile-readiness
 
 - Config: `app/lighthouserc.cjs`
 - Runner: `infrastructure/scripts/ci/run-lighthouse-gate.mjs`
+- The runner now boots a lightweight local mock API for `/api/auth/status`, `/api/metrics/frontend`, and `/api/errors` so preview-only audits are stable even when no backend process is running.
 - Canonical URLs:
   - `/`
   - `/login`
