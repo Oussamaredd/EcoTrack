@@ -73,6 +73,7 @@ const BUDGETS = {
 const toDisplayKb = (sizeInBytes) => (sizeInBytes / 1024).toFixed(2);
 
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+const indexManifestEntry = manifest["index.html"];
 const fileSizeCache = new Map();
 
 const resolveManifestEntry = (key) => {
@@ -84,6 +85,9 @@ const resolveManifestEntry = (key) => {
 
   return entry;
 };
+
+const isBundledIntoInitialShell = (key) =>
+  !manifest[key] && !(indexManifestEntry?.dynamicImports ?? []).includes(key);
 
 const collectManifestFiles = (key, visitedKeys = new Set()) => {
   if (visitedKeys.has(key)) {
@@ -112,6 +116,14 @@ const collectManifestFiles = (key, visitedKeys = new Set()) => {
   return files;
 };
 
+const collectRouteDeltaFiles = (key) => {
+  if (isBundledIntoInitialShell(key)) {
+    return new Set();
+  }
+
+  return collectManifestFiles(key);
+};
+
 const readFileMetrics = async (repoRelativeFile) => {
   if (fileSizeCache.has(repoRelativeFile)) {
     return fileSizeCache.get(repoRelativeFile);
@@ -129,11 +141,26 @@ const readFileMetrics = async (repoRelativeFile) => {
   return metrics;
 };
 
-const summarizeFiles = async (label, files, budgetKb, metric = "gzipBytes") => {
+const summarizeFiles = async (label, files, budgetKb, metric = "gzipBytes", allowEmpty = false) => {
   const uniqueFiles = [...new Set(files)].sort();
 
   if (uniqueFiles.length === 0) {
-    throw new Error(`[bundle-check] ${label} did not resolve to any files.`);
+    if (!allowEmpty) {
+      throw new Error(`[bundle-check] ${label} did not resolve to any files.`);
+    }
+
+    console.log(
+      `[bundle-check] ${label}: 0.00 kB (${metric === "gzipBytes" ? "gzip" : "raw"}) (budget ${budgetKb} kB)`,
+    );
+
+    return {
+      budgetKb,
+      files: [],
+      label,
+      metric,
+      passed: true,
+      totalBytes: 0,
+    };
   }
 
   const fileMetrics = await Promise.all(uniqueFiles.map((file) => readFileMetrics(file)));
@@ -155,16 +182,16 @@ const summarizeFiles = async (label, files, budgetKb, metric = "gzipBytes") => {
 };
 
 const shellFiles = collectManifestFiles("index.html");
-const landingRouteFiles = [...collectManifestFiles("src/pages/landing/LandingPage.tsx")].filter(
+const landingRouteFiles = [...collectRouteDeltaFiles("src/pages/landing/LandingPage.tsx")].filter(
   (file) => !shellFiles.has(file),
 );
-const loginRouteFiles = [...collectManifestFiles("src/pages/auth/LoginPage.tsx")].filter(
+const loginRouteFiles = [...collectRouteDeltaFiles("src/pages/auth/LoginPage.tsx")].filter(
   (file) => !shellFiles.has(file),
 );
-const dashboardRouteFiles = [...collectManifestFiles("src/pages/Dashboard.tsx")].filter(
+const dashboardRouteFiles = [...collectRouteDeltaFiles("src/pages/Dashboard.tsx")].filter(
   (file) => !shellFiles.has(file),
 );
-const adminRouteFiles = [...collectManifestFiles("src/pages/AdminDashboard.tsx")].filter(
+const adminRouteFiles = [...collectRouteDeltaFiles("src/pages/AdminDashboard.tsx")].filter(
   (file) => !shellFiles.has(file),
 );
 const mappingVendorFiles = [...new Set(
@@ -175,10 +202,10 @@ const mappingVendorFiles = [...new Set(
 
 const results = [
   await summarizeFiles("Initial route shell transfer", [...shellFiles], BUDGETS.initialShellGzipKb),
-  await summarizeFiles("Landing route delta", landingRouteFiles, BUDGETS.landingRouteGzipKb),
-  await summarizeFiles("Login route delta", loginRouteFiles, BUDGETS.loginRouteGzipKb),
-  await summarizeFiles("Dashboard route delta", dashboardRouteFiles, BUDGETS.dashboardRouteGzipKb),
-  await summarizeFiles("Admin route delta", adminRouteFiles, BUDGETS.adminRouteGzipKb),
+  await summarizeFiles("Landing route delta", landingRouteFiles, BUDGETS.landingRouteGzipKb, "gzipBytes", true),
+  await summarizeFiles("Login route delta", loginRouteFiles, BUDGETS.loginRouteGzipKb, "gzipBytes", true),
+  await summarizeFiles("Dashboard route delta", dashboardRouteFiles, BUDGETS.dashboardRouteGzipKb, "gzipBytes", true),
+  await summarizeFiles("Admin route delta", adminRouteFiles, BUDGETS.adminRouteGzipKb, "gzipBytes", true),
   await summarizeFiles("Mapping vendor chunk", mappingVendorFiles, BUDGETS.mappingVendorGzipKb),
 ];
 

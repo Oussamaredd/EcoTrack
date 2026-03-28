@@ -47,7 +47,7 @@ cp mobile/.env.example mobile/.env.local
 npm run dev
 ```
 
-`npm run dev` now blocks frontend startup until the local direct API readiness URL from the Port Contract returns `200`, so schema drift and failed migrations stop the local-dev flow before Vite starts. The default readiness wait timeout is `180000ms`.
+`npm run dev` now blocks frontend startup until the local direct API liveness URL from the Port Contract returns `200`, so Vite waits for the API process to be listening before it starts. The default liveness wait timeout is `180000ms`; deeper dependency checks remain available through the readiness endpoints and `npm run dev:doctor`.
 
 The API workspace dev server now runs directly from TypeScript sources in watch mode, which removes the old full-build-before-listen step during local development.
 
@@ -87,7 +87,7 @@ Local/native dev:
 - Public edge API: `http://localhost:5173/api`
 - Public edge health: `http://localhost:5173/health`
 - API process listen port (direct local diagnostics only): `http://localhost:3001`
-- Root `npm run dev` waits on `http://localhost:3001/api/health/ready` before Vite starts
+- Root `npm run dev` waits on `http://127.0.0.1:3001/health` before Vite starts
 
 Docker dev:
 
@@ -108,7 +108,7 @@ curl -f http://localhost:3001/api/health/ready
 curl -f http://localhost:3001/api/metrics
 ```
 
-If the readiness check fails, `npm run dev` will stop before launching the frontend dev server. Read the API startup error in the terminal output, then rerun `npm run dev` after the database or API issue is fixed.
+If the liveness check fails, `npm run dev` will stop before launching the frontend dev server. Read the API startup error in the terminal output, then rerun `npm run dev` after the API issue is fixed. Use `curl -f http://localhost:3001/api/health/ready` or `npm run dev:doctor` when you need dependency-aware diagnostics.
 
 ## Auth Routes (Local/Docker)
 
