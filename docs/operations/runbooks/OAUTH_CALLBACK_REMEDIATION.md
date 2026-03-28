@@ -174,7 +174,7 @@ Execution notes:
 - Kept deeper dependency diagnostics under `GET http://localhost:3001/api/health/database`.
 - Updated March 11, 2026: frontend login no longer polls `/health` before starting auth; `/health` remains a diagnostic endpoint and auth requests are allowed to wake the backend directly.
 - Frontend callback applies a short validation delay, then shows a success state with a green checkmark before redirecting to `/app`.
-- Root `npm run dev` now gates app startup with `infrastructure/scripts/wait-for-api-ready.mjs` so Vite starts only after API readiness.
+- Root `npm run dev` now gates app startup with `infrastructure/scripts/wait-for-api-ready.mjs` so Vite starts only after API liveness.
 
 Quick probes:
 

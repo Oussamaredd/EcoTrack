@@ -63,6 +63,8 @@ npm run quality:mobile-readiness
 
 The bundle budget gate is route-aware and writes markdown and JSON summaries to `bundle-budgets`.
 
+If a route module is intentionally bundled into the initial shell instead of emitted as a standalone Vite manifest entry, its route-delta budget is treated as `0 kB` instead of failing the manifest lookup.
+
 Supported overrides:
 
 - `ECOTRACK_INITIAL_ROUTE_SHELL_GZIP_BUDGET_KB`
