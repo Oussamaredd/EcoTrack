@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
   "specialty": "development",
-  "updatedAt": "2026-02-27",
+  "updatedAt": "2026-03-28",
   "matrixFile": "docs/specs/cdc-traceability-matrix.dev.json",
-  "inputArtifacts": [
+  "localInputArtifacts": [
     "docs/specs/inputs/ECOTRACK_CDC_COMMUN_V2.docx",
     "docs/specs/inputs/ECOTRACK_M2_DEV.xlsx"
   ],

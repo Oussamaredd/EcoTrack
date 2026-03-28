@@ -8,6 +8,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..', '..');
 const sourceOfTruthRelativePath = 'docs/specs/source-of-truth.dev.json';
 const sourceOfTruthAbsolutePath = path.join(repoRoot, sourceOfTruthRelativePath);
+const gitignoreAbsolutePath = path.join(repoRoot, '.gitignore');
 
 const errors = [];
 
@@ -62,6 +63,21 @@ const ensureStringArray = (value, label, minimumLength = 1) => {
   return value;
 };
 
+const readGitignoreEntries = () => {
+  if (!fs.existsSync(gitignoreAbsolutePath)) {
+    fail('.gitignore not found at repo root');
+    return new Set();
+  }
+
+  return new Set(
+    fs
+      .readFileSync(gitignoreAbsolutePath, 'utf-8')
+      .split(/\r?\n/u)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith('#')),
+  );
+};
+
 const parseEndpoint = (endpoint) => {
   if (!isNonEmptyString(endpoint)) {
     return null;
@@ -112,8 +128,27 @@ if (!isNonEmptyString(matrixRelativePath)) {
 }
 assertFileExists(sourceOfTruthRelativePath, 'Source-of-truth file');
 
-ensureStringArray(sourceOfTruth.inputArtifacts, 'source-of-truth.inputArtifacts').forEach((artifact, index) => {
-  assertFileExists(artifact, `source-of-truth.inputArtifacts[${index}]`);
+if (Object.hasOwn(sourceOfTruth, 'inputArtifacts')) {
+  fail('source-of-truth.inputArtifacts is deprecated; use source-of-truth.localInputArtifacts');
+}
+
+const gitignoreEntries = readGitignoreEntries();
+ensureStringArray(
+  sourceOfTruth.localInputArtifacts ?? [],
+  'source-of-truth.localInputArtifacts',
+  0,
+).forEach((artifact, index) => {
+  if (!artifact.startsWith('docs/specs/inputs/')) {
+    fail(
+      `source-of-truth.localInputArtifacts[${index}] must stay under docs/specs/inputs/: ${artifact}`,
+    );
+  }
+
+  if (!gitignoreEntries.has(artifact)) {
+    fail(
+      `source-of-truth.localInputArtifacts[${index}] must be ignored via .gitignore: ${artifact}`,
+    );
+  }
 });
 
 ensureStringArray(sourceOfTruth.canonicalFiles, 'source-of-truth.canonicalFiles').forEach((file, index) => {

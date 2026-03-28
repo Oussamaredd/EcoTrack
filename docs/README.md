@@ -64,6 +64,7 @@ Documentation is organized by document type and responsibility so architecture, 
 - `specs/mobile-platform-integration-contract.md` - platform and mobile integration contract
 - `specs/mobile-layer-rollout-plan.md` - architecture-first mobile rollout plan
 - `specs/inputs/` - canonical source documents used by specs and traceability and kept local-only via Git ignore rules
+- `specs/source-of-truth.dev.json` separates repo-enforced canonical files from `localInputArtifacts`, which stay local-only and are validated through `.gitignore` coverage rather than repo file existence
 
 ## Historical Baselines
 - `baselines/` - captured validation outputs used during remediation phases
