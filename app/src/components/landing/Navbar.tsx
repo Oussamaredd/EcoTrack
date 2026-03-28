@@ -60,6 +60,7 @@ export default function Navbar() {
           <BrandLogo
             className="gap-2.5"
             imageClassName="h-7 w-7"
+            imageSizes="28px"
             textClassName="text-sm font-semibold uppercase tracking-[0.08em] text-[var(--text)]"
           />
         </Link>
