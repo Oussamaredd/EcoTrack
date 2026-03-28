@@ -8,6 +8,7 @@ This folder stores original source documents used for planning and traceability.
 
 ## Usage Rules
 - Keep the canonical source files only at their `inputs/` paths and leave them ignored in Git.
+- Declare local-only source binaries in `docs/specs/source-of-truth.dev.json` under `localInputArtifacts`; they are governance inputs, not CI-required repo files.
 - Build actionable work items in markdown files (for example `docs/planning/roadmaps/ROADMAP.md`) rather than editing binary files.
 - Current project implementation scope is Development specialty only; Security and Data specialty requirements are tracked as future dependencies.
 - Treat CDC specs as executable contracts, not docs-only references:

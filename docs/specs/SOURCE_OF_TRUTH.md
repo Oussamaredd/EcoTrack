@@ -24,7 +24,8 @@ Last updated: 2026-03-05
    - automated verification evidence and CI check(s)
 3. For `implemented` entries, at least one automated test evidence file must be present.
 4. For non-implemented entries, explicit gap statements are required.
-5. All referenced paths must exist in the repo.
+5. All repo-enforced referenced paths must exist in the repo.
+6. Local-only source binaries must be declared under `localInputArtifacts` in `source-of-truth.dev.json` and ignored via `.gitignore`.
 
 ## Enforcement
 
