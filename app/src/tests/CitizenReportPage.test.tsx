@@ -20,7 +20,16 @@ describe("CitizenReportPage", () => {
       isPending: false,
     });
     vi.spyOn(apiClient, "get").mockResolvedValue({
-      containers: [{ id: "container-1", code: "CTR-001", label: "Harbor Front" }],
+      containers: [
+        {
+          id: "container-1",
+          code: "CTR-001",
+          label: "17 RUE CROIX DES PETITS CHAMPS - Trilib",
+          fillLevelPercent: 76,
+          status: "attention_required",
+          zoneName: "Paris 1er - Louvre",
+        },
+      ],
     });
   });
 
@@ -28,12 +37,12 @@ describe("CitizenReportPage", () => {
     const user = userEvent.setup();
     renderWithProviders(<CitizenReportPage />);
 
-    expect(await screen.findByRole("heading", { name: /Report Overflowing Container/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Report Container Issue/i }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Use My Location/i }));
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      /Device geolocation is not available in this browser/i,
-    );
+    expect(await screen.findByText(/Device geolocation is not available in this browser/i)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/Latitude/i), "48.8566");
 
@@ -42,6 +51,23 @@ describe("CitizenReportPage", () => {
         screen.queryByText(/Device geolocation is not available in this browser/i),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("shows selected container context before submission", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CitizenReportPage />);
+
+    expect(
+      await screen.findByRole("option", { name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i }),
+    ).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText(/Container/i), "container-1");
+
+    expect(
+      await screen.findByRole("heading", { name: /Selected Container Context/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Paris 1er - Louvre/i)).toBeInTheDocument();
+    expect(screen.getByText(/Attention Required/i)).toBeInTheDocument();
+    expect(screen.getByText(/76%/i)).toBeInTheDocument();
   });
 
   it("shows location capture failures and API submission errors", async () => {
@@ -67,13 +93,11 @@ describe("CitizenReportPage", () => {
     renderWithProviders(<CitizenReportPage />);
 
     await user.click(screen.getByRole("button", { name: /Use My Location/i }));
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      /We could not access your device location/i,
-    );
+    expect(await screen.findByText(/We could not access your device location/i)).toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText(/Container/i), "container-1");
     await user.type(
-      screen.getByLabelText(/Description/i),
+      screen.getByLabelText(/Details \(optional\)/i),
       "Container is overflowing near the tram stop.",
     );
     await user.type(screen.getByLabelText(/Longitude/i), "2.3522");
@@ -82,27 +106,27 @@ describe("CitizenReportPage", () => {
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith({
         containerId: "container-1",
+        reportType: "container_full",
         description: "Container is overflowing near the tram stop.",
         latitude: undefined,
         longitude: "2.3522",
         photoUrl: undefined,
       });
     });
-    expect(await screen.findByRole("status")).toHaveTextContent(/Dispatch queue unavailable/i);
+    expect(await screen.findByText(/Dispatch queue unavailable/i)).toBeInTheDocument();
   });
 
   it("uses the default confirmation text when the API does not return one", async () => {
     const user = userEvent.setup();
     renderWithProviders(<CitizenReportPage />);
 
-    expect(await screen.findByRole("option", { name: /CTR-001 - Harbor Front/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("option", { name: /CTR-001 - 17 RUE CROIX DES PETITS CHAMPS - Trilib/i }),
+    ).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText(/Container/i), "container-1");
-    await user.type(screen.getByLabelText(/Description/i), "Overflowing bin beside the market.");
     await user.click(screen.getByRole("button", { name: /Submit Report/i }));
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      /Report submitted\. Thank you for helping your community\./i,
-    );
+    expect(await screen.findByText(/Report submitted\. Thank you for helping your community\./i)).toBeInTheDocument();
   });
 
   it("shows a clear error banner when container options cannot be loaded", async () => {
