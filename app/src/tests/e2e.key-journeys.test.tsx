@@ -61,21 +61,35 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
     });
     (useCreateCitizenReport as Mock).mockReturnValue({ mutateAsync, isPending: false });
     vi.spyOn(apiClient, 'get').mockResolvedValue({
-      containers: [{ id: 'container-1', code: 'CTR-001', label: 'Harbor Front' }],
+      containers: [
+        {
+          id: 'container-1',
+          code: 'CTR-001',
+          label: '17 RUE CROIX DES PETITS CHAMPS - Trilib',
+          fillLevelPercent: 76,
+          status: 'attention_required',
+          zoneName: 'Paris 1er - Louvre',
+        },
+      ],
     });
 
     const user = userEvent.setup();
     const { container } = renderWithProviders(<CitizenReportPage />);
 
-    expect(await screen.findByRole('heading', { name: /Report Overflowing Container/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Report Container Issue/i })).toBeInTheDocument();
 
     await user.tab();
     expect(screen.getByLabelText(/Container/i)).toHaveFocus();
     await user.tab();
-    expect(screen.getByLabelText(/Description/i)).toHaveFocus();
+    expect(screen.getByLabelText(/Issue type/i)).toHaveFocus();
+    await user.tab();
+    expect(screen.getByLabelText(/Details \(optional\)/i)).toHaveFocus();
 
     await user.selectOptions(screen.getByLabelText(/Container/i), 'container-1');
-    await user.type(screen.getByLabelText(/Description/i), 'Container is full and spilling near sidewalk.');
+    await user.type(
+      screen.getByLabelText(/Details \(optional\)/i),
+      'Container is full and spilling near sidewalk.',
+    );
     await user.click(screen.getByRole('button', { name: /Use My Location/i }));
     expect(await screen.findByText(/Location captured from your device\./i)).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Photo URL/i), 'https://example.com/container.jpg');
@@ -84,6 +98,7 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
 
     expect(mutateAsync).toHaveBeenCalledWith({
       containerId: 'container-1',
+      reportType: 'container_full',
       description: 'Container is full and spilling near sidewalk.',
       latitude: '36.812300',
       longitude: '10.193200',

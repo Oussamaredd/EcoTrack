@@ -36,7 +36,7 @@ Special case:
 | --- | --- | --- |
 | `/app` | `AppHomePage` | Shared authenticated app home for all users; intended host for chatbot and role-specific guidance |
 | `/app/dashboard` | `Dashboard` | Live operational overview; requires `manager`/`admin`/`super_admin`, otherwise redirects to `/app` |
-| `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
+| `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; existing-container issue reporting only, with typed issue selection and read-only status/fill context |
 | `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied |

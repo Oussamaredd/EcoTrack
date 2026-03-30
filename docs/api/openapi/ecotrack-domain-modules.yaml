@@ -10,7 +10,30 @@ paths:
   /citizen/reports:
     post:
       tags: [Citizen]
-      summary: Submit a citizen overflow report
+      summary: Submit a citizen container issue report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [containerId, reportType]
+              properties:
+                containerId:
+                  type: string
+                  format: uuid
+                reportType:
+                  type: string
+                  enum: [container_full, damaged_container, access_blocked, general_issue]
+                description:
+                  type: string
+                  maxLength: 500
+                photoUrl:
+                  type: string
+                latitude:
+                  type: string
+                longitude:
+                  type: string
       responses:
         '201':
           description: Citizen report accepted

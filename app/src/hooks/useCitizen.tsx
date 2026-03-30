@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../services/api';
+import type { CitizenReportType } from '../lib/citizenReports';
 
 export const useCitizenProfile = () =>
   useQuery({
@@ -29,7 +30,8 @@ export const useCreateCitizenReport = () => {
   return useMutation({
     mutationFn: async (payload: {
       containerId: string;
-      description: string;
+      reportType: CitizenReportType;
+      description?: string;
       latitude?: string;
       longitude?: string;
       photoUrl?: string;

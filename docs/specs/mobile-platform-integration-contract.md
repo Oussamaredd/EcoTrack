@@ -73,15 +73,16 @@ Scope note:
   - `GET /api/containers` may include `fillLevelPercent`, which mobile surfaces as container progress with green `<50%`, warning `50-75%`, and red `>75%` states
   - location remains optional; search and reporting still work when the citizen skips GPS
   - optional photo evidence can be captured before live location is available; the composer keeps that photo state and asks the citizen to refresh location before final submit when needed
-  - search can look up containers by code/label/zone through `GET /api/containers`
+  - search can look up containers by code/label/zone through `GET /api/containers`, where `label` is the human-readable `address - waste stream` display name
   - after container selection, the primary report entry point lives in the map controls or selected-container card, and the issue details plus optional photo evidence are completed in a mobile bottom-sheet composer instead of a separate CRUD screen
-- Duplicate citizen reports are rejected when the same container already has a citizen report inside the last hour.
+- Duplicate citizen reports are rejected only when the same authenticated citizen submits the same `reportType` on the same `containerId` inside the last hour.
+- When another citizen submits the same typed issue within that window, the API records it as corroboration and suppresses a second manager alert.
 - Mobile should surface that duplicate window before submit whenever recent citizen history already proves the conflict.
 - Invalid or deleted containers raise an exception at the API boundary and must be handled in the mobile client.
 - `photoUrl` is optional for citizen and anomaly submissions:
   - citizen reports accept `http`/`https` URLs or image data URLs produced by the installed mobile app camera flow
   - anomaly submissions remain URL-based until their mobile upload path is expanded
-- Citizen report creation also queues a zone-scoped manager notification so operations can pick up the incident from the notification pipeline.
+- Citizen report creation queues a zone-scoped manager notification only for the first typed incident in the active duplicate window so operations can pick up the issue without alert spam.
 - Citizen history responses may include snapshot-backed `containerCode` / `containerLabel` values so old reports stay readable after container lifecycle changes.
 - Report export format is explicit and normalized:
   - `pdf` for binary PDF

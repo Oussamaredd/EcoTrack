@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, like, sql } from 'drizzle-orm';
 import {
   alertEvents,
   challengeParticipations,
@@ -52,16 +52,17 @@ export class CitizenRepository {
     }
 
     const windowStart = new Date(Date.now() - DUPLICATE_REPORT_WINDOW_HOURS * 60 * 60 * 1000);
-    const duplicate = await this.db.query.citizenReports.findFirst({
+    const recentSimilarReport = await this.db.query.citizenReports.findFirst({
       where: and(
         eq(citizenReports.containerId, container.id),
+        like(citizenReports.description, `[${dto.reportType}]%`),
         gte(citizenReports.reportedAt, windowStart),
       ),
     });
 
-    if (duplicate) {
+    if (recentSimilarReport?.reporterUserId === userId) {
       throw new ConflictException(
-        'A recent report for this container already exists within the last hour.',
+        'You already reported this issue for this container within the last hour.',
       );
     }
 
@@ -69,6 +70,9 @@ export class CitizenRepository {
     const normalizedPhotoUrl = this.normalizeOptionalText(dto.photoUrl);
     const resolvedReportType = dto.reportType;
     const resolvedDescription = this.resolveReportDescription(dto.reportType, dto.description);
+    const isConfirmingExistingIssue = Boolean(
+      recentSimilarReport && recentSimilarReport.reporterUserId !== userId,
+    );
     const managerAudienceScope = container.zoneId
       ? `zone:${container.zoneId}:role:manager`
       : 'role:manager';
@@ -80,6 +84,8 @@ export class CitizenRepository {
       managerNotificationQueued,
       citizenNotificationId,
       citizenPushNotificationQueued,
+      confirmationState,
+      confirmationMessage,
     } = await this.db.transaction(
       async (tx) => {
         const [insertedReport] = await tx
@@ -139,68 +145,76 @@ export class CitizenRepository {
             },
           });
 
-        const [createdAlert] = await tx
-          .insert(alertEvents)
-          .values({
-            ruleId: null,
-            containerId: container.id,
-            zoneId: container.zoneId ?? null,
-            eventType: 'citizen_container_reported',
-            severity: resolvedReportType === 'container_full' ? 'warning' : 'info',
-            triggeredAt: insertedReport.reportedAt,
-            currentStatus: 'open',
-            acknowledgedByUserId: null,
-            payloadSnapshot: {
-              citizenReportId: insertedReport.id,
-              reportType: resolvedReportType,
-              containerCode: container.code,
-              reporterUserId: userId,
-              latitude: normalizedLocation.latitude ?? container.latitude ?? null,
-              longitude: normalizedLocation.longitude ?? container.longitude ?? null,
-            },
-          })
-          .returning();
+        let createdNotification: { id: string } | null = null;
 
-        const [createdNotification] = await tx
-          .insert(notifications)
-          .values({
-            eventType: 'citizen_container_reported',
-            entityType: 'alert_event',
-            entityId: createdAlert?.id ?? insertedReport.id,
-            audienceScope: managerAudienceScope,
-            title: `Citizen report for ${container.code}`,
-            body: `${formatCitizenReportTypeLabel(resolvedReportType)} signaled by a citizen.`,
-            preferredChannels: ['email'],
-            scheduledAt: new Date(),
-            status: 'queued',
-            createdAt: new Date(),
-          })
-          .returning();
+        if (!isConfirmingExistingIssue) {
+          const [createdAlert] = await tx
+            .insert(alertEvents)
+            .values({
+              ruleId: null,
+              containerId: container.id,
+              zoneId: container.zoneId ?? null,
+              eventType: 'citizen_container_reported',
+              severity: resolvedReportType === 'container_full' ? 'warning' : 'info',
+              triggeredAt: insertedReport.reportedAt,
+              currentStatus: 'open',
+              acknowledgedByUserId: null,
+              payloadSnapshot: {
+                citizenReportId: insertedReport.id,
+                reportType: resolvedReportType,
+                containerCode: container.code,
+                reporterUserId: userId,
+                latitude: normalizedLocation.latitude ?? container.latitude ?? null,
+                longitude: normalizedLocation.longitude ?? container.longitude ?? null,
+              },
+            })
+            .returning();
 
-        if (createdNotification) {
-          await tx.insert(notificationDeliveries).values({
-            notificationId: createdNotification.id,
-            channel: 'email',
-            recipientAddress: managerAudienceScope,
-            deliveryStatus: 'pending',
-            attemptCount: 0,
-            createdAt: new Date(),
-          });
+          [createdNotification] = await tx
+            .insert(notifications)
+            .values({
+              eventType: 'citizen_container_reported',
+              entityType: 'alert_event',
+              entityId: createdAlert?.id ?? insertedReport.id,
+              audienceScope: managerAudienceScope,
+              title: `Citizen report for ${container.code}`,
+              body: `${formatCitizenReportTypeLabel(resolvedReportType)} signaled by a citizen.`,
+              preferredChannels: ['email'],
+              scheduledAt: new Date(),
+              status: 'queued',
+              createdAt: new Date(),
+            })
+            .returning();
+
+          if (createdNotification) {
+            await tx.insert(notificationDeliveries).values({
+              notificationId: createdNotification.id,
+              channel: 'email',
+              recipientAddress: managerAudienceScope,
+              deliveryStatus: 'pending',
+              attemptCount: 0,
+              createdAt: new Date(),
+            });
+          }
         }
 
         const [createdCitizenNotification] = await tx
           .insert(notifications)
           .values({
             eventType:
-              resolvedReportType === 'container_full'
+              !isConfirmingExistingIssue && resolvedReportType === 'container_full'
                 ? 'citizen_container_full_confirmation'
                 : 'citizen_report_confirmation',
             entityType: 'citizen_report',
             entityId: insertedReport.id,
             audienceScope: `user:${userId}`,
-            title: `Report received for ${container.code}`,
+            title: isConfirmingExistingIssue
+              ? `Confirmation received for ${container.code}`
+              : `Report received for ${container.code}`,
             body:
-              resolvedReportType === 'container_full'
+              isConfirmingExistingIssue
+                ? 'A recent issue already exists for this container. Your confirmation was added to it.'
+                : resolvedReportType === 'container_full'
                 ? 'Container full alert recorded. EcoTrack will keep you informed.'
                 : 'Your citizen report has been received and added to the operations queue.',
             preferredChannels: ['inbox', 'push'],
@@ -262,6 +276,10 @@ export class CitizenRepository {
           managerNotificationQueued: Boolean(createdNotification),
           citizenNotificationId: createdCitizenNotification?.id ?? null,
           citizenPushNotificationQueued,
+          confirmationState: isConfirmingExistingIssue ? 'confirmed_existing_issue' : 'submitted',
+          confirmationMessage: isConfirmingExistingIssue
+            ? `A recent ${formatCitizenReportTypeLabel(resolvedReportType).toLowerCase()} report already exists for this container. Your confirmation was added successfully. +${REPORT_SUBMISSION_POINTS} points awarded.`
+            : `Your report has been submitted successfully. +${REPORT_SUBMISSION_POINTS} points awarded.`,
         };
       },
     );
@@ -272,8 +290,8 @@ export class CitizenRepository {
       ...created,
       description: parsedCreatedReport.description,
       reportType: parsedCreatedReport.reportType,
-      confirmationState: 'submitted',
-      confirmationMessage: `Your report has been submitted successfully. +${pointsAwarded} points awarded.`,
+      confirmationState,
+      confirmationMessage,
       managerNotificationQueued,
       citizenNotificationId,
       citizenPushNotificationQueued,
