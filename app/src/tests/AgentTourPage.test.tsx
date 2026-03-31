@@ -10,6 +10,7 @@ vi.mock("../hooks/useAgentTours", () => ({
   useReportAnomaly: vi.fn(),
   useStartAgentTour: vi.fn(),
   useTourActivity: vi.fn(),
+  useZoneContainers: vi.fn(),
   useValidateTourStop: vi.fn(),
 }));
 
@@ -17,6 +18,7 @@ const buildTour = (overrides?: Record<string, unknown>) => ({
   id: "tour-1",
   name: "Morning Tour",
   status: "planned",
+  zoneId: "zone-1",
   zoneName: "Downtown",
   scheduledFor: "2026-03-02T09:00:00.000Z",
   routeSummary: {
@@ -64,6 +66,11 @@ describe("AgentTourPage", () => {
       data: { activity: [] },
       refetch: vi.fn(),
       isFetching: false,
+    });
+    (agentHooks.useZoneContainers as Mock).mockReturnValue({
+      data: { containers: [] },
+      isLoading: false,
+      isError: false,
     });
     (agentHooks.useValidateTourStop as Mock).mockReturnValue({
       mutateAsync: vi.fn(),
@@ -386,5 +393,96 @@ describe("AgentTourPage", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       /Cached tour cleared\. Requested a fresh assignment snapshot from the server\./i,
     );
+  });
+
+  it("distinguishes assigned stops from other mapped zone containers", async () => {
+    const agentHooks = await import("../hooks/useAgentTours");
+
+    (agentHooks.useAgentTour as Mock).mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: buildTour({
+        zoneName: "Paris 1er - Louvre",
+        stops: [
+          {
+            id: "stop-1",
+            stopOrder: 1,
+            status: "active",
+            eta: "2026-03-02T09:05:00.000Z",
+            completedAt: null,
+            containerId: "container-1",
+            containerCode: "CTR-001",
+            containerLabel: "Main Square",
+            latitude: "48.8566",
+            longitude: "2.3522",
+          },
+          {
+            id: "stop-2",
+            stopOrder: 2,
+            status: "pending",
+            eta: "2026-03-02T09:12:00.000Z",
+            completedAt: null,
+            containerId: "container-2",
+            containerCode: "CTR-002",
+            containerLabel: "Library Avenue",
+            latitude: "48.857",
+            longitude: "2.353",
+          },
+        ],
+      }),
+      refetch: vi.fn().mockResolvedValue({ error: null }),
+      isFetching: false,
+    });
+    (agentHooks.useZoneContainers as Mock).mockReturnValue({
+      data: {
+        containers: [
+          {
+            id: "container-1",
+            code: "CTR-001",
+            label: "Main Square",
+            status: "available",
+            fillLevelPercent: 40,
+          },
+          {
+            id: "container-2",
+            code: "CTR-002",
+            label: "Library Avenue",
+            status: "available",
+            fillLevelPercent: 38,
+          },
+          {
+            id: "container-3",
+            code: "OPS-001",
+            label: "Off Route A",
+            status: "available",
+            fillLevelPercent: 18,
+          },
+          {
+            id: "container-4",
+            code: "OPS-002",
+            label: "Off Route B",
+            status: "available",
+            fillLevelPercent: 24,
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<AgentTourPage />);
+
+    expect(
+      screen.getByText(/2 scheduled stops on this route, 2 other mapped containers in Paris 1er - Louvre/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/2\/4 mapped on route/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Grey reference markers represent mapped containers in the same zone/i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Hide Other Zone Containers/i }));
+
+    expect(screen.getByRole("button", { name: /Show Other Zone Containers/i })).toBeInTheDocument();
   });
 });

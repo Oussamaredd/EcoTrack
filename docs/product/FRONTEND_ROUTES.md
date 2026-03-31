@@ -39,7 +39,7 @@ Special case:
 | `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; existing-container issue reporting only, with typed issue selection and read-only status/fill context |
 | `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
 | `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
-| `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied. Refresh reloads server tour state, while persisted-route rebuild remains a manager-only action. When the page is showing an overdue or cached tour snapshot, it also offers `Reload Without Cache` recovery. |
+| `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied. Refresh reloads server tour state, while persisted-route rebuild remains a manager-only action. The route map keeps assigned stops primary, reports how many mapped zone containers are on-route vs off-route, and can toggle grey reference markers for other mapped containers in the same zone. When the page is showing an overdue or cached tour snapshot, it also offers `Reload Without Cache` recovery. |
 | `/app/manager/planning` | `ManagerPlanningPage` | Manager route optimization, assignment, and manual persisted-route rebuild for the last created tour |
 | `/app/manager/tours` | `ManagerToursPage` | Manager tour operations list for reviewing scheduled tours and rebuilding any persisted route |
 | `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history; email delivery stays disabled until the recipient field contains one plausible address |
