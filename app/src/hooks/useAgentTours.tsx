@@ -22,6 +22,23 @@ export type TourRouteGeometry = {
   resolvedAt: string;
 };
 
+export type ZoneContainerMapItem = {
+  id: string;
+  code: string;
+  label: string;
+  status: string;
+  fillLevelPercent: number;
+  latitude?: string | null;
+  longitude?: string | null;
+  zoneId?: string | null;
+  zoneName?: string | null;
+  containerTypeId?: string | null;
+  containerTypeCode?: string | null;
+  containerTypeLabel?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type AgentTourDataSource = 'none' | 'network' | 'cache';
 
 const AGENT_TOUR_CACHE_KEY = 'ecotrack.agentTour.cache.v2';
@@ -290,6 +307,24 @@ export const useReportAnomaly = () => {
     },
   });
 };
+
+export const useZoneContainers = (zoneId?: string | null) =>
+  useQuery({
+    queryKey: ['zone-containers', zoneId],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        zoneId: zoneId ?? '',
+        page: '1',
+        pageSize: '200',
+      });
+
+      return apiClient.get(`/api/containers?${params.toString()}`) as Promise<{
+        containers?: ZoneContainerMapItem[];
+      }>;
+    },
+    enabled: Boolean(zoneId),
+    staleTime: 30_000,
+  });
 
 export const useTourActivity = (tourId?: string) =>
   useQuery({

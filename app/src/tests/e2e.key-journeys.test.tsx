@@ -22,6 +22,7 @@ vi.mock('../hooks/useAgentTours', () => ({
   useReportAnomaly: vi.fn(),
   useStartAgentTour: vi.fn(),
   useTourActivity: vi.fn(),
+  useZoneContainers: vi.fn(),
   useValidateTourStop: vi.fn(),
 }));
 
@@ -121,6 +122,7 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
         id: 'tour-1',
         name: 'North Zone Round',
         status: 'assigned',
+        zoneId: 'zone-1',
         zoneName: 'North Zone',
         routeGeometry: {
           geometry: {
@@ -160,6 +162,11 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
     });
     (agentHooks.useReportAnomaly as Mock).mockReturnValue({ mutateAsync: reportAnomaly, isPending: false });
     (agentHooks.useTourActivity as Mock).mockReturnValue({ data: { activity: [] }, isFetching: false });
+    (agentHooks.useZoneContainers as Mock).mockReturnValue({
+      data: { containers: [] },
+      isLoading: false,
+      isError: false,
+    });
 
     const user = userEvent.setup();
     renderWithProviders(<AgentTourPage />);

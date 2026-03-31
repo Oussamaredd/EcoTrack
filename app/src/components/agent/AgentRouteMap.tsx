@@ -15,9 +15,20 @@ type RouteStop = {
   longitude?: string | null;
 };
 
+type ZoneContainer = {
+  id: string;
+  code: string;
+  label: string;
+  status: string;
+  latitude?: string | null;
+  longitude?: string | null;
+};
+
 type AgentRouteMapProps = {
   stops: RouteStop[];
   routeGeometry?: TourRouteGeometry | null;
+  zoneContainers?: ZoneContainer[];
+  showZoneContainers?: boolean;
 };
 
 type NormalizedRouteStop = {
@@ -26,6 +37,15 @@ type NormalizedRouteStop = {
   status: string;
   containerCode: string;
   containerLabel: string;
+  latitude: number;
+  longitude: number;
+};
+
+type NormalizedZoneContainer = {
+  id: string;
+  code: string;
+  label: string;
+  status: string;
   latitude: number;
   longitude: number;
 };
@@ -62,6 +82,25 @@ const normalizeStops = (stops: RouteStop[]) =>
     .filter((stop): stop is NormalizedRouteStop => stop != null)
     .sort((left, right) => left.stopOrder - right.stopOrder);
 
+const normalizeZoneContainers = (containers: ZoneContainer[]) =>
+  containers
+    .map((container) => {
+      const latitude = toNumberOrNull(container.latitude);
+      const longitude = toNumberOrNull(container.longitude);
+
+      if (latitude == null || longitude == null) {
+        return null;
+      }
+
+      return {
+        ...container,
+        latitude,
+        longitude,
+      } satisfies NormalizedZoneContainer;
+    })
+    .filter((container): container is NormalizedZoneContainer => container != null)
+    .sort((left, right) => left.code.localeCompare(right.code));
+
 const buildFallbackLineString = (stops: NormalizedRouteStop[]): GeoJsonLineString | null =>
   stops.length >= 2
     ? {
@@ -85,6 +124,7 @@ const buildOverlaySignature = (
   stops: NormalizedRouteStop[],
   geometry: GeoJsonLineString | null,
   geometrySource: string,
+  offRouteContainers: NormalizedZoneContainer[],
 ) =>
   [
     stops
@@ -97,6 +137,9 @@ const buildOverlaySignature = (
     geometry?.coordinates
       .map((coordinate) => `${coordinate[0].toFixed(6)},${coordinate[1].toFixed(6)}`)
       .join("|") ?? "no-geometry",
+    offRouteContainers
+      .map((container) => `${container.id}:${container.latitude.toFixed(6)},${container.longitude.toFixed(6)}`)
+      .join("|") || "no-off-route-containers",
   ].join("::");
 
 const getMarkerTheme = (status: string) => {
@@ -122,7 +165,12 @@ const getMarkerTheme = (status: string) => {
   }
 };
 
-export default function AgentRouteMap({ stops, routeGeometry }: AgentRouteMapProps) {
+export default function AgentRouteMap({
+  stops,
+  routeGeometry,
+  zoneContainers = [],
+  showZoneContainers = false,
+}: AgentRouteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const tileLayerRef = useRef<TileLayer | null>(null);
@@ -131,6 +179,14 @@ export default function AgentRouteMap({ stops, routeGeometry }: AgentRouteMapPro
   const markerIconRef = useRef<Map<string, DivIcon>>(new Map());
 
   const normalizedStops = useMemo(() => normalizeStops(stops), [stops]);
+  const normalizedZoneContainers = useMemo(
+    () => normalizeZoneContainers(zoneContainers),
+    [zoneContainers],
+  );
+  const offRouteZoneContainers = useMemo(() => {
+    const stopIds = new Set(normalizedStops.map((stop) => stop.id));
+    return normalizedZoneContainers.filter((container) => !stopIds.has(container.id));
+  }, [normalizedStops, normalizedZoneContainers]);
   const displayGeometry = useMemo(
     () => routeGeometry?.geometry ?? buildFallbackLineString(normalizedStops),
     [normalizedStops, routeGeometry],
@@ -138,19 +194,39 @@ export default function AgentRouteMap({ stops, routeGeometry }: AgentRouteMapPro
   const shouldUseStaticPreview = import.meta.env.MODE === "test";
   const routePath = useMemo(() => toLatLngPath(displayGeometry), [displayGeometry]);
   const fitBoundsPoints = useMemo(() => {
+    const zoneReferencePoints =
+      showZoneContainers && offRouteZoneContainers.length > 0
+        ? offRouteZoneContainers.map(
+            (container) => [container.latitude, container.longitude] as [number, number],
+          )
+        : [];
+
     if (routePath.length > 0) {
-      return routePath;
+      return zoneReferencePoints.length > 0 ? [...routePath, ...zoneReferencePoints] : routePath;
     }
 
     if (normalizedStops.length > 0) {
-      return normalizedStops.map((stop) => [stop.latitude, stop.longitude] as [number, number]);
+      const stopPoints = normalizedStops.map(
+        (stop) => [stop.latitude, stop.longitude] as [number, number],
+      );
+      return zoneReferencePoints.length > 0 ? [...stopPoints, ...zoneReferencePoints] : stopPoints;
+    }
+
+    if (zoneReferencePoints.length > 0) {
+      return zoneReferencePoints;
     }
 
     return [PARIS_CENTER];
-  }, [normalizedStops, routePath]);
+  }, [normalizedStops, offRouteZoneContainers, routePath, showZoneContainers]);
   const overlaySignature = useMemo(
-    () => buildOverlaySignature(normalizedStops, displayGeometry, routeGeometry?.source ?? "fallback"),
-    [displayGeometry, normalizedStops, routeGeometry?.source],
+    () =>
+      buildOverlaySignature(
+        normalizedStops,
+        displayGeometry,
+        routeGeometry?.source ?? "fallback",
+        showZoneContainers ? offRouteZoneContainers : [],
+      ),
+    [displayGeometry, normalizedStops, offRouteZoneContainers, routeGeometry?.source, showZoneContainers],
   );
 
   useEffect(() => {
@@ -218,6 +294,28 @@ export default function AgentRouteMap({ stops, routeGeometry }: AgentRouteMapPro
 
         shadowLine.addTo(overlayLayer);
         primaryLine.addTo(overlayLayer);
+      }
+
+      if (showZoneContainers) {
+        offRouteZoneContainers.forEach((container) => {
+          const referenceMarker = L.circleMarker([container.latitude, container.longitude], {
+            radius: 5,
+            fillColor: "#93a7c3",
+            fillOpacity: 0.55,
+            color: "#21314d",
+            weight: 1.5,
+          });
+
+          referenceMarker.bindTooltip(
+            `Zone container ${container.code} - ${container.label} (not on this route)`,
+            {
+              direction: "top",
+              offset: [0, -6],
+              opacity: 0.95,
+            },
+          );
+          referenceMarker.addTo(overlayLayer);
+        });
       }
 
       normalizedStops.forEach((stop) => {
@@ -320,6 +418,9 @@ export default function AgentRouteMap({ stops, routeGeometry }: AgentRouteMapPro
 
       <div className="ops-route-map-legend" aria-hidden="true">
         <span>Leaflet basemap</span>
+        {showZoneContainers && offRouteZoneContainers.length > 0 ? (
+          <span>Off-route zone containers</span>
+        ) : null}
         <span>
           {routeGeometry?.source === "live"
             ? "Stored road route"
