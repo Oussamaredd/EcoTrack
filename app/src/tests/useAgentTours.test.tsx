@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { useAgentTour } from "../hooks/useAgentTours";
+import { useAgentTour, useZoneContainers } from "../hooks/useAgentTours";
 import { apiClient } from "../services/api";
 
 vi.mock("../services/api", () => ({
@@ -211,5 +211,54 @@ describe("useAgentTour cache behavior", () => {
     expect(result.current.data).toBeUndefined();
     expect(result.current.dataSource).toBe("none");
     expect(window.localStorage.getItem(AGENT_TOUR_CACHE_KEY)).toBeNull();
+  });
+
+  test("loads all paginated containers for the assigned zone", async () => {
+    vi.mocked(apiClient.get)
+      .mockResolvedValueOnce({
+        containers: [
+          {
+            id: "container-1",
+            code: "CTR-001",
+            label: "Depot Square - Trilib",
+            status: "available",
+            fillLevelPercent: 32,
+            latitude: "48.8566",
+            longitude: "2.3522",
+          },
+        ],
+        pagination: { hasNext: true },
+      } as any)
+      .mockResolvedValueOnce({
+        containers: [
+          {
+            id: "container-2",
+            code: "CTR-002",
+            label: "Rue de Rivoli - Verre",
+            status: "attention_required",
+            fillLevelPercent: 84,
+            latitude: "48.8572",
+            longitude: "2.3531",
+          },
+        ],
+        pagination: { hasNext: false },
+      } as any);
+
+    const { result } = renderHook(() => useZoneContainers("zone-1"), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toHaveLength(2);
+    });
+
+    expect(apiClient.get).toHaveBeenNthCalledWith(
+      1,
+      "/api/containers?zoneId=zone-1&page=1&pageSize=50",
+    );
+    expect(apiClient.get).toHaveBeenNthCalledWith(
+      2,
+      "/api/containers?zoneId=zone-1&page=2&pageSize=50",
+    );
   });
 });

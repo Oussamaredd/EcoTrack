@@ -7,6 +7,94 @@ servers:
   - url: /api
     description: Browser-facing edge-relative API base
 paths:
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get the authenticated user profile and optional zone assignment context
+      responses:
+        '200':
+          description: Authenticated user payload with role and optional zone/depot metadata
+  /containers:
+    get:
+      tags: [Containers]
+      summary: List mapped containers with optional zone filtering and pagination
+      parameters:
+        - in: query
+          name: zoneId
+          required: false
+          schema: { type: string, format: uuid }
+        - in: query
+          name: page
+          required: false
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Paginated container listing with pagination metadata
+    post:
+      tags: [Containers]
+      summary: Create a mapped container with required coordinates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, label, latitude, longitude]
+              properties:
+                code:
+                  type: string
+                label:
+                  type: string
+                status:
+                  type: string
+                fillLevelPercent:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                zoneId:
+                  type: string
+                  format: uuid
+                containerTypeId:
+                  type: string
+                  format: uuid
+                latitude:
+                  type: string
+                longitude:
+                  type: string
+      responses:
+        '201':
+          description: Container created
+  /zones:
+    post:
+      tags: [Zones]
+      summary: Create an operational zone with a required depot/start location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, code, depotLabel, depotLatitude, depotLongitude]
+              properties:
+                name:
+                  type: string
+                code:
+                  type: string
+                description:
+                  type: string
+                depotLabel:
+                  type: string
+                depotLatitude:
+                  type: string
+                depotLongitude:
+                  type: string
+      responses:
+        '201':
+          description: Zone created
   /citizen/reports:
     post:
       tags: [Citizen]
@@ -54,10 +142,10 @@ paths:
   /tours/agent/me:
     get:
       tags: [Tours]
-      summary: Get currently assigned tour for authenticated agent
+      summary: Get the assigned tour for the authenticated agent, including depot and routed stops
       responses:
         '200':
-          description: Agent tour payload
+          description: Agent tour payload with ordered stops, depot, and persisted route geometry
   /tours/{tourId}/stops/{stopId}/validate:
     post:
       tags: [Tours]
@@ -77,10 +165,24 @@ paths:
   /planning/optimize-tour:
     post:
       tags: [Planning]
-      summary: Generate optimized route candidates by zone and threshold
+      summary: Generate optimized route candidates by zone, threshold, and depot-aware route anchor
       responses:
         '200':
-          description: Route candidate payload with metrics
+          description: Route candidate payload with metrics and optional startLocation
+  /planning/create-tour:
+    post:
+      tags: [Planning]
+      summary: Create a planned tour for one zone with zone-safe agent assignment
+      responses:
+        '200':
+          description: Created tour payload
+  /planning/agents:
+    get:
+      tags: [Planning]
+      summary: List active agents with their current zone assignments
+      responses:
+        '200':
+          description: Agent roster with zone metadata
   /planning/reports/generate:
     post:
       tags: [Planning]

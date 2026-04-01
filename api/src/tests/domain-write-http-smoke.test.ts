@@ -152,6 +152,8 @@ describe('Domain write endpoint smoke', () => {
         status: 'available',
         fillLevelPercent: 45,
         zoneId,
+        latitude: '48.856600',
+        longitude: '2.352200',
       })
       .expect(201);
     expect(containersServiceMock.create).toHaveBeenCalledTimes(1);
@@ -171,6 +173,9 @@ describe('Domain write endpoint smoke', () => {
         name: 'Zone A',
         code: 'ZA',
         description: 'Core district',
+        depotLabel: 'Zone A Depot',
+        depotLatitude: '48.856100',
+        depotLongitude: '2.351500',
       })
       .expect(201);
     expect(zonesServiceMock.create).toHaveBeenCalledTimes(1);

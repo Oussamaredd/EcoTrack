@@ -14,6 +14,7 @@ describe('AuthService', () => {
     findByEmail: vi.fn(),
     createLocalUser: vi.fn(),
     getRolesForUser: vi.fn(),
+    getZoneAssignmentForUser: vi.fn(),
     ensureUserForAuth: vi.fn(),
     updateUserProfile: vi.fn(),
     findById: vi.fn(),
@@ -32,6 +33,7 @@ describe('AuthService', () => {
     process.env.JWT_ACCESS_EXPIRES_IN = '15m';
     process.env.CLIENT_ORIGIN = 'http://localhost:5173';
     delete process.env.NODE_ENV;
+    usersServiceMock.getZoneAssignmentForUser.mockResolvedValue(null);
   });
 
   afterAll(() => {

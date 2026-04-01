@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, gte, ilike, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
-import { type DatabaseClient, passwordResetTokens, roles, userRoles, users } from 'ecotrack-database';
+import { type DatabaseClient, passwordResetTokens, roles, userRoles, users, zones } from 'ecotrack-database';
 
 import { DRIZZLE } from '../../database/database.constants.js';
 import type { AuthUser } from '../auth/auth.types.js';
@@ -53,6 +53,24 @@ export class UsersRepository {
     return this.db.query.users.findFirst({
       where: eq(users.googleId, googleId),
     });
+  }
+
+  async getZoneAssignmentForUser(userId: string) {
+    const [row] = await this.db
+      .select({
+        zoneId: users.zoneId,
+        zoneName: zones.name,
+        zoneCode: zones.code,
+        depotLabel: zones.depotLabel,
+        depotLatitude: zones.depotLatitude,
+        depotLongitude: zones.depotLongitude,
+      })
+      .from(users)
+      .leftJoin(zones, eq(users.zoneId, zones.id))
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    return row ?? null;
   }
 
   async ensureUserForAuth(authUser: AuthUser) {

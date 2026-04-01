@@ -517,6 +517,11 @@
   background: #2bd4a8;
 }
 
+.ops-stop-marker-depot {
+  background: #8bb9ff;
+  color: #07111f;
+}
+
 .ops-route-map-legend {
   display: flex;
   flex-wrap: wrap;

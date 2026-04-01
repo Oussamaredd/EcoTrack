@@ -48,6 +48,9 @@ export class ZonesRepository {
         name: dto.name.trim(),
         code: dto.code.trim(),
         description: dto.description?.trim() || null,
+        depotLabel: dto.depotLabel.trim(),
+        depotLatitude: dto.depotLatitude.trim(),
+        depotLongitude: dto.depotLongitude.trim(),
         isActive: dto.isActive ?? true,
       })
       .returning();
@@ -62,6 +65,9 @@ export class ZonesRepository {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
         ...(dto.code !== undefined ? { code: dto.code.trim() } : {}),
         ...(dto.description !== undefined ? { description: dto.description?.trim() || null } : {}),
+        ...(dto.depotLabel !== undefined ? { depotLabel: dto.depotLabel.trim() } : {}),
+        ...(dto.depotLatitude !== undefined ? { depotLatitude: dto.depotLatitude.trim() } : {}),
+        ...(dto.depotLongitude !== undefined ? { depotLongitude: dto.depotLongitude.trim() } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         updatedAt: new Date(),
       })

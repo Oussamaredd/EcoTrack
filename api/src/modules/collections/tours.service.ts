@@ -68,6 +68,11 @@ type AgentTourRecord = {
   scheduledFor: Date;
   zoneId?: string | null;
   zoneName?: string | null;
+  depot?: {
+    label?: string | null;
+    latitude?: string | null;
+    longitude?: string | null;
+  } | null;
   updatedAt?: Date;
   stops: AgentTourStop[];
   itinerary: Array<{
@@ -93,6 +98,12 @@ type AgentTourRecord = {
 
 type NormalizedRouteStop = {
   stopOrder: number;
+  latitude: number;
+  longitude: number;
+};
+
+type NormalizedDepot = {
+  label: string;
   latitude: number;
   longitude: number;
 };
@@ -133,7 +144,7 @@ export class ToursService implements ToursRouteCoordinationPort {
       return null;
     }
 
-    if (this.shouldUseStoredRoute(tour.storedRoute ?? null, tour.stops)) {
+    if (this.shouldUseStoredRoute(tour.storedRoute ?? null, tour.stops, this.normalizeDepot(tour))) {
       const storedRoute = this.mapStoredRoute(tour.storedRoute ?? null);
       if (storedRoute) {
         return this.attachRouteGeometry(tour, storedRoute);
@@ -241,8 +252,11 @@ export class ToursService implements ToursRouteCoordinationPort {
   }
 
   async persistRouteForTour(tourId: string, preloadedStops?: AgentTourStop[]) {
-    const stops = preloadedStops ?? ((await this.queryService.getTourRouteStops(tourId)) as AgentTourStop[]);
-    const resolvedRoute = await this.resolveRouteGeometry(stops);
+    const [stops, tour] = await Promise.all([
+      preloadedStops ?? ((await this.queryService.getTourRouteStops(tourId)) as AgentTourStop[]),
+      this.queryService.getTourById(tourId),
+    ]);
+    const resolvedRoute = await this.resolveRouteGeometry(stops, this.normalizeDepot(tour));
 
     if (!resolvedRoute) {
       return null;
@@ -300,6 +314,7 @@ export class ToursService implements ToursRouteCoordinationPort {
   private isStoredRouteUsable(
     storedRoute: PersistedRouteRecord | null,
     stops: AgentTourStop[],
+    depot?: NormalizedDepot | null,
   ) {
     if (!storedRoute) {
       return false;
@@ -315,13 +330,14 @@ export class ToursService implements ToursRouteCoordinationPort {
       return false;
     }
 
+    const routeStart = depot ?? null;
     const firstStop = normalizedStops[0];
     const lastStop = normalizedStops[normalizedStops.length - 1];
     const firstCoordinate = coordinates[0];
     const lastCoordinate = coordinates[coordinates.length - 1];
 
     return (
-      this.isCoordinateNearStop(firstCoordinate, firstStop) &&
+      this.isCoordinateNearStop(firstCoordinate, routeStart ?? firstStop) &&
       this.isCoordinateNearStop(lastCoordinate, lastStop) &&
       normalizedStops.every((stop) =>
         coordinates.some((coordinate) => this.isCoordinateNearStop(coordinate, stop)),
@@ -332,8 +348,9 @@ export class ToursService implements ToursRouteCoordinationPort {
   private shouldUseStoredRoute(
     storedRoute: PersistedRouteRecord | null,
     stops: AgentTourStop[],
+    depot?: NormalizedDepot | null,
   ) {
-    if (!this.isStoredRouteUsable(storedRoute, stops)) {
+    if (!this.isStoredRouteUsable(storedRoute, stops, depot)) {
       return false;
     }
 
@@ -403,12 +420,27 @@ export class ToursService implements ToursRouteCoordinationPort {
     );
   }
 
-  private buildFallbackRouteGeometry(stops: NormalizedRouteStop[]): RouteGeometrySummary | null {
-    if (stops.length === 0) {
+  private buildFallbackRouteGeometry(
+    stops: NormalizedRouteStop[],
+    depot?: NormalizedDepot | null,
+  ): RouteGeometrySummary | null {
+    const routePoints = [
+      ...(depot
+        ? [
+            {
+              latitude: depot.latitude,
+              longitude: depot.longitude,
+            },
+          ]
+        : []),
+      ...stops,
+    ];
+
+    if (routePoints.length === 0) {
       return null;
     }
 
-    const totalDistanceKm = this.computeFallbackRouteDistanceKm(stops);
+    const totalDistanceKm = this.computeFallbackRouteDistanceKm(routePoints);
     const estimatedDurationMinutes = Math.max(
       STOP_SERVICE_DURATION_MINUTES,
       Math.round(
@@ -416,12 +448,12 @@ export class ToursService implements ToursRouteCoordinationPort {
       ),
     );
     const coordinates: Array<[number, number]> =
-      stops.length === 1
+      routePoints.length === 1
         ? [
-            [stops[0].longitude, stops[0].latitude] as [number, number],
-            [stops[0].longitude, stops[0].latitude] as [number, number],
+            [routePoints[0].longitude, routePoints[0].latitude] as [number, number],
+            [routePoints[0].longitude, routePoints[0].latitude] as [number, number],
           ]
-        : stops.map((stop) => [stop.longitude, stop.latitude] as [number, number]);
+        : routePoints.map((stop) => [stop.longitude, stop.latitude] as [number, number]);
 
     return {
       geometry: {
@@ -436,26 +468,41 @@ export class ToursService implements ToursRouteCoordinationPort {
     };
   }
 
-  private async resolveRouteGeometry(stops: AgentTourStop[]): Promise<RouteGeometrySummary | null> {
+  private async resolveRouteGeometry(
+    stops: AgentTourStop[],
+    depot?: NormalizedDepot | null,
+  ): Promise<RouteGeometrySummary | null> {
     const normalizedStops = this.normalizeRouteStops(stops);
     if (normalizedStops.length === 0) {
       return null;
     }
 
-    if (normalizedStops.length === 1) {
-      return this.buildFallbackRouteGeometry(normalizedStops);
+    const routeWaypoints = [
+      ...(depot
+        ? [
+            {
+              latitude: depot.latitude,
+              longitude: depot.longitude,
+            },
+          ]
+        : []),
+      ...normalizedStops,
+    ];
+
+    if (routeWaypoints.length <= 1) {
+      return this.buildFallbackRouteGeometry(normalizedStops, depot);
     }
 
-    const routeResult = await this.routingClient.fetchRoute(normalizedStops);
+    const routeResult = await this.routingClient.fetchRoute(routeWaypoints);
 
     if (routeResult) {
       return routeResult;
     }
 
-    return this.buildFallbackRouteGeometry(normalizedStops);
+    return this.buildFallbackRouteGeometry(normalizedStops, depot);
   }
 
-  private computeFallbackRouteDistanceKm(stops: NormalizedRouteStop[]) {
+  private computeFallbackRouteDistanceKm(stops: Array<{ latitude: number; longitude: number }>) {
     if (stops.length <= 1) {
       return 0;
     }
@@ -468,13 +515,16 @@ export class ToursService implements ToursRouteCoordinationPort {
     return totalDistanceKm;
   }
 
-  private distanceBetweenRouteStops(fromStop: NormalizedRouteStop, toStop: NormalizedRouteStop) {
+  private distanceBetweenRouteStops(
+    fromStop: { latitude: number; longitude: number },
+    toStop: { latitude: number; longitude: number },
+  ) {
     return this.distanceBetweenCoordinates(fromStop, toStop);
   }
 
   private isCoordinateNearStop(
     coordinate: [number, number],
-    stop: NormalizedRouteStop,
+    stop: { latitude: number; longitude: number },
   ) {
     const distanceKm = this.distanceBetweenCoordinates(
       {
@@ -506,6 +556,27 @@ export class ToursService implements ToursRouteCoordinationPort {
 
   private toRadians(value: number) {
     return (value * Math.PI) / 180;
+  }
+
+  private normalizeDepot(tour: {
+    depot?: {
+      label?: string | null;
+      latitude?: string | null;
+      longitude?: string | null;
+    } | null;
+  } | null | undefined): NormalizedDepot | null {
+    const latitude = tour?.depot?.latitude == null ? Number.NaN : Number(tour.depot.latitude);
+    const longitude = tour?.depot?.longitude == null ? Number.NaN : Number(tour.depot.longitude);
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return null;
+    }
+
+    return {
+      label: tour?.depot?.label?.trim() || 'Zone depot',
+      latitude,
+      longitude,
+    };
   }
 }
 

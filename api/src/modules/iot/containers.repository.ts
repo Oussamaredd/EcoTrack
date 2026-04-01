@@ -78,8 +78,8 @@ export class ContainersRepository {
         fillLevelPercent: dto.fillLevelPercent ?? 0,
         zoneId: dto.zoneId ?? null,
         containerTypeId: dto.containerTypeId ?? null,
-        latitude: dto.latitude ?? null,
-        longitude: dto.longitude ?? null,
+        latitude: dto.latitude.trim(),
+        longitude: dto.longitude.trim(),
       })
       .returning();
 
@@ -96,8 +96,8 @@ export class ContainersRepository {
         ...(dto.fillLevelPercent !== undefined ? { fillLevelPercent: dto.fillLevelPercent } : {}),
         ...(dto.zoneId !== undefined ? { zoneId: dto.zoneId } : {}),
         ...(dto.containerTypeId !== undefined ? { containerTypeId: dto.containerTypeId } : {}),
-        ...(dto.latitude !== undefined ? { latitude: dto.latitude } : {}),
-        ...(dto.longitude !== undefined ? { longitude: dto.longitude } : {}),
+        ...(dto.latitude !== undefined ? { latitude: dto.latitude.trim() } : {}),
+        ...(dto.longitude !== undefined ? { longitude: dto.longitude.trim() } : {}),
         updatedAt: new Date(),
       })
       .where(eq(containers.id, id))

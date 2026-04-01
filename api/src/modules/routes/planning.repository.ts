@@ -47,6 +47,7 @@ import {
 } from './report-delivery.utils.js';
 
 type LatLngPoint = { id: string; latitude: number | null; longitude: number | null };
+type ZoneDepotPoint = LatLngPoint & { label: string };
 
 const EARTH_RADIUS_KM = 6371;
 const REPORT_KPI_ALLOWLIST = new Set(['tours', 'collections', 'anomalies']);
@@ -176,15 +177,20 @@ export class PlanningRepository {
         email: users.email,
         displayName: users.displayName,
         isActive: users.isActive,
+        zoneId: users.zoneId,
+        zoneName: zones.name,
+        zoneCode: zones.code,
       })
       .from(users)
       .leftJoin(userRoles, eq(userRoles.userId, users.id))
+      .leftJoin(zones, eq(users.zoneId, zones.id))
       .where(and(eq(userRoles.roleId, agentRole.id), eq(users.isActive, true)));
 
     return rows;
   }
 
   async optimizeTour(dto: OptimizeTourDto) {
+    const zoneDepot = await this.getZoneDepot(dto.zoneId);
     const allCandidates = await this.db
       .select({
         id: containers.id,
@@ -224,9 +230,9 @@ export class PlanningRepository {
         ? eligibleCandidates.filter((item) => manualIds.has(item.id))
         : [...eligibleCandidates].sort((left, right) => right.fillLevelPercent - left.fillLevelPercent);
 
-    const heuristicRoute = this.computeHeuristicRoute(selectedCandidates);
+    const heuristicRoute = this.computeHeuristicRoute(selectedCandidates, zoneDepot);
     const route = this.refineRouteWithTwoOpt(heuristicRoute);
-    const totalDistanceKm = this.computeRouteDistance(route);
+    const totalDistanceKm = this.computeRouteDistance(route, zoneDepot);
 
     return {
       candidates: selectedCandidates,
@@ -243,11 +249,20 @@ export class PlanningRepository {
         scheduledFor: scheduledFor.toISOString(),
         conflictWindowMinutes: SCHEDULE_CONFLICT_WINDOW_MINUTES,
       },
+      startLocation: zoneDepot
+        ? {
+            id: zoneDepot.id,
+            label: zoneDepot.label,
+            latitude: zoneDepot.latitude,
+            longitude: zoneDepot.longitude,
+          }
+        : null,
     };
   }
 
   async createPlannedTour(dto: CreatePlannedTourDto, actorUserId: string) {
     return this.db.transaction(async (tx) => {
+      const zoneDepot = await this.getZoneDepot(dto.zoneId, tx);
       const uniqueOrderedContainerIds = Array.from(new Set(dto.orderedContainerIds));
       if (uniqueOrderedContainerIds.length !== dto.orderedContainerIds.length) {
         throw new BadRequestException('orderedContainerIds must not contain duplicate container IDs');
@@ -270,6 +285,25 @@ export class PlanningRepository {
       const hasCrossZoneContainer = selectedContainers.some((container) => container.zoneId !== dto.zoneId);
       if (hasCrossZoneContainer) {
         throw new BadRequestException('All orderedContainerIds must belong to the selected zone');
+      }
+
+      if (dto.assignedAgentId) {
+        const [assignedAgent] = await tx
+          .select({
+            id: users.id,
+            zoneId: users.zoneId,
+          })
+          .from(users)
+          .where(eq(users.id, dto.assignedAgentId))
+          .limit(1);
+
+        if (!assignedAgent) {
+          throw new BadRequestException('Assigned agent was not found');
+        }
+
+        if (!assignedAgent.zoneId || assignedAgent.zoneId !== dto.zoneId) {
+          throw new BadRequestException('Assigned agent must belong to the selected zone');
+        }
       }
 
       const [createdTour] = await tx
@@ -295,7 +329,7 @@ export class PlanningRepository {
 
         return match;
       });
-      const stopEtas = this.computeStopEtas(orderedContainers, new Date(dto.scheduledFor));
+      const stopEtas = this.computeStopEtas(orderedContainers, new Date(dto.scheduledFor), zoneDepot);
       const plannedStops = dto.orderedContainerIds.map((containerId, index) => ({
         id: randomUUID(),
         tourId: createdTour.id,
@@ -1270,15 +1304,36 @@ export class PlanningRepository {
     };
   }
 
-  private computeHeuristicRoute(candidates: Array<Record<string, unknown>>) {
-    if (candidates.length <= 2) {
+  private computeHeuristicRoute(
+    candidates: Array<Record<string, unknown>>,
+    startLocation?: ZoneDepotPoint | null,
+  ) {
+    if (candidates.length <= 1) {
       return candidates;
     }
 
     const remaining = [...candidates];
     const route: Array<Record<string, unknown>> = [];
 
-    const first = remaining.shift();
+    let firstIndex = 0;
+    if (startLocation) {
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (let index = 0; index < remaining.length; index += 1) {
+        const candidate = remaining[index];
+        const distance = haversineDistanceKm(startLocation, {
+          id: String(candidate.id),
+          latitude: toNumberOrNull(candidate.latitude),
+          longitude: toNumberOrNull(candidate.longitude),
+        });
+
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          firstIndex = index;
+        }
+      }
+    }
+
+    const [first] = remaining.splice(firstIndex, 1);
     if (!first) {
       return [];
     }
@@ -1368,12 +1423,15 @@ export class PlanningRepository {
     };
   }
 
-  private computeRouteDistance(route: Array<Record<string, unknown>>) {
-    if (route.length <= 1) {
+  private computeRouteDistance(route: Array<Record<string, unknown>>, startLocation?: ZoneDepotPoint | null) {
+    if (route.length === 0) {
       return 0;
     }
 
     let total = 0;
+    if (startLocation) {
+      total += haversineDistanceKm(startLocation, this.toLatLngPoint(route[0]));
+    }
 
     for (let index = 1; index < route.length; index += 1) {
       const previous = route[index - 1];
@@ -1398,12 +1456,18 @@ export class PlanningRepository {
     return Math.max(1, Math.round((distanceKm / AVERAGE_ROUTE_SPEED_KMH) * 60));
   }
 
-  private computeStopEtas(route: Array<Record<string, unknown>>, scheduledFor: Date) {
+  private computeStopEtas(
+    route: Array<Record<string, unknown>>,
+    scheduledFor: Date,
+    startLocation?: ZoneDepotPoint | null,
+  ) {
     if (route.length === 0) {
       return [];
     }
 
-    const stopEtas: Date[] = [new Date(scheduledFor)];
+    const firstTravelMinutes =
+      startLocation == null ? 0 : this.estimateLegTravelMinutes(startLocation, route[0]);
+    const stopEtas: Date[] = [new Date(scheduledFor.getTime() + firstTravelMinutes * 60_000)];
 
     for (let index = 1; index < route.length; index += 1) {
       const previousEta = stopEtas[index - 1];
@@ -1417,6 +1481,34 @@ export class PlanningRepository {
     }
 
     return stopEtas;
+  }
+
+  private async getZoneDepot(
+    zoneId: string,
+    dbClient: Pick<DatabaseClient, 'select'> = this.db,
+  ): Promise<ZoneDepotPoint | null> {
+    const zonesInScope = await dbClient
+      .select({
+        id: zones.id,
+        label: zones.depotLabel,
+        latitude: zones.depotLatitude,
+        longitude: zones.depotLongitude,
+      })
+      .from(zones)
+      .where(eq(zones.id, zoneId));
+
+    const [zone] = zonesInScope;
+
+    if (!zone) {
+      throw new NotFoundException('Zone not found');
+    }
+
+    return {
+      id: zone.id,
+      label: zone.label,
+      latitude: toNumberOrNull(zone.latitude),
+      longitude: toNumberOrNull(zone.longitude),
+    };
   }
 }
 

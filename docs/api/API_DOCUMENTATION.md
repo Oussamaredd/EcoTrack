@@ -34,6 +34,7 @@ Local signup note:
 - `POST /signup` creates self-service accounts with the `citizen` role by default.
 - `GET /auth/status` returns `authenticated: false` when the request has no valid active session, including users that were deactivated after signing in.
 - `GET /auth/me` and `GET /me` require an active authenticated account.
+- `GET /auth/me` and `GET /me` now include additive zone-assignment metadata when available (`zoneId`, `zoneName`, `zoneCode`, `depotLabel`, `depotLatitude`, `depotLongitude`) so agent clients can bootstrap zone-aware execution without an extra profile lookup.
 
 `PUT /me` supports profile updates for `displayName` and optional `avatarUrl` (`http`/`https` URL or image data URL for PNG/JPEG/WEBP).
 `PUT /me/password` requires `currentPassword` and strong `newPassword` (12+ chars with uppercase, lowercase, number, and symbol) and is available for local accounts only.
@@ -76,7 +77,11 @@ POST /zones
 PUT /zones/:id
 ```
 
-`GET /api/containers` returns mapped container summaries used by mobile reporting, including `code`, `label`, `zoneName`, coordinates, operational `status`, and optional `fillLevelPercent`.
+`GET /api/containers` returns mapped container summaries used by mobile reporting and agent zone maps, including `code`, `label`, `zoneName`, coordinates, operational `status`, and optional `fillLevelPercent`.
+`GET /api/containers` supports `zoneId`, `page`, and `pageSize` query parameters; the agent web app follows the `pagination.hasNext` contract to load every mapped container for the authenticated agent's assigned zone.
+`POST /api/containers` requires `code`, `label`, `latitude`, and `longitude`; containers are no longer accepted without coordinates.
+`PUT /api/containers/:id` preserves non-null coordinates and trims coordinate strings when updates are supplied.
+`POST /api/zones` and `PUT /api/zones/:id` require `depotLabel`, `depotLatitude`, and `depotLongitude` so every operational zone exposes an agent depot / route starting location.
 `POST /api/iot/v1/measurements` accepts one validated sensor measurement and returns `202 Accepted` after the raw payload is staged in `iot.ingestion_events` for async worker processing.
 `POST /api/iot/v1/measurements/batch` accepts a validated non-empty measurement array up to `IOT_MAX_BATCH_SIZE` and returns `202 Accepted` with a batch identifier after staging each raw event.
 The ingestion repository stages each request or batch in one database transaction and persists producer metadata (`producer_name`, `producer_transaction_id`) on every staged row so ambiguous client retries resolve to one logical message path.
@@ -142,13 +147,14 @@ GET /tours/:tourId/activity
 ```
 
 Agent tour execution notes:
-- `GET /api/tours/agent/me` returns the current actionable non-terminal tour for the authenticated agent, plus ordered `stops`, itinerary coordinates, a `routeSummary` block, and persisted `routeGeometry` when at least two valid stop coordinates are available.
+- `GET /api/tours/agent/me` returns the current actionable non-terminal tour for the authenticated agent, plus ordered `stops`, itinerary coordinates, a `routeSummary` block, the assigned zone `depot`, and persisted `routeGeometry`.
 - `POST /api/tours/:tourId/start` is safe to repeat while the tour is already `in_progress`; completed tours are rejected.
 - `POST /api/tours/:tourId/stops/:stopId/validate` accepts only the active stop for new validations. Repeating the same completed-stop validation returns the latest route state without creating a duplicate collection event.
 - Tour writes now run through an internal command side backed by `ops.collection_domain_events` and `ops.collection_domain_snapshots`, while reads stay on the query-side projection tables used by the existing tour APIs.
 - Planning-created tours seed the same scheduled-tour domain event stream so planning, agent start, stop validation, completion, and cancellation all share one replayable collection history.
 - The current web workflow uses manual container confirmation plus optional browser geolocation. The optional `qrCode` field remains available for future mobile clients, but it is not required for the platform UI.
 - Route geometry is now stored in the database per tour (`tour_routes`) and returned as a GeoJSON `LineString`.
+- Stored and rebuilt route geometry now anchors from the zone depot when depot coordinates are configured for the tour's zone.
 - The API persists road-snapped route geometry against the configured routing service (`ROUTING_API_BASE_URL`) during tour creation/update flows; when routing is unavailable, it stores a straight stop-to-stop fallback `LineString`.
 - Routing lookups are protected by a circuit breaker configured with `ROUTING_TIMEOUT_MS`, `ROUTING_FAILURE_THRESHOLD`, and `ROUTING_RESET_WINDOW_MS`; when the breaker is open or a call times out, the service falls back immediately instead of cascading the outage into agent-route reads and rebuilds.
 - If an actionable tour is missing persisted route data, the API backfills it on the next `GET /api/tours/agent/me`.
@@ -159,6 +165,7 @@ Agent tour execution notes:
 - The web client caches the last successful tour payload in browser storage and reuses cached map tiles through a service worker when supported.
 - The agent web app also pre-caches a lightweight app shell and same-origin static assets for offline navigation. API traffic remains network-first and is never cached by the service worker.
 - The web client intentionally ignores cached `seed` fallback routes, discards expired/off-hours cached tour snapshots, and exposes a cache-bypass reload path so the agent page does not keep booting from stale demo or overdue run data.
+- The agent map renders all mapped containers for the assigned zone and uses the same operational marker family for routed and non-routed containers; numbered badges remain reserved for the current routed sequence.
 - `POST /api/tours/:tourId/anomalies` accepts `severity` values `low`, `medium`, `high`, or `critical`.
 - `photoUrl` in anomaly payloads must be a valid `http`/`https` URL when provided.
 
@@ -205,7 +212,11 @@ GPS fields (`latitude`, `longitude`) in citizen reporting, container setup, and 
 `POST /api/containers/:id/measurements` persists a new measurement, refreshes sensor heartbeat data, and updates the container's operational fill state.
 `manualContainerIds` in `POST /planning/optimize-tour` must be an array of UUID strings.
 `POST /planning/optimize-tour` excludes containers already assigned to non-terminal tours in the same zone within `+/- 120 minutes` of `scheduledFor`; explicitly supplied `manualContainerIds` still override that schedule deferral.
+`GET /api/planning/agents` returns each active agent with additive zone-assignment data (`zoneId`, `zoneCode`, `zoneName`) so manager planning can keep assignments zone-safe.
+`POST /api/planning/optimize-tour` returns `startLocation` when the selected zone has a configured depot and uses that depot as the route anchor for candidate ordering and route metrics.
 `orderedContainerIds` in `POST /planning/create-tour` must all belong to the selected `zoneId`.
+When `assignedAgentId` is provided to `POST /api/planning/create-tour`, that agent must already belong to the selected zone.
+`POST /api/planning/create-tour` computes ETAs from the zone depot to the first stop and then across the ordered route.
 `GET /api/planning/dashboard` returns `telemetryHealth.lastMeasurementAt` as an ISO 8601 timestamp string or `null`.
 `GET /api/planning/heatmap` returns a pre-aggregated manager heatmap read model with `zoneSummaries`, `containerSignals`, and deterministic `low` / `medium` / `high` risk tiers.
 `GET /api/planning/alerts` exposes persisted `alert_events`, and `POST /api/planning/alerts/:id/acknowledge` marks an alert as acknowledged.

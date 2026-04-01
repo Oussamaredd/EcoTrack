@@ -7,9 +7,8 @@ import {
   useReportAnomaly,
   useStartAgentTour,
   useTourActivity,
-  useZoneContainers,
   useValidateTourStop,
-  type ZoneContainerMapItem,
+  useZoneContainers,
 } from "../hooks/useAgentTours";
 import "../styles/OperationsPages.css";
 
@@ -35,6 +34,12 @@ type RouteSummary = {
   totalDistanceKm: number;
   estimatedDurationMinutes: number;
   isOverdue: boolean;
+};
+
+type DepotLocation = {
+  label?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
 };
 
 type TourActivityRow = {
@@ -181,7 +186,6 @@ const captureCurrentPosition = () =>
 
 export default function AgentTourPage() {
   const [useManualFallback, setUseManualFallback] = useState(false);
-  const [showZoneContainers, setShowZoneContainers] = useState(true);
   const [volumeLiters, setVolumeLiters] = useState("");
   const [validationNotes, setValidationNotes] = useState("");
   const [anomalyTypeId, setAnomalyTypeId] = useState("");
@@ -207,6 +211,7 @@ export default function AgentTourPage() {
         zoneId?: string | null;
         zoneName?: string | null;
         scheduledFor?: string;
+        depot?: DepotLocation | null;
         stops?: TourStop[];
         routeGeometry?: TourRouteGeometry | null;
         routeSummary?: RouteSummary;
@@ -214,8 +219,12 @@ export default function AgentTourPage() {
     | null;
 
   const stops = Array.isArray(tour?.stops) ? tour.stops : [];
+  const zoneContainersQuery = useZoneContainers(tour?.zoneId ?? null);
+  const zoneContainers = Array.isArray(zoneContainersQuery.data) ? zoneContainersQuery.data : [];
   const routeSummary = tour?.routeSummary ?? null;
   const routeGeometry = tour?.routeGeometry ?? null;
+  const depotLocation = tour?.depot ?? null;
+  const zoneContainerCount = zoneContainers.length;
   const activeStop = useMemo(
     () =>
       stops.find((stop) => normalizeStatus(stop.status) === "active") ??
@@ -228,10 +237,6 @@ export default function AgentTourPage() {
     setUseManualFallback(false);
     setCapturedPosition(null);
   }, [activeStop?.id]);
-
-  useEffect(() => {
-    setShowZoneContainers(true);
-  }, [tour?.zoneId]);
 
   const nextStop = useMemo(
     () =>
@@ -247,23 +252,8 @@ export default function AgentTourPage() {
   );
 
   const activityQuery = useTourActivity(tour?.id);
-  const zoneContainersQuery = useZoneContainers(tour?.zoneId ?? null);
   const activityRows =
     ((activityQuery.data as { activity?: TourActivityRow[] } | undefined)?.activity ?? []);
-  const zoneContainers =
-    (((zoneContainersQuery.data as { containers?: ZoneContainerMapItem[] } | undefined)?.containers ??
-      []) as ZoneContainerMapItem[]);
-  const routeContainerIds = useMemo(() => new Set(stops.map((stop) => stop.containerId)), [stops]);
-  const scheduledZoneContainerCount = useMemo(
-    () => zoneContainers.filter((container) => routeContainerIds.has(container.id)).length,
-    [routeContainerIds, zoneContainers],
-  );
-  const offRouteZoneContainers = useMemo(
-    () => zoneContainers.filter((container) => !routeContainerIds.has(container.id)),
-    [routeContainerIds, zoneContainers],
-  );
-  const offRouteContainerCount = offRouteZoneContainers.length;
-  const shouldShowZoneContainerToggle = offRouteContainerCount > 0;
   const hasGeolocationSupport =
     typeof navigator !== "undefined" && "geolocation" in navigator;
   const totalStops = routeSummary?.totalStops ?? stops.length;
@@ -629,14 +619,7 @@ export default function AgentTourPage() {
           <div>
             <h2>Route Overview</h2>
             <p className="ops-card-intro">
-              Persisted route data from the API. Assigned stops stay primary on this map. When live routing is unavailable, the stored fallback line is shown.
-            </p>
-            <p className="ops-subtle">
-              {zoneContainersQuery.isLoading
-                ? "Loading mapped zone containers..."
-                : zoneContainersQuery.isError
-                  ? "Zone inventory is temporarily unavailable. The assigned route remains actionable."
-                  : `${scheduledZoneContainerCount} scheduled stop${scheduledZoneContainerCount === 1 ? "" : "s"} on this route, ${offRouteContainerCount} other mapped container${offRouteContainerCount === 1 ? "" : "s"} in ${tour.zoneName ?? "this zone"}.`}
+              Persisted route data from the API. The line and numbered badges show the planned route sequence, and every mapped container in the assigned zone is also visible with the same operational marker style.
             </p>
           </div>
           <div className="ops-card-head-badges">
@@ -645,33 +628,29 @@ export default function AgentTourPage() {
             ) : (
               <span className="ops-chip ops-chip-info">No active stop</span>
             )}
-            {zoneContainers.length > 0 ? (
-              <span className="ops-chip ops-chip-info">
-                {scheduledZoneContainerCount}/{zoneContainers.length} mapped on route
-              </span>
-            ) : null}
+            <span className="ops-chip ops-chip-info">
+              {zoneContainersQuery.isLoading ? "Loading zone map..." : `${zoneContainerCount} mapped containers`}
+            </span>
             <span className={getRouteStatusToneClass(routeGeometry)}>{routeStatusLabel}</span>
           </div>
         </div>
-        {shouldShowZoneContainerToggle ? (
-          <div className="ops-actions ops-mt-sm">
-            <button
-              type="button"
-              className="ops-btn ops-btn-outline"
-              onClick={() => setShowZoneContainers((current) => !current)}
-            >
-              {showZoneContainers ? "Hide Other Zone Containers" : "Show Other Zone Containers"}
-            </button>
+        <div className="ops-inline-summary">
+          <div>
+            <p className="ops-subtle">Depot: {depotLocation?.label?.trim() || "Zone depot not configured"}</p>
             <p className="ops-subtle">
-              Grey reference markers represent mapped containers in the same zone that are not part of the current route.
+              Start coordinates: {formatCoordinates(depotLocation?.latitude, depotLocation?.longitude)}
             </p>
           </div>
-        ) : null}
+          <div>
+            <p className="ops-subtle">Routed stops: {stops.length}</p>
+            <p className="ops-subtle">Mapped zone containers: {zoneContainerCount}</p>
+          </div>
+        </div>
         <AgentRouteMap
           stops={stops}
-          routeGeometry={routeGeometry}
           zoneContainers={zoneContainers}
-          showZoneContainers={showZoneContainers}
+          depot={depotLocation}
+          routeGeometry={routeGeometry}
         />
       </article>
 

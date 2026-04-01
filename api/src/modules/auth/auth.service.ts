@@ -65,6 +65,12 @@ type LocalAuthSuccess = {
     avatarUrl: string | null;
     role: string;
     roles: Array<{ id: string; name: string }>;
+    zoneId: string | null;
+    zoneName: string | null;
+    zoneCode: string | null;
+    depotLabel: string | null;
+    depotLatitude: string | null;
+    depotLongitude: string | null;
     isActive: boolean;
     provider: 'local' | 'google';
   };
@@ -79,6 +85,15 @@ type LocalLoginSuccess = AuthExchangeCode & LocalAuthSuccess;
 type ExchangeCodeRecord = {
   user: AuthUser;
   expiresAt: number;
+};
+
+type SerializedZoneAssignment = {
+  zoneId: string | null;
+  zoneName: string | null;
+  zoneCode: string | null;
+  depotLabel: string | null;
+  depotLatitude: string | null;
+  depotLongitude: string | null;
 };
 
 @Injectable()
@@ -366,8 +381,11 @@ export class AuthService {
       throw new Error('Failed to create user');
     }
 
-    const roles = await this.usersService.getRolesForUser(createdUser.id);
-    const serialized = this.serializeUser(createdUser, roles, 'local');
+    const [roles, zoneAssignment] = await Promise.all([
+      this.usersService.getRolesForUser(createdUser.id),
+      this.resolveSerializedZoneAssignment(createdUser.id),
+    ]);
+    const serialized = this.serializeUser(createdUser, roles, 'local', zoneAssignment);
 
     return {
       accessToken: this.createAccessToken(serialized),
@@ -411,8 +429,11 @@ export class AuthService {
           avatarUrl: user.avatarUrl ?? null,
         });
 
-        const roles = await this.usersService.getRolesForUser(user.id);
-        const serialized = this.serializeUser(user, roles, 'local');
+        const [roles, zoneAssignment] = await Promise.all([
+          this.usersService.getRolesForUser(user.id),
+          this.resolveSerializedZoneAssignment(user.id),
+        ]);
+        const serialized = this.serializeUser(user, roles, 'local', zoneAssignment);
 
         return {
           code: exchangeCode,
@@ -444,9 +465,12 @@ export class AuthService {
       throw new ForbiddenException('User account is inactive');
     }
 
-    const roles = await this.usersService.getRolesForUser(dbUser.id);
+    const [roles, zoneAssignment] = await Promise.all([
+      this.usersService.getRolesForUser(dbUser.id),
+      this.resolveSerializedZoneAssignment(dbUser.id),
+    ]);
     const provider = dbUser.authProvider === 'google' ? 'google' : 'local';
-    return this.serializeUser(dbUser, roles, provider);
+    return this.serializeUser(dbUser, roles, provider, zoneAssignment);
   }
 
   async updateCurrentUserProfile(
@@ -468,9 +492,12 @@ export class AuthService {
     }
 
     const updatedUser = await this.usersService.updateUserProfile(dbUser.id, params);
-    const roles = await this.usersService.getRolesForUser(updatedUser.id);
+    const [roles, zoneAssignment] = await Promise.all([
+      this.usersService.getRolesForUser(updatedUser.id),
+      this.resolveSerializedZoneAssignment(updatedUser.id),
+    ]);
     const provider = updatedUser.authProvider === 'google' ? 'google' : 'local';
-    return this.serializeUser(updatedUser, roles, provider);
+    return this.serializeUser(updatedUser, roles, provider, zoneAssignment);
   }
 
   async changeCurrentUserPassword(
@@ -610,8 +637,11 @@ export class AuthService {
           throw new ForbiddenException('User account is inactive');
         }
 
-        const roles = await this.usersService.getRolesForUser(dbUser.id);
-        const serialized = this.serializeUser(dbUser, roles, record.user.provider);
+        const [roles, zoneAssignment] = await Promise.all([
+          this.usersService.getRolesForUser(dbUser.id),
+          this.resolveSerializedZoneAssignment(dbUser.id),
+        ]);
+        const serialized = this.serializeUser(dbUser, roles, record.user.provider, zoneAssignment);
 
         return {
           accessToken: this.createAccessToken(serialized),
@@ -683,6 +713,7 @@ export class AuthService {
     },
     roles: Array<{ id: string; name: string }>,
     provider: 'local' | 'google',
+    zoneAssignment: SerializedZoneAssignment,
   ) {
     return {
       id: user.id,
@@ -691,6 +722,12 @@ export class AuthService {
       avatarUrl: user.avatarUrl ?? null,
       role: user.role,
       roles: roles.map((role) => ({ id: role.id, name: role.name })),
+      zoneId: zoneAssignment.zoneId,
+      zoneName: zoneAssignment.zoneName,
+      zoneCode: zoneAssignment.zoneCode,
+      depotLabel: zoneAssignment.depotLabel,
+      depotLatitude: zoneAssignment.depotLatitude,
+      depotLongitude: zoneAssignment.depotLongitude,
       isActive: user.isActive,
       provider,
     };
@@ -715,7 +752,10 @@ export class AuthService {
       return null;
     }
 
-    const dbRoles = await this.usersService.getRolesForUser(dbUser.id);
+    const [dbRoles, zoneAssignment] = await Promise.all([
+      this.usersService.getRolesForUser(dbUser.id),
+      this.usersService.getZoneAssignmentForUser(dbUser.id),
+    ]);
 
     return {
       id: dbUser.id,
@@ -727,7 +767,26 @@ export class AuthService {
         name: role.name,
       })),
       permissions: this.collectPermissions(dbRoles),
+      zoneId: zoneAssignment?.zoneId ?? null,
+      zoneName: zoneAssignment?.zoneName ?? null,
+      zoneCode: zoneAssignment?.zoneCode ?? null,
+      depotLabel: zoneAssignment?.depotLabel ?? null,
+      depotLatitude: zoneAssignment?.depotLatitude ?? null,
+      depotLongitude: zoneAssignment?.depotLongitude ?? null,
       isActive: dbUser.isActive,
+    };
+  }
+
+  private async resolveSerializedZoneAssignment(userId: string): Promise<SerializedZoneAssignment> {
+    const zoneAssignment = await this.usersService.getZoneAssignmentForUser(userId);
+
+    return {
+      zoneId: zoneAssignment?.zoneId ?? null,
+      zoneName: zoneAssignment?.zoneName ?? null,
+      zoneCode: zoneAssignment?.zoneCode ?? null,
+      depotLabel: zoneAssignment?.depotLabel ?? null,
+      depotLatitude: zoneAssignment?.depotLatitude ?? null,
+      depotLongitude: zoneAssignment?.depotLongitude ?? null,
     };
   }
 

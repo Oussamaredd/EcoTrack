@@ -176,6 +176,13 @@
       "when": 1774530897524,
       "tag": "0024_hard_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1775077319405,
+      "tag": "0025_windy_norman_osborn",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,18 @@ import * as reportDeliveryUtils from '../modules/routes/report-delivery.utils.js
 
 describe('PlanningRepository invariants', () => {
   it('defers containers already reserved on nearby tours for the selected schedule', async () => {
+    const selectZoneDepot = {
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([
+          {
+            id: 'zone-1',
+            label: 'North Depot',
+            latitude: '36.8000',
+            longitude: '10.1800',
+          },
+        ]),
+      }),
+    };
     const allCandidates = [
       {
         id: 'container-1',
@@ -50,6 +62,7 @@ describe('PlanningRepository invariants', () => {
     const dbMock = {
       select: vi
         .fn()
+        .mockReturnValueOnce(selectZoneDepot)
         .mockReturnValueOnce(selectCandidates)
         .mockReturnValueOnce(selectScheduledStops),
     };
@@ -76,16 +89,30 @@ describe('PlanningRepository invariants', () => {
 
   it('rejects planned tours when containers do not belong to selected zone', async () => {
     const tx = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([
-            {
-              id: 'container-1',
-              zoneId: 'zone-a',
-            },
-          ]),
+      select: vi
+        .fn()
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: 'zone-b',
+                label: 'Zone B Depot',
+                latitude: '36.8000',
+                longitude: '10.1800',
+              },
+            ]),
+          }),
+        })
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: 'container-1',
+                zoneId: 'zone-a',
+              },
+            ]),
+          }),
         }),
-      }),
       insert: vi.fn(),
     };
 
@@ -115,24 +142,38 @@ describe('PlanningRepository invariants', () => {
     const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
 
     const tx = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([
-            {
-              id: 'container-1',
-              zoneId: 'zone-1',
-              latitude: '36.8100',
-              longitude: '10.1900',
-            },
-            {
-              id: 'container-2',
-              zoneId: 'zone-1',
-              latitude: '36.8200',
-              longitude: '10.2000',
-            },
-          ]),
+      select: vi
+        .fn()
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: 'zone-1',
+                label: 'Zone 1 Depot',
+                latitude: '36.8000',
+                longitude: '10.1800',
+              },
+            ]),
+          }),
+        })
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: 'container-1',
+                zoneId: 'zone-1',
+                latitude: '36.8100',
+                longitude: '10.1900',
+              },
+              {
+                id: 'container-2',
+                zoneId: 'zone-1',
+                latitude: '36.8200',
+                longitude: '10.2000',
+              },
+            ]),
+          }),
         }),
-      }),
       insert: vi.fn().mockImplementation(() => ({
         values: vi.fn((payload: Record<string, unknown> | Array<Record<string, unknown>>) => {
           if (Array.isArray(payload)) {

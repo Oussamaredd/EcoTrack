@@ -22,7 +22,7 @@ export type TourRouteGeometry = {
   resolvedAt: string;
 };
 
-export type ZoneContainerMapItem = {
+export type ZoneContainerData = {
   id: string;
   code: string;
   label: string;
@@ -32,11 +32,6 @@ export type ZoneContainerMapItem = {
   longitude?: string | null;
   zoneId?: string | null;
   zoneName?: string | null;
-  containerTypeId?: string | null;
-  containerTypeCode?: string | null;
-  containerTypeLabel?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
 };
 
 export type AgentTourDataSource = 'none' | 'network' | 'cache';
@@ -171,6 +166,29 @@ const isExpiredAgentTourCache = (cached: CachedEnvelope<unknown>) => {
   }
 
   return scheduledForMs < Date.now() && cacheAgeMs > MAX_OVERDUE_AGENT_TOUR_CACHE_AGE_MS;
+};
+
+const ZONE_CONTAINER_PAGE_SIZE = 50;
+
+const fetchAllZoneContainers = async (zoneId: string) => {
+  const items: ZoneContainerData[] = [];
+  let page = 1;
+  let hasNext = true;
+
+  while (hasNext) {
+    const response = (await apiClient.get(
+      `/api/containers?zoneId=${encodeURIComponent(zoneId)}&page=${page}&pageSize=${ZONE_CONTAINER_PAGE_SIZE}`,
+    )) as {
+      containers?: ZoneContainerData[];
+      pagination?: { hasNext?: boolean };
+    };
+
+    items.push(...((response?.containers ?? []) as ZoneContainerData[]));
+    hasNext = Boolean(response?.pagination?.hasNext);
+    page += 1;
+  }
+
+  return items;
 };
 
 export const clearCachedAgentTour = () => {
@@ -308,28 +326,18 @@ export const useReportAnomaly = () => {
   });
 };
 
-export const useZoneContainers = (zoneId?: string | null) =>
-  useQuery({
-    queryKey: ['zone-containers', zoneId],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        zoneId: zoneId ?? '',
-        page: '1',
-        pageSize: '200',
-      });
-
-      return apiClient.get(`/api/containers?${params.toString()}`) as Promise<{
-        containers?: ZoneContainerMapItem[];
-      }>;
-    },
-    enabled: Boolean(zoneId),
-    staleTime: 30_000,
-  });
-
 export const useTourActivity = (tourId?: string) =>
   useQuery({
     queryKey: ['tour-activity', tourId],
     queryFn: async () => apiClient.get(`/api/tours/${tourId}/activity`),
     enabled: Boolean(tourId),
     staleTime: 15_000,
+  });
+
+export const useZoneContainers = (zoneId?: string | null) =>
+  useQuery({
+    queryKey: ['zone-containers', zoneId],
+    queryFn: async () => fetchAllZoneContainers(zoneId as string),
+    enabled: Boolean(zoneId),
+    staleTime: 60_000,
   });
