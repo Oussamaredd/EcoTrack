@@ -12,6 +12,12 @@ export type AuthenticatedRequestUser = {
   role: string;
   roles: ResolvedRole[];
   permissions: string[];
+  zoneId?: string | null;
+  zoneName?: string | null;
+  zoneCode?: string | null;
+  depotLabel?: string | null;
+  depotLatitude?: string | null;
+  depotLongitude?: string | null;
   isActive: boolean;
 };
 

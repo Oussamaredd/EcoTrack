@@ -1,6 +1,6 @@
 # DB Schema Namespace Rollout Status
 
-Last updated: 2026-03-24
+Last updated: 2026-04-01
 
 ## Purpose
 
@@ -35,6 +35,14 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 
 - `database/migrations/0024_hard_bullseye.sql` added operational read-path indexes for `incident.citizen_reports`, `notify.notifications`, `notify.notification_deliveries`, and `analytics.zone_current_state` for workbook module `M11.3`.
 - These indexes are Development-owned monolith performance artifacts and are paired with the SQL baseline pack in `infrastructure/performance/postgresql`.
+
+2026-04-01 extension note:
+
+- `database/migrations/0025_windy_norman_osborn.sql` added additive zone-routing and execution fields for the current operational use case.
+- `auth.users` now carries optional `zone_id` assignment so agents can be bound to one operating zone.
+- `core.zones` now requires `depot_label`, `depot_latitude`, and `depot_longitude` so every zone can expose a depot / route start point.
+- `core.containers.latitude` and `core.containers.longitude` are now mandatory, removing null-coordinate containers from the route-planning path.
+- These changes remain Development-owned operational data-shape work; no Security/Data specialty storage was introduced.
 
 Known readiness exceptions from the original rollout pass:
 
@@ -189,6 +197,9 @@ Checklist:
 - [ ] Add `boundary_geom` to `core.zones` if PostGIS is enabled. Blocked because PostGIS was unavailable in the active dev database.
 - [ ] Add `location_geom` and `container_type_id` to `core.containers`. Partial because `container_type_id` was added, but `location_geom` was skipped because PostGIS was unavailable.
 - [x] Decide whether `latitude` and `longitude` remain temporarily during backfill.
+- [x] Add operational depot fields (`depot_label`, `depot_latitude`, `depot_longitude`) to `core.zones`.
+- [x] Add optional zone assignment (`zone_id`) to `auth.users` for zone-bound agents.
+- [x] Require non-null `latitude` and `longitude` on `core.containers` after backfill.
 - [ ] Add `route_geom` to `ops.tour_routes` if PostGIS is enabled. Blocked because PostGIS was unavailable in the active dev database.
 - [x] Add `started_at` and `completed_at` to `ops.tours`.
 - [x] Keep helpdesk tables isolated in `support` and do not fold them into CDC core domains.

@@ -31,6 +31,10 @@ export class UsersService {
     return this.usersRepository.findByGoogleId(googleId);
   }
 
+  async getZoneAssignmentForUser(userId: string) {
+    return this.usersRepository.getZoneAssignmentForUser(userId);
+  }
+
   async ensureUserForAuth(authUser: AuthUser) {
     return this.usersRepository.ensureUserForAuth(authUser);
   }

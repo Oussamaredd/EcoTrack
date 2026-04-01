@@ -12,13 +12,13 @@ Execute assigned collection tours, validate stops, and report anomalies.
 
 1. Open `Daily Agent Tour`, review the Leaflet route map, and confirm the current stop + ETA.
    The route status badge tells you whether the page is using a stored road route or a stored fallback route.
-   The Route Overview panel also shows how many mapped zone containers are assigned to the route versus how many remain off-route in the same zone.
+   The Route Overview panel also shows the assigned zone depot/start location and how many mapped containers exist in that zone.
 2. Click `Start Tour` once the route is ready; repeated starts do not restart completed tours.
 3. Validate only the active stop with collected volume, manual container confirmation, and optional captured device location.
 4. Submit anomalies with severity and optional photo URL when blocked/damaged/unsafe conditions are observed.
 5. If connectivity drops, the page can fall back to a recent cached tour payload (including persisted API route geometry) and previously viewed map tiles. Overdue or stale cached runs are intentionally discarded instead of being reused indefinitely.
 6. Review the in-page activity timeline for start, validation, and anomaly confirmation.
-7. If grey reference markers are shown for other mapped containers in the same zone, use `Hide Other Zone Containers` to reduce map noise and keep the assigned route isolated.
+7. All mapped containers in the assigned zone remain visible on the map with the same operational marker family. Numbered badges identify the containers that are part of the current routed sequence.
 
 ## Recovery notes
 

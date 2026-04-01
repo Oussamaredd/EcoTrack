@@ -101,6 +101,9 @@ export class ToursRepository {
         startedAt: tours.startedAt,
         zoneId: tours.zoneId,
         zoneName: zones.name,
+        depotLabel: zones.depotLabel,
+        depotLatitude: zones.depotLatitude,
+        depotLongitude: zones.depotLongitude,
         updatedAt: tours.updatedAt,
       })
       .from(tours)
@@ -119,8 +122,17 @@ export class ToursRepository {
       this.getStoredRoute(tour.id),
     ]);
 
+    const { depotLabel, depotLatitude, depotLongitude, ...tourSnapshot } = tour;
+
     return {
-      ...tour,
+      ...tourSnapshot,
+      depot: tour.zoneId
+        ? {
+            label: depotLabel ?? null,
+            latitude: depotLatitude ?? null,
+            longitude: depotLongitude ?? null,
+          }
+        : null,
       stops,
       storedRoute,
       itinerary: stops.map((stop) => ({
@@ -185,14 +197,33 @@ export class ToursRepository {
         scheduledFor: tours.scheduledFor,
         zoneId: tours.zoneId,
         assignedAgentId: tours.assignedAgentId,
+        depotLabel: zones.depotLabel,
+        depotLatitude: zones.depotLatitude,
+        depotLongitude: zones.depotLongitude,
         createdAt: tours.createdAt,
         updatedAt: tours.updatedAt,
       })
       .from(tours)
+      .leftJoin(zones, eq(tours.zoneId, zones.id))
       .where(eq(tours.id, tourId))
       .limit(1);
 
-    return tour ?? null;
+    if (!tour) {
+      return null;
+    }
+
+    const { depotLabel, depotLatitude, depotLongitude, ...tourSnapshot } = tour;
+
+    return {
+      ...tourSnapshot,
+      depot: tour.zoneId
+        ? {
+            label: depotLabel ?? null,
+            latitude: depotLatitude ?? null,
+            longitude: depotLongitude ?? null,
+          }
+        : null,
+    };
   }
 
   async upsertTourRoute(route: {

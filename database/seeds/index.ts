@@ -39,6 +39,7 @@ type UserSeed = {
   displayName: string;
   role: string;
   assignedRoles: string[];
+  zoneCode?: string;
   isActive: boolean;
   authProvider: 'local' | 'google';
   passwordHash?: string | null;
@@ -222,6 +223,12 @@ type RouteGeometryLineString = {
   coordinates: Array<[number, number]>;
 };
 
+type ZoneDepotSeed = {
+  label: string;
+  latitude: string;
+  longitude: string;
+};
+
 type PersistedRouteSeed = {
   geometry: RouteGeometryLineString;
   distanceMeters: number | null;
@@ -317,6 +324,7 @@ const USER_SEEDS: UserSeed[] = [
     displayName: 'Local Smoke User',
     role: 'agent',
     assignedRoles: ['agent'],
+    zoneCode: 'ZONE-DOWNTOWN',
     isActive: true,
     authProvider: 'local',
     passwordHash: MANUAL_TEST_PASSWORD_HASH,
@@ -367,6 +375,7 @@ const USER_SEEDS: UserSeed[] = [
     displayName: 'Agent User',
     role: 'agent',
     assignedRoles: ['agent'],
+    zoneCode: 'ZONE-DOWNTOWN',
     isActive: true,
     authProvider: 'local',
     passwordHash: MANUAL_TEST_PASSWORD_HASH,
@@ -1161,6 +1170,41 @@ const CONTAINER_SEEDS: ContainerSeed[] = CONTAINER_SEED_BLUEPRINTS.map(({ addres
   status: resolveSeedContainerStatus(seed.fillLevelPercent),
 }));
 
+const formatDepotCoordinate = (value: number) => value.toFixed(6);
+
+const ZONE_DEPOT_SEEDS = new Map<string, ZoneDepotSeed>(
+  Array.from(
+    CONTAINER_SEEDS.reduce((accumulator, seed) => {
+      const latitude = Number(seed.latitude);
+      const longitude = Number(seed.longitude);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return accumulator;
+      }
+
+      const entry = accumulator.get(seed.zoneCode) ?? {
+        sumLatitude: 0,
+        sumLongitude: 0,
+        count: 0,
+      };
+
+      entry.sumLatitude += latitude;
+      entry.sumLongitude += longitude;
+      entry.count += 1;
+      accumulator.set(seed.zoneCode, entry);
+      return accumulator;
+    }, new Map<string, { sumLatitude: number; sumLongitude: number; count: number }>()),
+  )
+    .filter(([, entry]) => entry.count > 0)
+    .map(([zoneCode, entry]) => [
+      zoneCode,
+      {
+        label: `Depot ${ZONE_SEEDS.find((zone) => zone.code === zoneCode)?.name ?? zoneCode}`,
+        latitude: formatDepotCoordinate(entry.sumLatitude / entry.count),
+        longitude: formatDepotCoordinate(entry.sumLongitude / entry.count),
+      } satisfies ZoneDepotSeed,
+    ]),
+);
+
 const TOUR_SEEDS: TourSeed[] = [
   {
     name: 'Paris 1er Morning Round',
@@ -1579,6 +1623,7 @@ const haversineDistanceKm = (
 
 const buildPersistedRouteSeed = (
   stops: Array<{ stopOrder: number; latitude: string | null; longitude: string | null }>,
+  depot?: ZoneDepotSeed | null,
 ): PersistedRouteSeed | null => {
   const normalizedStops = stops
     .map((stop) => {
@@ -1610,21 +1655,34 @@ const buildPersistedRouteSeed = (
     return null;
   }
 
+  const routePoints = [
+    ...(depot
+      ? [
+          {
+            stopOrder: 0,
+            latitude: Number(depot.latitude),
+            longitude: Number(depot.longitude),
+          },
+        ]
+      : []),
+    ...normalizedStops,
+  ];
+
   let totalDistanceKm = 0;
-  for (let index = 1; index < normalizedStops.length; index += 1) {
-    totalDistanceKm += haversineDistanceKm(normalizedStops[index - 1], normalizedStops[index]);
+  for (let index = 1; index < routePoints.length; index += 1) {
+    totalDistanceKm += haversineDistanceKm(routePoints[index - 1], routePoints[index]);
   }
 
   return {
     geometry: {
       type: 'LineString',
       coordinates:
-        normalizedStops.length === 1
+        routePoints.length === 1
           ? [
-              [normalizedStops[0].longitude, normalizedStops[0].latitude],
-              [normalizedStops[0].longitude, normalizedStops[0].latitude],
+              [routePoints[0].longitude, routePoints[0].latitude],
+              [routePoints[0].longitude, routePoints[0].latitude],
             ]
-          : normalizedStops.map((stop) => [stop.longitude, stop.latitude]),
+          : routePoints.map((stop) => [stop.longitude, stop.latitude]),
     },
     distanceMeters: Math.max(0, Math.round(totalDistanceKm * 1000)),
     durationMinutes: Math.max(
@@ -1859,12 +1917,20 @@ export async function seedDatabase() {
 
       const zoneIds = new Map<string, string>();
       for (const seed of ZONE_SEEDS) {
+        const depot = ZONE_DEPOT_SEEDS.get(seed.code);
+        if (!depot) {
+          throw new Error(`Depot seed missing for zone: ${seed.code}`);
+        }
+
         await tx
           .insert(zones)
           .values({
             name: seed.name,
             code: seed.code,
             description: seed.description ?? null,
+            depotLabel: depot.label,
+            depotLatitude: depot.latitude,
+            depotLongitude: depot.longitude,
             isActive: true,
           })
           .onConflictDoUpdate({
@@ -1872,6 +1938,9 @@ export async function seedDatabase() {
             set: {
               name: seed.name,
               description: seed.description ?? null,
+              depotLabel: depot.label,
+              depotLatitude: depot.latitude,
+              depotLongitude: depot.longitude,
               updatedAt: now,
             },
           });
@@ -1882,6 +1951,17 @@ export async function seedDatabase() {
         }
 
         zoneIds.set(seed.code, row.id);
+      }
+
+      for (const seed of USER_SEEDS) {
+        const zoneId = seed.zoneCode ? zoneIds.get(seed.zoneCode) ?? null : null;
+        await tx
+          .update(users)
+          .set({
+            zoneId,
+            updatedAt: now,
+          })
+          .where(eq(users.email, seed.email));
       }
 
       const containerTypeIds = new Map<string, string>();
@@ -1934,6 +2014,9 @@ export async function seedDatabase() {
         if (!containerTypeId) {
           throw new Error(`Container type not found for container ${seed.code}: ${seed.containerTypeCode}`);
         }
+        if (!seed.latitude || !seed.longitude) {
+          throw new Error(`Coordinates missing for container ${seed.code}`);
+        }
 
         await tx
           .insert(containers)
@@ -1944,8 +2027,8 @@ export async function seedDatabase() {
             fillLevelPercent: seed.fillLevelPercent,
             zoneId,
             containerTypeId,
-            latitude: seed.latitude ?? null,
-            longitude: seed.longitude ?? null,
+            latitude: seed.latitude,
+            longitude: seed.longitude,
           })
           .onConflictDoUpdate({
             target: containers.code,
@@ -1955,8 +2038,8 @@ export async function seedDatabase() {
               fillLevelPercent: seed.fillLevelPercent,
               zoneId,
               containerTypeId,
-              latitude: seed.latitude ?? null,
-              longitude: seed.longitude ?? null,
+              latitude: seed.latitude,
+              longitude: seed.longitude,
               updatedAt: now,
             },
           });
@@ -2570,7 +2653,16 @@ export async function seedDatabase() {
         }
       }
 
-      const allTours = await tx.select({ id: tours.id }).from(tours);
+      const zoneDepotById = new Map(
+        Array.from(zoneIds.entries())
+          .map(([zoneCode, zoneId]) => {
+            const depot = ZONE_DEPOT_SEEDS.get(zoneCode);
+            return depot ? [zoneId, depot] : null;
+          })
+          .filter((entry): entry is [string, ZoneDepotSeed] => entry != null),
+      );
+
+      const allTours = await tx.select({ id: tours.id, zoneId: tours.zoneId }).from(tours);
       for (const tourRow of allTours) {
         const persistedStops = await tx
           .select({
@@ -2583,7 +2675,10 @@ export async function seedDatabase() {
           .where(eq(tourStops.tourId, tourRow.id))
           .orderBy(asc(tourStops.stopOrder));
 
-        const persistedRoute = buildPersistedRouteSeed(persistedStops);
+        const persistedRoute = buildPersistedRouteSeed(
+          persistedStops,
+          tourRow.zoneId ? zoneDepotById.get(tourRow.zoneId) ?? null : null,
+        );
         if (!persistedRoute) {
           await tx.delete(tourRoutes).where(eq(tourRoutes.tourId, tourRow.id));
           continue;

@@ -13,6 +13,12 @@ type AuthUser = {
   avatarUrl: string | null;
   role: string;
   roles: Array<{ id: string; name: string }>;
+  zoneId?: string | null;
+  zoneName?: string | null;
+  zoneCode?: string | null;
+  depotLabel?: string | null;
+  depotLatitude?: string | null;
+  depotLongitude?: string | null;
   isActive: boolean;
   provider: 'local' | 'google';
 };

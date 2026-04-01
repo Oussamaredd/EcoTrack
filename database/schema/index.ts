@@ -136,19 +136,26 @@ export const exportSchema = pgSchema('export');
 export const supportSchema = pgSchema('support');
 export const billingSchema = pgSchema('billing');
 
-export const users = authSchema.table('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash'),
-  authProvider: text('auth_provider').default('google').notNull(),
-  googleId: text('google_id').unique(),
-  displayName: text('display_name').notNull(),
-  avatarUrl: text('avatar_url'),
-  role: text('role').default('citizen').notNull(),
-  isActive: boolean('is_active').default(true).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const users = authSchema.table(
+  'users',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    email: text('email').notNull().unique(),
+    passwordHash: text('password_hash'),
+    authProvider: text('auth_provider').default('google').notNull(),
+    googleId: text('google_id').unique(),
+    displayName: text('display_name').notNull(),
+    avatarUrl: text('avatar_url'),
+    role: text('role').default('citizen').notNull(),
+    zoneId: uuid('zone_id').references(() => zones.id, { onDelete: 'set null' }),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    zoneIdIdx: index('users_zone_id_idx').on(table.zoneId),
+  }),
+);
 
 export const passwordResetTokens = authSchema.table('password_reset_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -219,6 +226,9 @@ export const zones = coreSchema.table('zones', {
   name: text('name').notNull(),
   code: text('code').notNull().unique(),
   description: text('description'),
+  depotLabel: text('depot_label').notNull(),
+  depotLatitude: text('depot_latitude').notNull(),
+  depotLongitude: text('depot_longitude').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -244,8 +254,8 @@ export const containers = coreSchema.table('containers', {
   label: text('label').notNull(),
   status: text('status').default('available').notNull(),
   fillLevelPercent: integer('fill_level_percent').default(0).notNull(),
-  latitude: text('latitude'),
-  longitude: text('longitude'),
+  latitude: text('latitude').notNull(),
+  longitude: text('longitude').notNull(),
   containerTypeId: uuid('container_type_id').references(() => containerTypes.id, { onDelete: 'set null' }),
   zoneId: uuid('zone_id').references(() => zones.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -1264,6 +1274,10 @@ export const notificationRecipients = notifySchema.table(
 );
 
 export const usersRelations = relations(users, ({ many, one }) => ({
+  zone: one(zones, {
+    fields: [users.zoneId],
+    references: [zones.id],
+  }),
   assignedTickets: many(tickets, {
     relationName: 'tickets_assigneeId_users_id',
   }),
@@ -1313,6 +1327,7 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
 }));
 
 export const zonesRelations = relations(zones, ({ many }) => ({
+  agents: many(users),
   containers: many(containers),
   tours: many(tours),
   alertEvents: many(alertEvents),

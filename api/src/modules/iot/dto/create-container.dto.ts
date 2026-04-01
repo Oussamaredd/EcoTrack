@@ -41,12 +41,10 @@ export class CreateContainerDto {
   @IsUUID()
   containerTypeId?: string;
 
-  @IsOptional()
   @IsLatitude()
-  latitude?: string;
+  latitude!: string;
 
-  @IsOptional()
   @IsLongitude()
-  longitude?: string;
+  longitude!: string;
 }
 

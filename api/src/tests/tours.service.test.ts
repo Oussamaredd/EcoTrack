@@ -26,6 +26,7 @@ describe('ToursService route geometry enrichment', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    repositoryMock.getTourById.mockResolvedValue(null);
     repositoryMock.upsertTourRoute.mockImplementation(async (route: any) => ({
       id: 'route-1',
       tourId: route.tourId,
@@ -139,6 +140,105 @@ describe('ToursService route geometry enrichment', () => {
         routeSummary: expect.objectContaining({
           totalDistanceKm: 0.78,
           estimatedDurationMinutes: 5,
+        }),
+      }),
+    );
+  });
+
+  it('prepends the zone depot when resolving persisted route geometry', async () => {
+    repositoryMock.getAgentTour.mockResolvedValue({
+      id: 'tour-1',
+      name: 'Downtown Morning Round',
+      status: 'planned',
+      scheduledFor: new Date('2026-03-02T09:00:00.000Z'),
+      zoneId: 'zone-1',
+      zoneName: 'Downtown',
+      depot: {
+        label: 'Downtown Depot',
+        latitude: '48.8558',
+        longitude: '2.3514',
+      },
+      stops: [
+        {
+          id: 'stop-1',
+          stopOrder: 1,
+          status: 'active',
+          containerId: 'container-1',
+          containerCode: 'CTR-1001',
+          containerLabel: 'Main Square',
+          latitude: '48.8566',
+          longitude: '2.3522',
+        },
+        {
+          id: 'stop-2',
+          stopOrder: 2,
+          status: 'pending',
+          containerId: 'container-2',
+          containerCode: 'CTR-1002',
+          containerLabel: 'Library Avenue',
+          latitude: '48.8589',
+          longitude: '2.3540',
+        },
+      ],
+      itinerary: [],
+      routeSummary: {
+        totalStops: 2,
+        completedStops: 0,
+        remainingStops: 2,
+        activeStopOrder: 1,
+        completionPercent: 0,
+        totalDistanceKm: 0.4,
+        estimatedDurationMinutes: 6,
+        isOverdue: false,
+      },
+      storedRoute: null,
+    });
+    repositoryMock.getTourById.mockResolvedValue({
+      id: 'tour-1',
+      depot: {
+        label: 'Downtown Depot',
+        latitude: '48.8558',
+        longitude: '2.3514',
+      },
+    });
+    const routingClientMock = createRoutingClientMock();
+    routingClientMock.fetchRoute.mockResolvedValue({
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [2.3514, 48.8558],
+          [2.3522, 48.8566],
+          [2.354, 48.8589],
+        ],
+      },
+      distanceKm: 0.88,
+      durationMinutes: 6,
+      source: 'live',
+      provider: 'router.example.test',
+      resolvedAt: '2026-03-02T09:00:00.000Z',
+    });
+
+    const service = createService(routingClientMock);
+    const result = await service.getAgentTour('agent-1');
+
+    expect(routingClientMock.fetchRoute).toHaveBeenCalledWith([
+      { latitude: 48.8558, longitude: 2.3514 },
+      { stopOrder: 1, latitude: 48.8566, longitude: 2.3522 },
+      { stopOrder: 2, latitude: 48.8589, longitude: 2.354 },
+    ]);
+    expect(result).toEqual(
+      expect.objectContaining({
+        routeGeometry: expect.objectContaining({
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [2.3514, 48.8558],
+              [2.3522, 48.8566],
+              [2.354, 48.8589],
+            ],
+          },
+          distanceKm: 0.88,
+          durationMinutes: 6,
         }),
       }),
     );

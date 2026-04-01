@@ -22,8 +22,8 @@ vi.mock('../hooks/useAgentTours', () => ({
   useReportAnomaly: vi.fn(),
   useStartAgentTour: vi.fn(),
   useTourActivity: vi.fn(),
-  useZoneContainers: vi.fn(),
   useValidateTourStop: vi.fn(),
+  useZoneContainers: vi.fn(),
 }));
 
 vi.mock('../hooks/usePlanning', () => ({
@@ -124,6 +124,11 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
         status: 'assigned',
         zoneId: 'zone-1',
         zoneName: 'North Zone',
+        depot: {
+          label: 'North Zone Depot',
+          latitude: '48.8562',
+          longitude: '2.3519',
+        },
         routeGeometry: {
           geometry: {
             type: 'LineString',
@@ -151,6 +156,20 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
         itinerary: [{ stopId: 'stop-1', order: 1, latitude: '36.81', longitude: '10.19' }],
       },
     });
+    (agentHooks.useZoneContainers as Mock).mockReturnValue({
+      data: [
+        {
+          id: 'container-1',
+          code: 'CTR-001',
+          label: 'North Hub',
+          status: 'available',
+          fillLevelPercent: 62,
+          latitude: '48.8566',
+          longitude: '2.3522',
+        },
+      ],
+      isLoading: false,
+    });
     (agentHooks.useStartAgentTour as Mock).mockReturnValue({
       mutate: startTour,
       mutateAsync: startTour,
@@ -162,11 +181,6 @@ describe('E2E key journeys (citizen/agent/manager)', () => {
     });
     (agentHooks.useReportAnomaly as Mock).mockReturnValue({ mutateAsync: reportAnomaly, isPending: false });
     (agentHooks.useTourActivity as Mock).mockReturnValue({ data: { activity: [] }, isFetching: false });
-    (agentHooks.useZoneContainers as Mock).mockReturnValue({
-      data: { containers: [] },
-      isLoading: false,
-      isError: false,
-    });
 
     const user = userEvent.setup();
     renderWithProviders(<AgentTourPage />);
