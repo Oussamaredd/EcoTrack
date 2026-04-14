@@ -195,11 +195,11 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run dev:mobile` - Expo mobile shell
 - `npm run dev:doctor` - fast local diagnostics (env keys, db reachability/migrations, health endpoints)
 - `npm run build` - build database, app, api
-- `npm run test` - app + mobile + api tests
+- `npm run test` - app + mobile + api tests; the `ecotrack-app` default suite excludes the dedicated key-journey e2e spec so it does not duplicate the separate e2e lane
 - `npm run test:mobile` - mobile workspace tests
 - `npm run test:api` - backend tests with required `ecotrack-database` build pre-step
-- `npm run test:e2e` - key citizen/agent/manager journey tests
-- `npm run test:coverage` - coverage-gated validation for app + api
+- `npm run test:e2e` - key citizen/agent/manager journey tests; the app workspace enables the dedicated e2e spec only for this lane via `ECOTRACK_INCLUDE_APP_E2E=1`
+- `npm run test:coverage` - coverage-gated validation for app + api; the app coverage lane re-enables the dedicated key-journey e2e spec so coverage matches the release gate
 - `npm run test:coverage:api` - backend coverage with required `ecotrack-database` build pre-step
 - `npm run typecheck` - app + mobile + api + database type checks
 - `npm run typecheck --workspace=ecotrack-mobile` - mobile workspace type checks

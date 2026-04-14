@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const spawnRestricted = process.env.ECOTRACK_VITE_SPAWN_RESTRICTED === "1";
+const includeAppE2E = process.env.ECOTRACK_INCLUDE_APP_E2E === "1";
 const resolveQualityOutputRoot = () => {
   const configuredRoot = process.env.ECOTRACK_QUALITY_OUTPUT_ROOT?.trim();
 
@@ -230,14 +231,22 @@ export default defineConfig(({ mode }) => {
       environment: "jsdom",
       setupFiles: "./src/tests/setup.tsx",
       css: true,
-      // Keep test execution stable on constrained Windows runners.
-      pool: "threads",
+      exclude: includeAppE2E ? undefined : ["src/tests/e2e.key-journeys.test.tsx"],
+      // Keep test execution stable on constrained Windows runners and WSL-mounted workspaces.
+      pool: "forks",
       fileParallelism: false,
+      maxWorkers: 1,
       coverage: {
         provider: "v8",
         reporter: ["text", "json", "json-summary", "html", "lcov"],
         reportsDirectory: path.join(resolveQualityOutputRoot(), "coverage", "app"),
-        exclude: ["src/tests/**", "**/*.d.ts", "**/node_modules/**", "**/*.config.*"],
+        exclude: [
+          "src/tests/**",
+          "**/*.d.ts",
+          "**/node_modules/**",
+          "**/*.config.*",
+          ...(includeAppE2E ? [] : ["src/tests/e2e.key-journeys.test.tsx"]),
+        ],
         include: [
           "src/App.tsx",
           "src/components/landing/sections/HeroSection.tsx",

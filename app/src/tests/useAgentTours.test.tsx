@@ -1,9 +1,17 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { useAgentTour, useZoneContainers } from "../hooks/useAgentTours";
+import {
+  useAgentTour,
+  useAnomalyTypes,
+  useReportAnomaly,
+  useStartAgentTour,
+  useTourActivity,
+  useValidateTourStop,
+  useZoneContainers,
+} from "../hooks/useAgentTours";
 import { apiClient } from "../services/api";
 
 vi.mock("../services/api", () => ({
@@ -260,5 +268,118 @@ describe("useAgentTour cache behavior", () => {
       2,
       "/api/containers?zoneId=zone-1&page=2&pageSize=50",
     );
+  });
+
+  test("supports agent tour mutations and related queries", async () => {
+    vi.mocked(apiClient.post)
+      .mockResolvedValueOnce({ ok: true } as any)
+      .mockResolvedValueOnce({ ok: true } as any)
+      .mockResolvedValueOnce({ ok: true } as any);
+    vi.mocked(apiClient.get)
+      .mockResolvedValueOnce([{ id: "anomaly-1", label: "Blocked access" }] as any)
+      .mockResolvedValueOnce([{ id: "activity-1", type: "stop_validated" }] as any);
+
+    const startResult = renderHook(() => useStartAgentTour(), {
+      wrapper: createWrapper(),
+    }).result;
+    const validateResult = renderHook(() => useValidateTourStop(), {
+      wrapper: createWrapper(),
+    }).result;
+    const anomalyTypesResult = renderHook(() => useAnomalyTypes(), {
+      wrapper: createWrapper(),
+    }).result;
+    const reportResult = renderHook(() => useReportAnomaly(), {
+      wrapper: createWrapper(),
+    }).result;
+    const activityResult = renderHook(() => useTourActivity("tour-1"), {
+      wrapper: createWrapper(),
+    }).result;
+
+    await act(async () => {
+      await startResult.current.mutateAsync("tour-1");
+      await validateResult.current.mutateAsync({
+        tourId: "tour-1",
+        stopId: "stop-1",
+        volumeLiters: 240,
+        notes: "Validated on site",
+      });
+      await reportResult.current.mutateAsync({
+        tourId: "tour-1",
+        anomalyTypeId: "anomaly-1",
+        comments: "Access blocked by parked vehicle",
+      });
+    });
+
+    await waitFor(() => {
+      expect(anomalyTypesResult.current.data).toEqual([
+        { id: "anomaly-1", label: "Blocked access" },
+      ]);
+      expect(activityResult.current.data).toEqual([
+        { id: "activity-1", type: "stop_validated" },
+      ]);
+    });
+
+    expect(apiClient.post).toHaveBeenNthCalledWith(1, "/api/tours/tour-1/start", {});
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      2,
+      "/api/tours/tour-1/stops/stop-1/validate",
+      {
+        volumeLiters: 240,
+        notes: "Validated on site",
+      },
+    );
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      3,
+      "/api/tours/tour-1/anomalies",
+      {
+        anomalyTypeId: "anomaly-1",
+        comments: "Access blocked by parked vehicle",
+      },
+    );
+    expect(apiClient.get).toHaveBeenNthCalledWith(1, "/api/tours/anomaly-types");
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, "/api/tours/tour-1/activity");
+  });
+
+  test("clears the cached agent tour before a forced refetch", async () => {
+    const cachedTour = {
+      id: "tour-1",
+      routeGeometry: {
+        source: "fallback",
+        provider: "internal",
+      },
+    };
+    const liveTour = {
+      id: "tour-1",
+      routeGeometry: {
+        source: "live",
+        provider: "router.example.test",
+      },
+    };
+
+    window.localStorage.setItem(
+      AGENT_TOUR_CACHE_KEY,
+      JSON.stringify({
+        cachedAt: new Date().toISOString(),
+        data: cachedTour,
+      }),
+    );
+    vi.mocked(apiClient.get).mockResolvedValueOnce(liveTour as any);
+
+    const { result } = renderHook(() => useAgentTour(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(cachedTour);
+    });
+
+    await act(async () => {
+      await result.current.refetchFromServer({ clearCache: true });
+    });
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(liveTour);
+      expect(result.current.dataSource).toBe("network");
+    });
   });
 });
