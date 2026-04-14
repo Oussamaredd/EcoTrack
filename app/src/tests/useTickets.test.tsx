@@ -10,8 +10,10 @@ import {
   useDeleteComment,
   useDeleteTicket,
   useTicketComments,
+  useTicketActivity,
   useTicketDetails,
   useTickets,
+  useUpdateComment,
 } from "../hooks/useTickets";
 import { apiClient } from "../services/api";
 
@@ -171,6 +173,50 @@ describe("useTickets", () => {
     });
     expect(apiClient.delete).toHaveBeenCalledWith("/api/tickets/ticket-1/comments/11");
     expect(apiClient.delete).toHaveBeenCalledWith("/api/tickets/ticket-1");
+  });
+
+  test("updates comments and loads related activity and dashboard data", async () => {
+    vi.mocked(apiClient.put).mockResolvedValueOnce({ id: 11, body: "Updated note" });
+    vi.mocked(apiClient.get)
+      .mockResolvedValueOnce({
+        events: [{ id: "event-1", type: "comment_updated" }],
+      } as any)
+      .mockResolvedValueOnce({
+        summary: { total: 4, open: 2, completed: 2 },
+      } as any);
+
+    const updateCommentResult = renderHook(() => useUpdateComment(), {
+      wrapper: createWrapper(),
+    }).result;
+    const activityResult = renderHook(() => useTicketActivity("ticket-1"), {
+      wrapper: createWrapper(),
+    }).result;
+    const dashboardResult = renderHook(() => useDashboard(), {
+      wrapper: createWrapper(),
+    }).result;
+
+    await act(async () => {
+      await updateCommentResult.current.updateComment({
+        ticketId: "ticket-1",
+        commentId: 11,
+        body: "Updated note",
+      });
+    });
+
+    await waitFor(() => {
+      expect(activityResult.current.data).toEqual({
+        events: [{ id: "event-1", type: "comment_updated" }],
+      });
+      expect(dashboardResult.current.data).toEqual({
+        summary: { total: 4, open: 2, completed: 2 },
+      });
+    });
+
+    expect(apiClient.put).toHaveBeenCalledWith("/api/tickets/ticket-1/comments/11", {
+      body: "Updated note",
+    });
+    expect(apiClient.get).toHaveBeenNthCalledWith(1, "/api/tickets/ticket-1/activity");
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, "/api/dashboard");
   });
 
   test("skips dashboard requests when disabled", async () => {

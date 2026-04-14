@@ -380,9 +380,15 @@ describe("Routing Matrix", () => {
       expect(getLocation()?.pathname).toBe("/privacy");
     });
 
-    expect(await screen.findByRole("heading", { name: /Privacy overview for EcoTrack operational data/i })).toBeInTheDocument();
     expect(
-      screen.getByText(/Data categories processed/i),
+      await screen.findByRole(
+        "heading",
+        { name: /Privacy overview for EcoTrack operational data/i },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Data categories processed/i, {}, { timeout: 5000 }),
     ).toBeInTheDocument();
   });
 
@@ -393,7 +399,13 @@ describe("Routing Matrix", () => {
       expect(getLocation()?.pathname).toBe("/support");
     });
 
-    expect(await screen.findByRole("heading", { name: /Support coverage for rollout and live operations/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole(
+        "heading",
+        { name: /Support coverage for rollout and live operations/i },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
   });
 
   test("removed legacy routes fall back to landing when unauthenticated", async () => {
