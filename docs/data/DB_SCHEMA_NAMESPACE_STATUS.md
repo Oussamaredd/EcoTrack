@@ -44,6 +44,11 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 - `core.containers.latitude` and `core.containers.longitude` are now mandatory, removing null-coordinate containers from the route-planning path.
 - These changes remain Development-owned operational data-shape work; no Security/Data specialty storage was introduced.
 
+2026-04-15 operational note:
+
+- WSL-native database tooling and the shared database client now fall back from loopback `DATABASE_URL` hosts to the Windows-host gateway when `localhost` is unreachable from the distro.
+- This is a connectivity-only adjustment for local developer workflows; it does not alter the schema model, migration chain, or namespace plan.
+
 Known readiness exceptions from the original rollout pass:
 
 - the worktree still had broad unrelated local changes across `app`, `api`, `database`, `docs`, environment templates, and `package-lock.json`

@@ -138,4 +138,6 @@ npm run build
 npm run test
 ```
 
+- On WSL, `ecotrack-database` falls back from loopback `DATABASE_URL` hosts to the Windows-host gateway for migration, seed, and shared database-client flows when `localhost` is unreachable from the distro.
+
 

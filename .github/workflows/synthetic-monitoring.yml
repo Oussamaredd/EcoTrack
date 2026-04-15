@@ -27,10 +27,6 @@ jobs:
       fail-fast: false
       matrix:
         target: [development, staging, production]
-    if: >-
-      github.event_name == 'schedule' ||
-      github.event.inputs.target_environment == 'all' ||
-      github.event.inputs.target_environment == matrix.target
     environment: ${{ matrix.target }}
     env:
       CD_TARGET_ENV: ${{ matrix.target }}
@@ -45,26 +41,46 @@ jobs:
       CD_SYNTHETIC_CONFIRM_RETRIES: ${{ vars.CD_SYNTHETIC_CONFIRM_RETRIES }}
       CD_SYNTHETIC_RETRY_INTERVAL_MS: ${{ vars.CD_SYNTHETIC_RETRY_INTERVAL_MS }}
     steps:
+      - name: Resolve target selection
+        id: selection
+        shell: bash
+        run: |
+          should_run=false
+
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            should_run=true
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            requested_target="${{ github.event.inputs.target_environment }}"
+            if [ "$requested_target" = "all" ] || [ "$requested_target" = "${{ matrix.target }}" ]; then
+              should_run=true
+            fi
+          fi
+
+          echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
+
       - name: Checkout code
+        if: ${{ steps.selection.outputs.should_run == 'true' }}
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: ${{ steps.selection.outputs.should_run == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
       - name: Run hosted synthetic monitoring
+        if: ${{ steps.selection.outputs.should_run == 'true' }}
         run: npm run ci:synthetic
 
       - name: Upload synthetic monitoring evidence
-        if: always()
+        if: ${{ always() && steps.selection.outputs.should_run == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: synthetic-${{ matrix.target }}
           path: tmp/ci/synthetic
 
       - name: Publish synthetic monitoring summary
-        if: always()
+        if: ${{ always() && steps.selection.outputs.should_run == 'true' }}
         shell: bash
         run: |
           if [ -f tmp/ci/synthetic/synthetic-monitoring.${{ matrix.target }}.md ]; then
