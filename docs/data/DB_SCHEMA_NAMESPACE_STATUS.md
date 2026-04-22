@@ -1,6 +1,6 @@
 # DB Schema Namespace Rollout Status
 
-Last updated: 2026-04-01
+Last updated: 2026-04-22
 
 ## Purpose
 
@@ -39,7 +39,7 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 2026-04-01 extension note:
 
 - `database/migrations/0025_windy_norman_osborn.sql` added additive zone-routing and execution fields for the current operational use case.
-- `auth.users` now carries optional `zone_id` assignment so agents can be bound to one operating zone.
+- `identity.users` now carries optional `zone_id` assignment so agents can be bound to one operating zone.
 - `core.zones` now requires `depot_label`, `depot_latitude`, and `depot_longitude` so every zone can expose a depot / route start point.
 - `core.containers.latitude` and `core.containers.longitude` are now mandatory, removing null-coordinate containers from the route-planning path.
 - These changes remain Development-owned operational data-shape work; no Security/Data specialty storage was introduced.
@@ -48,6 +48,14 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 
 - WSL-native database tooling and the shared database client now fall back from loopback `DATABASE_URL` hosts to the Windows-host gateway when `localhost` is unreachable from the distro.
 - This is a connectivity-only adjustment for local developer workflows; it does not alter the schema model, migration chain, or namespace plan.
+
+2026-04-22 Supabase migration-prep note:
+
+- `database/migrations/0026_identity_schema_for_supabase.sql` renames the app-owned auth namespace from `auth` to `identity`.
+- The rename is a Development-owned compatibility change so provider-managed auth schemas, especially Supabase Auth, remain reserved for the provider.
+- Runtime auth APIs are unchanged in this phase; only the database namespace ownership changed.
+- `database/migrations/baselines/managed-postgres-current.sql` is now the repo-generated blank-target baseline for managed Postgres providers that already own `auth`.
+- `database/scripts/export-data-only.mjs` and `database/scripts/import-data-only.mjs` now provide the repo-owned data-only cutover path after the source database has applied `0026`.
 
 Known readiness exceptions from the original rollout pass:
 
@@ -115,8 +123,8 @@ Status summary:
 
 Checklist:
 
-- [x] Add `pgSchema()` definitions for `auth`, `core`, `iot`, `ops`, `incident`, `notify`, `game`, `audit`, `admin`, `export`, and `support`.
-- [x] Move `users`, `password_reset_tokens`, `roles`, and `user_roles` to `auth`.
+- [x] Add `pgSchema()` definitions for `identity`, `core`, `iot`, `ops`, `incident`, `notify`, `game`, `audit`, `admin`, `export`, and `support`.
+- [x] Move `users`, `password_reset_tokens`, `roles`, and `user_roles` to `identity`.
 - [x] Move `zones` and `containers` to `core`.
 - [x] Move `tours`, `tour_stops`, `tour_routes`, and `collection_events` to `ops`.
 - [x] Move `citizen_reports`, `anomaly_types`, and `anomaly_reports` to `incident`.
@@ -203,7 +211,7 @@ Checklist:
 - [ ] Add `location_geom` and `container_type_id` to `core.containers`. Partial because `container_type_id` was added, but `location_geom` was skipped because PostGIS was unavailable.
 - [x] Decide whether `latitude` and `longitude` remain temporarily during backfill.
 - [x] Add operational depot fields (`depot_label`, `depot_latitude`, `depot_longitude`) to `core.zones`.
-- [x] Add optional zone assignment (`zone_id`) to `auth.users` for zone-bound agents.
+- [x] Add optional zone assignment (`zone_id`) to `identity.users` for zone-bound agents.
 - [x] Require non-null `latitude` and `longitude` on `core.containers` after backfill.
 - [ ] Add `route_geom` to `ops.tour_routes` if PostGIS is enabled. Blocked because PostGIS was unavailable in the active dev database.
 - [x] Add `started_at` and `completed_at` to `ops.tours`.

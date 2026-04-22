@@ -18,7 +18,7 @@
 ## Database Policy
 
 - Canonical DB env key is `DATABASE_URL`.
-- Canonical DB name is `ticketdb`.
+- Canonical DB name is `ecotrack`.
 - Docker network DB host is `ticket_db`.
 
 ## Frontend Separation

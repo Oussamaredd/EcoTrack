@@ -1,36 +1,44 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { loadAppRuntimeConfig } from '../config/runtimeFeatures';
 import { apiClient } from '../services/api';
 import { invalidatePlanningQueries } from '../state/invalidation';
 import { queryKeys } from '../state/queryKeys';
 
-const PLANNING_METADATA_REFETCH_INTERVAL_MS = 30_000;
-const PLANNING_DASHBOARD_REFETCH_INTERVAL_MS = 20_000;
+export const usePlanningZones = () => {
+  const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
 
-export const usePlanningZones = () =>
-  useQuery({
+  return useQuery({
     queryKey: queryKeys.planningZones,
     queryFn: async () => apiClient.get('/api/planning/zones'),
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: PLANNING_METADATA_REFETCH_INTERVAL_MS,
+    staleTime: planningRefreshIntervalMs,
+    refetchInterval: planningRefreshIntervalMs,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
+};
 
-export const usePlanningAgents = () =>
-  useQuery({
+export const usePlanningAgents = () => {
+  const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
+
+  return useQuery({
     queryKey: queryKeys.planningAgents,
     queryFn: async () => apiClient.get('/api/planning/agents'),
-    staleTime: 60_000,
-    refetchInterval: PLANNING_METADATA_REFETCH_INTERVAL_MS,
+    staleTime: planningRefreshIntervalMs,
+    refetchInterval: planningRefreshIntervalMs,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
+};
 
 export const usePlanningHeatmap = (
   zoneId?: string | null,
   riskTier: 'all' | 'low' | 'medium' | 'high' = 'all',
   enabled = true,
-) =>
-  useQuery({
+) => {
+  const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
+
+  return useQuery({
     queryKey: queryKeys.planningHeatmap(zoneId, riskTier),
     queryFn: async () => {
       const searchParams = new URLSearchParams();
@@ -47,18 +55,26 @@ export const usePlanningHeatmap = (
       return apiClient.get(`/api/planning/heatmap${query ? `?${query}` : ''}`);
     },
     enabled,
-    staleTime: 30_000,
-    refetchInterval: enabled ? PLANNING_DASHBOARD_REFETCH_INTERVAL_MS : false,
+    staleTime: planningRefreshIntervalMs,
+    refetchInterval: enabled ? planningRefreshIntervalMs : false,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
+};
 
-export const usePlanningNotifications = (limit = 20, enabled = true) =>
-  useQuery({
+export const usePlanningNotifications = (limit = 20, enabled = true) => {
+  const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
+
+  return useQuery({
     queryKey: queryKeys.planningNotifications(limit),
     queryFn: async () => apiClient.get(`/api/planning/notifications?limit=${limit}`),
     enabled,
-    staleTime: 15_000,
+    staleTime: planningRefreshIntervalMs,
+    refetchInterval: enabled ? planningRefreshIntervalMs : false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
+};
 
 export const useOptimizeTourPlan = () =>
   useMutation({
@@ -98,23 +114,31 @@ export const useRebuildTourRoute = () => {
   });
 };
 
-export const useManagerToursList = (enabled = true) =>
-  useQuery({
+export const useManagerToursList = (enabled = true) => {
+  const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
+
+  return useQuery({
     queryKey: queryKeys.managerTours,
     queryFn: async () => apiClient.get('/api/tours?page=1&pageSize=50'),
     enabled,
-    staleTime: 15_000,
+    staleTime: planningRefreshIntervalMs,
+    refetchOnWindowFocus: false,
   });
+};
 
-export const usePlanningDashboard = (enabled = true) =>
-  useQuery({
+export const usePlanningDashboard = (enabled = true) => {
+  const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
+
+  return useQuery({
     queryKey: queryKeys.planningDashboard,
     queryFn: async () => apiClient.get('/api/planning/dashboard'),
     enabled,
-    staleTime: 30_000,
-    refetchInterval: enabled ? PLANNING_DASHBOARD_REFETCH_INTERVAL_MS : false,
+    staleTime: planningRefreshIntervalMs,
+    refetchInterval: enabled ? planningRefreshIntervalMs : false,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
+};
 
 export const useEmergencyCollection = () => {
   const queryClient = useQueryClient();
@@ -146,12 +170,16 @@ export const useGenerateManagerReport = () => {
   });
 };
 
-export const usePlanningReportHistory = () =>
-  useQuery({
+export const usePlanningReportHistory = () => {
+  const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
+
+  return useQuery({
     queryKey: queryKeys.planningReportHistory,
     queryFn: async () => apiClient.get('/api/planning/reports/history'),
-    staleTime: 15_000,
+    staleTime: planningRefreshIntervalMs,
+    refetchOnWindowFocus: false,
   });
+};
 
 export const useRegenerateManagerReport = () => {
   const queryClient = useQueryClient();

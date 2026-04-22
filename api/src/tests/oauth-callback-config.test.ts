@@ -86,7 +86,7 @@ describe('OAuth callback config', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         GOOGLE_CLIENT_ID: '1234567890-abcdefghi12345.apps.googleusercontent.com',
       }),
     ).not.toThrow();
@@ -97,7 +97,7 @@ describe('OAuth callback config', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         GOOGLE_CLIENT_ID: '6oja0hr6gfulaqsdpkq8qf50qccipmgj.apps.googleusercontent.com',
       }),
     ).toThrow(/Invalid GOOGLE_CLIENT_ID format/i);
@@ -108,7 +108,7 @@ describe('OAuth callback config', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         CORS_ORIGINS: '*',
       }),
     ).toThrow(/wildcard/i);
@@ -119,7 +119,7 @@ describe('OAuth callback config', () => {
       validateEnv({
         NODE_ENV: 'production',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         CORS_ORIGINS: 'http://staging.ecotrack.example.com',
       }),
     ).toThrow(/must use https/i);
@@ -130,7 +130,7 @@ describe('OAuth callback config', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         APP_URL: 'https://app.ecotrack.example.com',
         CORS_ORIGINS: 'https://staging.ecotrack.example.com',
       }),
@@ -142,7 +142,7 @@ describe('OAuth callback config', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         APP_URL: 'https://app.ecotrack.example.com',
         CORS_ORIGINS: 'https://app.ecotrack.example.com',
       }),
@@ -155,7 +155,7 @@ describe('OAuth callback config', () => {
         NODE_ENV: 'development',
         API_PORT: '3001',
         API_BASE_URL: 'http://localhost:5173',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         GOOGLE_CALLBACK_URL: 'http://localhost:5173/api/auth/google/callback',
       }),
     ).not.toThrow();
@@ -166,7 +166,7 @@ describe('OAuth callback config', () => {
       validateEnv({
         NODE_ENV: 'development',
         PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         GOOGLE_CALLBACK_URL: 'http://localhost:3001/api/auth/google/callback',
       }),
     ).not.toThrow();
@@ -178,7 +178,7 @@ describe('OAuth callback config', () => {
         NODE_ENV: 'development',
         API_PORT: '3001',
         API_BASE_URL: 'http://localhost:5173',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         GOOGLE_CALLBACK_URL: 'http://localhost:3001/api/auth/google/callback',
       }),
     ).toThrow(/API_BASE_URL/i);

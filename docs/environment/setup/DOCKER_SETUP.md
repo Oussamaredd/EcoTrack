@@ -63,7 +63,7 @@ npm run db:migrate:seed --workspace=ecotrack-database
 - `backend` consumes `CACHE_REDIS_URL=redis://redis:6379` from `.env.docker` when Redis-backed caching is enabled.
 - Compose DB host is `ticket_db`.
 - Compose Redis host is `redis`.
-- Canonical DB name is `ticketdb`.
+- Canonical DB name is `ecotrack`.
 - No credential values should be hardcoded in compose service definitions.
 - `.env.docker` must use canonical keys only; deprecated aliases such as `CLIENT_ORIGIN` fail validation.
 - `DATABASE_POOLER_URL` is optional in Docker dev; leave it blank unless you add a separate PgBouncer container or external pooler.

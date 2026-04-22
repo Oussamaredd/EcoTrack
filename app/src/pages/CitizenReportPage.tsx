@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { loadAppRuntimeConfig } from '../config/runtimeFeatures';
 import { useCreateCitizenReport } from '../hooks/useCitizen';
 import {
   DEFAULT_CITIZEN_REPORT_TYPE,
@@ -124,6 +125,7 @@ const resolveSubmissionMessage = (error: unknown) => {
 };
 
 export default function CitizenReportPage() {
+  const { citizenChallengesEnabled } = loadAppRuntimeConfig();
   const [containerId, setContainerId] = useState('');
   const [containerSearch, setContainerSearch] = useState('');
   const [reportType, setReportType] = useState<CitizenReportType>(
@@ -584,9 +586,11 @@ export default function CitizenReportPage() {
                 <Link to="/app/citizen/profile" className="ops-btn ops-btn-outline">
                   Open Impact &amp; History
                 </Link>
-                <Link to="/app/citizen/challenges" className="ops-btn ops-btn-outline">
-                  View Challenges
-                </Link>
+                {citizenChallengesEnabled ? (
+                  <Link to="/app/citizen/challenges" className="ops-btn ops-btn-outline">
+                    View Challenges
+                  </Link>
+                ) : null}
               </div>
             </>
           ) : null}

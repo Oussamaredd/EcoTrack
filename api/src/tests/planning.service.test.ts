@@ -42,6 +42,7 @@ describe('PlanningService stream hardening', () => {
       toursRouteCoordinatorMock as any,
     );
     const capturedEvents: PlanningStreamEvent[] = [];
+    service.registerSseConnection();
     service.subscribeRealtimeEvents((event) => {
       capturedEvents.push(event);
     });
@@ -212,6 +213,7 @@ describe('PlanningService stream hardening', () => {
       cacheServiceMock as any,
       toursRouteCoordinatorMock as any,
     );
+    service.registerSseConnection();
     const loggerErrorSpy = vi
       .spyOn((service as any).logger, 'error')
       .mockImplementation(() => undefined);

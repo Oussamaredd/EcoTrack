@@ -1,11 +1,10 @@
 // client/src/hooks/useTickets.tsx
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { loadAppRuntimeConfig } from '../config/runtimeFeatures';
 import { apiClient } from '../services/api';
 import { invalidateTicketQueries } from '../state/invalidation';
 import { queryKeys } from '../state/queryKeys';
 import { useAuth } from './useAuth';
-
-const DASHBOARD_REFETCH_INTERVAL_MS = 20_000;
 
 export type TicketStatus = 'open' | 'closed' | 'completed' | 'in_progress' | 'OPEN' | 'COMPLETED';
 export type TicketPriority = 'low' | 'medium' | 'high' | string;
@@ -233,6 +232,8 @@ export const useTicketActivity = (ticketId) => {
 };
 
 export const useDashboard = (enabled = true) => {
+  const { dashboardRefreshIntervalMs } = loadAppRuntimeConfig();
+
   return useQuery({
     queryKey: queryKeys.dashboard,
     queryFn: async () => {
@@ -240,9 +241,10 @@ export const useDashboard = (enabled = true) => {
       return response;
     },
     enabled,
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: enabled ? DASHBOARD_REFETCH_INTERVAL_MS : false,
+    staleTime: dashboardRefreshIntervalMs,
+    refetchInterval: enabled ? dashboardRefreshIntervalMs : false,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
 };
 

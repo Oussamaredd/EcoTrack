@@ -79,7 +79,7 @@ if "!DOCKER_READY!"=="1" (
 
 echo Testing database connection...
 if "!DOCKER_READY!"=="1" (
-    docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" exec -T db pg_isready -U postgres -d ticketdb >nul 2>&1
+    docker compose --env-file "%CANONICAL_ENV%" -f "%COMPOSE_FILE%" exec -T db pg_isready -U postgres -d ecotrack >nul 2>&1
     if !errorlevel! equ 0 (
         echo Database - HEALTHY
     ) else (

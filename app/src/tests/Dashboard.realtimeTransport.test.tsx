@@ -104,6 +104,7 @@ describe("Dashboard realtime transport precedence", () => {
     renderWithProviders(<Dashboard />, { withAuthProvider: false });
 
     expect(usePlanningRealtimeStream).toHaveBeenCalledWith(false);
+    expect(usePlanningDashboard).toHaveBeenCalledWith(false);
     expect(screen.getByText("WebSocket live: WebSocket push active")).toBeInTheDocument();
   });
 
@@ -122,6 +123,7 @@ describe("Dashboard realtime transport precedence", () => {
     renderWithProviders(<Dashboard />, { withAuthProvider: false });
 
     expect(usePlanningRealtimeStream).toHaveBeenCalledWith(true);
+    expect(usePlanningDashboard).toHaveBeenCalledWith(true);
     expect(screen.getByText("Live stream: Server push active")).toBeInTheDocument();
   });
 
@@ -139,7 +141,9 @@ describe("Dashboard realtime transport precedence", () => {
 
     renderWithProviders(<Dashboard />, { withAuthProvider: false });
 
-    expect(screen.getByText("Polling fallback: Push unavailable, polling active")).toBeInTheDocument();
+    expect(
+      screen.getByText("Polling fallback: Push unavailable, polling every 5 minutes"),
+    ).toBeInTheDocument();
   });
 });
 

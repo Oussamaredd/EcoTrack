@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import DocumentMetadata from "../components/DocumentMetadata";
 import PanelSkeleton from "../components/dashboard/PanelSkeleton";
+import { loadAppRuntimeConfig } from "../config/runtimeFeatures";
 import { useCurrentUser } from "../hooks/useAuth";
 import { usePlanningDashboard } from "../hooks/usePlanning";
 import { usePlanningRealtimeSocket } from "../hooks/usePlanningRealtimeSocket";
@@ -64,7 +65,16 @@ const PanelFallback = ({ title }: { title: string }) => (
 export default function Dashboard() {
   const { user, isLoading: isUserLoading } = useCurrentUser();
   const { setLastRealtimeState } = useDashboardPreferences();
-  const dashboardQuery = useDashboard();
+  const {
+    adminWorkspaceEnabled,
+    dashboardRefreshIntervalMs,
+    planningSseEnabled,
+    planningWebsocketEnabled,
+  } = loadAppRuntimeConfig();
+  const [isDocumentVisible, setIsDocumentVisible] = React.useState(() =>
+    typeof document === "undefined" ? true : document.visibilityState === "visible",
+  );
+  const dashboardQuery = useDashboard(isDocumentVisible);
   const dashboardData = dashboardQuery.data as DashboardData | undefined;
 
   const summary = React.useMemo(() => {
@@ -150,21 +160,49 @@ export default function Dashboard() {
   const firstName = userDisplayName.split(" ")[0] || "Operator";
   const canAccessAdmin = hasAdminAccess(user);
   const canAccessManager = hasManagerAccess(user);
-  const planningDashboardQuery = usePlanningDashboard(canAccessManager);
-  const realtimeSocket = usePlanningRealtimeSocket(canAccessManager);
+  const isManagerDashboardActive = canAccessManager && isDocumentVisible;
+  const refreshIntervalMinutes = Math.max(
+    1,
+    Math.round(dashboardRefreshIntervalMs / (60 * 1000)),
+  );
+  const realtimeSocket = usePlanningRealtimeSocket(isManagerDashboardActive);
+  const planningDashboardQuery = usePlanningDashboard(
+    isManagerDashboardActive && realtimeSocket.connectionState !== "connected",
+  );
   const realtimeStream = usePlanningRealtimeStream(
-    canAccessManager && realtimeSocket.connectionState !== "connected",
+    isManagerDashboardActive && realtimeSocket.connectionState !== "connected",
   );
 
   const isSyncing =
-    dashboardQuery.isFetching || (canAccessManager && planningDashboardQuery.isFetching);
+    dashboardQuery.isFetching || (isManagerDashboardActive && planningDashboardQuery.isFetching);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const updateVisibility = () => {
+      setIsDocumentVisible(document.visibilityState === "visible");
+    };
+
+    updateVisibility();
+    document.addEventListener("visibilitychange", updateVisibility);
+
+    return () => {
+      document.removeEventListener("visibilitychange", updateVisibility);
+    };
+  }, []);
 
   const streamState =
-    realtimeSocket.connectionState === "connected"
+    canAccessManager && !isDocumentVisible
+      ? "paused"
+      : realtimeSocket.connectionState === "connected"
       ? "ws-connected"
       : realtimeStream.connectionState;
   const syncStateLabel =
-    streamState === "ws-connected"
+    streamState === "paused"
+      ? "Paused"
+      : streamState === "ws-connected"
       ? "WebSocket live"
       : streamState === "connected"
         ? "Live stream"
@@ -172,22 +210,30 @@ export default function Dashboard() {
           ? "Reconnecting"
           : streamState === "fallback"
             ? "Polling fallback"
+            : streamState === "disabled"
+              ? "On-demand polling"
             : isSyncing
               ? "Syncing"
               : "Live";
 
   const syncStateDescription =
-    streamState === "ws-connected"
+    streamState === "paused"
+      ? `Realtime is suspended until the dashboard is visible again. Refresh interval: ${refreshIntervalMinutes} minutes.`
+      : streamState === "ws-connected"
       ? "WebSocket push active"
       : streamState === "connected"
         ? "Server push active"
         : streamState === "reconnecting"
           ? "Reconnecting realtime channel"
           : streamState === "fallback"
-            ? "Push unavailable, polling active"
+            ? `Push unavailable, polling every ${refreshIntervalMinutes} minutes`
+            : streamState === "disabled"
+              ? planningWebsocketEnabled || planningSseEnabled
+                ? `Realtime is idle until the dashboard is visible. Polling interval: ${refreshIntervalMinutes} minutes.`
+                : `Realtime transports are disabled. Polling interval: ${refreshIntervalMinutes} minutes.`
             : isSyncing
               ? "Refreshing metrics now"
-              : "Auto-refresh active";
+              : `Auto-refresh every ${refreshIntervalMinutes} minutes`;
 
   useEffect(() => {
     setLastRealtimeState(`${syncStateLabel}: ${syncStateDescription}`);
@@ -314,7 +360,7 @@ export default function Dashboard() {
             <PlanningSummaryPanel ecoKpis={planningDashboard.ecoKpis} />
           </Suspense>
           <Suspense fallback={<PanelFallback title="Overflow heatmap" />}>
-            <ManagerHeatmapPanel enabled={canAccessManager} />
+            <ManagerHeatmapPanel enabled={isManagerDashboardActive} />
           </Suspense>
         </section>
       )}
@@ -329,7 +375,7 @@ export default function Dashboard() {
       </section>
 
       <section className="dashboard-grid">
-        {canAccessAdmin ? (
+        {canAccessAdmin && adminWorkspaceEnabled ? (
           <Suspense fallback={<PanelFallback title="Admin center" />}>
             <AdminCenterPanel />
           </Suspense>

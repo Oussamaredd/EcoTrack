@@ -13,7 +13,7 @@ const iotIngestionSchema = z.object({
   IOT_INGESTION_ENABLED: z
     .string()
     .transform((val) => val === 'true')
-    .default('true'),
+    .default('false'),
   IOT_MQTT_ENABLED: z
     .string()
     .transform((val) => val === 'true')
@@ -90,7 +90,7 @@ export function loadIotIngestionConfig(env: Record<string, unknown>): IotIngesti
 }
 
 export const DEFAULT_IOT_CONFIG: IotIngestionConfig = {
-  IOT_INGESTION_ENABLED: true,
+  IOT_INGESTION_ENABLED: false,
   IOT_MQTT_ENABLED: false,
   IOT_MQTT_TOPIC: 'ecotrack/measurements',
   IOT_QUEUE_CONCURRENCY: DEFAULT_IOT_QUEUE_CONCURRENCY,

@@ -85,6 +85,7 @@ describe('PlanningService branches', () => {
     });
     const capturedEvents: PlanningStreamEvent[] = [];
 
+    service.registerSseConnection();
     service.subscribeRealtimeEvents((event) => {
       capturedEvents.push(event);
     });

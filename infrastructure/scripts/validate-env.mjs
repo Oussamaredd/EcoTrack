@@ -193,17 +193,37 @@ function parseEnvFile(filePath) {
 }
 
 function checkDatabaseNamePolicy(entries, sourceLabel, errors) {
-  if (entries.has('DATABASE_URL')) {
-    const databaseUrl = String(entries.get('DATABASE_URL') ?? '').trim();
-    if (!/\/ticketdb(?:[/?#]|$)/.test(databaseUrl)) {
-      errors.push(`${sourceLabel}: DATABASE_URL must target /ticketdb.`);
+  const allowedManagedDatabaseNames = new Set(['ecotrack', 'postgres']);
+  const validateDatabaseUrl = (key, { allowBlank = false } = {}) => {
+    if (!entries.has(key)) {
+      return;
     }
-  }
+
+    const databaseUrl = String(entries.get(key) ?? '').trim();
+    if (!databaseUrl) {
+      if (allowBlank) {
+        return;
+      }
+      errors.push(`${sourceLabel}: ${key} must not be blank.`);
+      return;
+    }
+
+    const match = databaseUrl.match(/\/([^/?#]+)(?:[?#].*)?$/);
+    const databaseName = match?.[1];
+    if (!databaseName || !allowedManagedDatabaseNames.has(databaseName)) {
+      errors.push(
+        `${sourceLabel}: ${key} must target /ecotrack for self-managed flows or /postgres for provider-managed hosted Postgres.`,
+      );
+    }
+  };
+
+  validateDatabaseUrl('DATABASE_URL');
+  validateDatabaseUrl('DATABASE_POOLER_URL', { allowBlank: true });
 
   if (entries.has('POSTGRES_DB')) {
     const postgresDb = String(entries.get('POSTGRES_DB') ?? '').trim();
-    if (postgresDb !== 'ticketdb') {
-      errors.push(`${sourceLabel}: POSTGRES_DB must be ticketdb.`);
+    if (postgresDb !== 'ecotrack') {
+      errors.push(`${sourceLabel}: POSTGRES_DB must be ecotrack.`);
     }
   }
 }

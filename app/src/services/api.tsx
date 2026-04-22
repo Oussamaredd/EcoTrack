@@ -1,4 +1,5 @@
 // API client with centralized configuration and error handling
+import { loadAppRuntimeConfig } from '../config/runtimeFeatures';
 import { clearAccessToken, withAuthHeader } from './authToken';
 import { resolveApiBase } from '../lib/apiBase';
 
@@ -139,7 +140,9 @@ const scrubTelemetryMetadata = (metadata?: Record<string, unknown>) => {
 };
 
 const postTelemetry = async (path: string, payload: Record<string, unknown>) => {
-  if (typeof window === 'undefined' || FRONTEND_ENVIRONMENT === 'test') {
+  const { apiTelemetryEnabled } = loadAppRuntimeConfig();
+
+  if (!apiTelemetryEnabled || typeof window === 'undefined' || FRONTEND_ENVIRONMENT === 'test') {
     return;
   }
 

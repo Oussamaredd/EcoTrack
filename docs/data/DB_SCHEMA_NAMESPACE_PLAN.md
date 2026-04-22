@@ -38,7 +38,7 @@ Target rule: keep `public` empty for business tables after migration; reserve it
 
 | Schema | Purpose | CDC driver | Immediate contents |
 | --- | --- | --- | --- |
-| `auth` | Authentication, identity, and RBAC | CDC 4.4, 5.2, 10.1 auth | `users`, `password_reset_tokens`, `roles`, `user_roles` |
+| `identity` | Application-owned authentication, identity, and RBAC | CDC 4.4, 5.2, 10.1 auth | `users`, `password_reset_tokens`, `roles`, `user_roles` |
 | `core` | Core operational master data and geospatial assets | CDC 7.1 containers/zones, 10.1 containers/zones, PostGIS note | `zones`, `containers`, new `container_types` |
 | `iot` | OLTP storage for sensor registry, staged raw events, validated events, and operational measurements | CDC UC-T02, 7.1 IoT measurements, 10.1 measurement history | `sensor_devices`, `ingestion_events`, `validated_measurement_events`, `measurements` |
 | `ops` | Tour planning, execution, route output, and collection events | CDC UC-A01, UC-A02, UC-G01, 10.1 tours | `tours`, `tour_stops`, `tour_routes`, `collection_events` |
@@ -57,10 +57,10 @@ Target rule: keep `public` empty for business tables after migration; reserve it
 
 | Current table | Target schema.table | Decision | Notes |
 | --- | --- | --- | --- |
-| `users` | `auth.users` | Move as-is | Keep current table name to minimize auth/service churn. |
-| `password_reset_tokens` | `auth.password_reset_tokens` | Move as-is | No rename needed; token lifecycle stays auth-local. |
-| `roles` | `auth.roles` | Move as-is | RBAC catalog belongs with identity, not admin settings. |
-| `user_roles` | `auth.user_roles` | Move as-is | Keep join table name unchanged for low migration risk. |
+| `users` | `identity.users` | Move as-is | Keep current table name while reserving provider-managed `auth` schemas for platforms such as Supabase Auth. |
+| `password_reset_tokens` | `identity.password_reset_tokens` | Move as-is | No rename needed; token lifecycle stays app-identity-local. |
+| `roles` | `identity.roles` | Move as-is | RBAC catalog belongs with app-owned identity data, not admin settings. |
+| `user_roles` | `identity.user_roles` | Move as-is | Keep join table name unchanged for low migration risk. |
 | `audit_logs` | `audit.audit_logs` | Move as-is | Centralize traceability away from auth and admin config. |
 | `system_settings` | `admin.system_settings` | Move as-is | Platform config belongs in `admin`, not `public`. |
 | `tickets` | `support.tickets` | Move as-is | Explicitly non-core to the CDC operational model. |
@@ -307,7 +307,7 @@ The following additions stay inside OLTP storage/query scope and directly suppor
 
 1. PostgreSQL does not support Oracle-style synonyms, so the compatibility option is temporary `public` views only.
 2. Only create these views if a real dependency on legacy `public.<table>` names is discovered in Phase 0.
-3. Prefer read-only views such as `create view public.users as select * from auth.users;` for reporting compatibility.
+3. Prefer read-only views such as `create view public.users as select * from identity.users;` for reporting compatibility.
 4. Do not add writable compatibility triggers unless there is a hard blocker; they add operational risk and blur the cutover.
 5. Publish a short deprecation window: one sprint or 30 calendar days maximum.
 6. Track each compatibility view in the migration notes and remove all of them in the next scheduled database migration after consumer updates land.

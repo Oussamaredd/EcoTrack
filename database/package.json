@@ -21,10 +21,13 @@
     "typecheck": "tsc --noEmit",
     "watch": "tsc -w -p tsconfig.json",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node ./scripts/ensure-direct-neon-url.mjs && drizzle-kit migrate",
-    "db:push": "node ./scripts/ensure-direct-neon-url.mjs && drizzle-kit push",
-    "db:seed": "npm run build && node ./scripts/ensure-direct-neon-url.mjs && node dist/seeds/run.js",
-    "db:migrate:seed": "npm run db:migrate && npm run db:seed"
+    "db:migrate": "node ./scripts/ensure-direct-database-url.mjs drizzle-kit migrate",
+    "db:push": "node ./scripts/ensure-direct-database-url.mjs drizzle-kit push",
+    "db:seed": "npm run build && node ./scripts/ensure-direct-database-url.mjs node dist/seeds/run.js",
+    "db:migrate:seed": "npm run db:migrate && npm run db:seed",
+    "db:baseline:managed": "node ./scripts/export-managed-postgres-baseline.mjs",
+    "db:export:data": "node ./scripts/export-data-only.mjs",
+    "db:import:data": "node ./scripts/import-data-only.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

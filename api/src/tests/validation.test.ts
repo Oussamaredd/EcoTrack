@@ -8,7 +8,7 @@ describe('validateEnv branches', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         GOOGLE_CALLBACK_URL: 'http://localhost:3001/api/auth/google/callback',
         CORS_ORIGINS: 'http://localhost:3001',
       }),
@@ -20,7 +20,7 @@ describe('validateEnv branches', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         GOOGLE_CALLBACK_URL: 'http://localhost:9999/api/auth/google/callback',
         CORS_ORIGINS: 'http://localhost:3001',
       }),
@@ -32,7 +32,7 @@ describe('validateEnv branches', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         APP_BASE_URL: 'https://mobile.ecotrack.example.com/app',
         CORS_ORIGINS: 'https://app.ecotrack.example.com',
       }),
@@ -44,7 +44,7 @@ describe('validateEnv branches', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ticketdb',
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
         APP_BASE_URL: 'https://mobile.ecotrack.example.com/app',
         CORS_ORIGINS: 'https://mobile.ecotrack.example.com',
       }),

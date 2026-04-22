@@ -129,7 +129,7 @@ terraform validate
 - The Cloudflare stack keeps the Pages project definition minimal on purpose.
   Add source-control, build, and deployment settings only after the base import
   is stable.
-- The Neon stack models the canonical `ticketdb` database baseline but still
+- The Neon stack models the canonical `ecotrack` database baseline but still
   expects imports for already-created hosted resources.
 - The Render stack uses the current official `render_web_service` resource
   shape, so plan values such as `render_plan` and `render_region` should match

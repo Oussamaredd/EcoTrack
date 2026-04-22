@@ -15,12 +15,15 @@ import {
 import type { Server, Socket } from 'socket.io';
 
 import { resolveCorsOrigins } from '../../config/cors-origins.js';
+import { loadPlanningRealtimeConfig } from '../../config/runtime-features.js';
 import { AuthService } from '../auth/auth.service.js';
 
 import { PlanningService, type PlanningStreamEvent } from './planning.service.js';
 
-const WS_KEEPALIVE_INTERVAL_MS = 25_000;
-const WS_SNAPSHOT_INTERVAL_MS = 10_000;
+const PLANNING_REALTIME_CONFIG = loadPlanningRealtimeConfig(process.env as Record<string, unknown>);
+const WS_SNAPSHOT_INTERVAL_MS = PLANNING_REALTIME_CONFIG.messageIntervalMs;
+const WS_PING_INTERVAL_MS = PLANNING_REALTIME_CONFIG.messageIntervalMs;
+const WS_PING_TIMEOUT_MS = 60_000;
 const WS_ALLOWED_ORIGINS = resolveCorsOrigins({
   corsOrigins: process.env.CORS_ORIGINS,
   clientOrigin: process.env.CLIENT_ORIGIN,
@@ -31,6 +34,8 @@ const WS_ALLOWED_ORIGINS = resolveCorsOrigins({
 @WebSocketGateway({
   path: '/api/planning/ws',
   transports: ['websocket'],
+  pingInterval: WS_PING_INTERVAL_MS,
+  pingTimeout: WS_PING_TIMEOUT_MS,
   cors: {
     origin: WS_ALLOWED_ORIGINS,
     credentials: true,
@@ -43,7 +48,6 @@ export class PlanningGateway
 
   private readonly logger = new Logger(PlanningGateway.name);
   private unsubscribePlanningEvents: (() => void) | null = null;
-  private keepaliveInterval: NodeJS.Timeout | null = null;
   private snapshotInterval: NodeJS.Timeout | null = null;
 
   constructor(
@@ -54,35 +58,23 @@ export class PlanningGateway
   ) {}
 
   onModuleInit() {
+    if (!PLANNING_REALTIME_CONFIG.websocketEnabled) {
+      return;
+    }
+
     this.unsubscribePlanningEvents = this.planningService.subscribeRealtimeEvents((event) => {
+      if (!this.planningService.hasActiveWebSocketConnections()) {
+        return;
+      }
+
       this.emitEvent(event);
     });
-
-    this.keepaliveInterval = setInterval(() => {
-      this.emitEvent(this.planningService.createKeepaliveEvent());
-    }, WS_KEEPALIVE_INTERVAL_MS);
-
-    this.snapshotInterval = setInterval(async () => {
-      try {
-        const snapshotEvent = await this.planningService.getRealtimeDashboardSnapshotEvent();
-        this.emitEvent(snapshotEvent);
-      } catch (error) {
-        this.logger.warn(
-          `Failed to publish websocket dashboard snapshot: ${this.describeError(error)}`,
-        );
-      }
-    }, WS_SNAPSHOT_INTERVAL_MS);
   }
 
   onModuleDestroy() {
     if (this.unsubscribePlanningEvents) {
       this.unsubscribePlanningEvents();
       this.unsubscribePlanningEvents = null;
-    }
-
-    if (this.keepaliveInterval) {
-      clearInterval(this.keepaliveInterval);
-      this.keepaliveInterval = null;
     }
 
     if (this.snapshotInterval) {
@@ -92,7 +84,13 @@ export class PlanningGateway
   }
 
   async handleConnection(client: Socket) {
+    if (!PLANNING_REALTIME_CONFIG.websocketEnabled) {
+      client.disconnect(true);
+      return;
+    }
+
     let isAuthorized = false;
+    let registeredConnection = false;
 
     try {
       const token = this.extractWebSocketSessionToken(client);
@@ -115,9 +113,17 @@ export class PlanningGateway
       isAuthorized = true;
       client.data.authUserId = authUser.id;
       this.planningService.registerWebSocketConnection();
+      registeredConnection = true;
+      this.ensureSnapshotInterval();
       const snapshotEvent = await this.planningService.getRealtimeDashboardSnapshotEvent();
       this.emitEvent(snapshotEvent, client);
     } catch {
+      if (registeredConnection) {
+        this.planningService.unregisterWebSocketConnection();
+        this.clearSnapshotIntervalIfIdle();
+        delete client.data.authUserId;
+      }
+
       if (!isAuthorized) {
         this.planningService.registerWebSocketAuthFailure();
       }
@@ -129,12 +135,17 @@ export class PlanningGateway
   handleDisconnect(client: Socket) {
     if (typeof client.data.authUserId === 'string' && client.data.authUserId.length > 0) {
       this.planningService.unregisterWebSocketConnection();
+      this.clearSnapshotIntervalIfIdle();
     }
 
     delete client.data.authUserId;
   }
 
   private emitEvent(event: PlanningStreamEvent, targetClient?: Socket) {
+    if (!targetClient && !this.planningService.hasActiveWebSocketConnections()) {
+      return;
+    }
+
     this.planningService.recordEmittedEvent(event.event);
 
     if (targetClient) {
@@ -161,6 +172,35 @@ export class PlanningGateway
     }
 
     return null;
+  }
+
+  private ensureSnapshotInterval() {
+    if (this.snapshotInterval || !this.planningService.hasActiveWebSocketConnections()) {
+      return;
+    }
+
+    this.snapshotInterval = setInterval(async () => {
+      if (!this.planningService.hasActiveWebSocketConnections()) {
+        this.clearSnapshotIntervalIfIdle();
+        return;
+      }
+
+      try {
+        const snapshotEvent = await this.planningService.getRealtimeDashboardSnapshotEvent();
+        this.emitEvent(snapshotEvent);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to publish websocket dashboard snapshot: ${this.describeError(error)}`,
+        );
+      }
+    }, WS_SNAPSHOT_INTERVAL_MS);
+  }
+
+  private clearSnapshotIntervalIfIdle() {
+    if (this.snapshotInterval && !this.planningService.hasActiveWebSocketConnections()) {
+      clearInterval(this.snapshotInterval);
+      this.snapshotInterval = null;
+    }
   }
 
   private describeError(error: unknown) {

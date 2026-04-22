@@ -39,6 +39,14 @@ const normalizeConsoleArgs = (args: unknown[]) =>
     .join(' ');
 
 beforeAll(() => {
+  process.env.PLANNING_SSE_ENABLED = 'true';
+  process.env.PLANNING_WEBSOCKET_ENABLED = 'true';
+  process.env.PLANNING_REALTIME_INTERVAL_MS = '25000';
+  process.env.PLANNING_REPORTS_ENABLED = 'true';
+  process.env.ADMIN_WORKSPACE_ENABLED = 'true';
+  process.env.BILLING_ENABLED = 'true';
+  process.env.CITIZEN_CHALLENGES_ENABLED = 'true';
+
   Logger.overrideLogger(false);
 
   console.error = (...args: Parameters<typeof console.error>) => {

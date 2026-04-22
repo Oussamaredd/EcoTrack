@@ -19,6 +19,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useAuth";
 import LogoutButton from "../components/LogoutButton";
 import BrandLogo from "../components/branding/BrandLogo";
+import { isFeatureRouteEnabled, loadAppRuntimeConfig } from "../config/runtimeFeatures";
 import { useShellPreferences } from "../state/ShellPreferencesContext";
 import {
   hasAdminAccess,
@@ -127,6 +128,7 @@ export default function AppLayout() {
   const canAccessCitizen = hasCitizenAccess(user);
   const canAccessManager = hasManagerAccess(user);
   const canAccessSupportWorkspace = hasSupportWorkspaceAccess(user);
+  const runtimeConfig = loadAppRuntimeConfig();
   const supportLinkTarget = canAccessSupportWorkspace ? "/app/support" : "/support";
   const displayName = user?.displayName || user?.name || user?.email || "User";
   const profileImageUrl = getUserAvatarUrl(user);
@@ -261,7 +263,8 @@ export default function AppLayout() {
   }, [isDesktop, isMobileSidebarOpen]);
 
   const navItems = React.useMemo<AppNavItem[]>(
-    () => [
+    () =>
+      [
       {
         to: "/app",
         label: "Role Hub",
@@ -346,12 +349,13 @@ export default function AppLayout() {
         requiresAdmin: true,
         matches: (pathname) => isRouteActive(pathname, "/app/admin"),
       },
-    ],
-    [supportLinkTarget]
+      ].filter((item) => isFeatureRouteEnabled(item.to, runtimeConfig)),
+    [runtimeConfig, supportLinkTarget]
   );
 
   const currentPageCatalog = React.useMemo<PageMeta[]>(
-    () => [
+    () =>
+      [
       {
         label: "Role Hub",
         matches: (pathname) => pathname === "/app",
@@ -417,8 +421,8 @@ export default function AppLayout() {
         requiresAdmin: true,
         matches: (pathname) => isRouteActive(pathname, "/app/admin"),
       },
-    ],
-    []
+      ].filter((page) => isFeatureRouteEnabled(location.pathname, runtimeConfig) || !page.matches(location.pathname)),
+    [location.pathname, runtimeConfig]
   );
 
   const visibleNavItems = navItems.filter(

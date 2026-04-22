@@ -28,11 +28,11 @@ describe('configuration', () => {
       cache: {
         analyticsTtlSeconds: 60,
         citizenTtlSeconds: 30,
-        dashboardTtlSeconds: 30,
+        dashboardTtlSeconds: 300,
         defaultTtlSeconds: 60,
         enabled: true,
         maxMemoryEntries: 250,
-        planningTtlSeconds: 20,
+        planningTtlSeconds: 300,
         prefix: 'ecotrack',
         redisUrl: null,
       },
@@ -75,7 +75,7 @@ describe('configuration', () => {
         },
       },
       iotIngestion: {
-        IOT_INGESTION_ENABLED: true,
+        IOT_INGESTION_ENABLED: false,
         IOT_MQTT_ENABLED: false,
         IOT_MQTT_TOPIC: 'ecotrack/measurements',
         IOT_QUEUE_CONCURRENCY: 50,

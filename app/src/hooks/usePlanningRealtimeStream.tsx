@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { loadAppRuntimeConfig } from '../config/runtimeFeatures';
 import {
   ApiRequestError,
   buildApiUrl,
@@ -71,8 +72,41 @@ const requestStreamSessionToken = async () => {
   throw new Error('Missing stream session token');
 };
 
+const applyDashboardSnapshot = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  payload?: Record<string, unknown>,
+) => {
+  if (!payload || typeof payload !== 'object') {
+    return;
+  }
+
+  queryClient.setQueryData(queryKeys.planningDashboard, (currentValue: unknown) => {
+    const currentData =
+      currentValue && typeof currentValue === 'object' ? (currentValue as Record<string, unknown>) : {};
+
+    return {
+      ...currentData,
+      ...payload,
+    };
+  });
+};
+
+const readEventPayload = (event: Event) => {
+  if (!(event instanceof MessageEvent) || typeof event.data !== 'string') {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(event.data);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export const usePlanningRealtimeStream = (enabled: boolean) => {
   const queryClient = useQueryClient();
+  const { planningSseEnabled } = loadAppRuntimeConfig();
   const isEventSourceSupported =
     typeof window !== 'undefined' && typeof window.EventSource !== 'undefined';
 
@@ -80,7 +114,7 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
   const [lastEventAt, setLastEventAt] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!enabled || !isEventSourceSupported) {
+    if (!enabled || !planningSseEnabled || !isEventSourceSupported) {
       return;
     }
 
@@ -90,16 +124,18 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
     let isCancelled = false;
     let lastEventId: string | null = null;
 
-    const invalidateDashboardQueries = () => {
+    const handleDashboardSnapshot = (payload?: Record<string, unknown>) => {
       setLastEventAt(Date.now());
-      queryClient.invalidateQueries({ queryKey: queryKeys.planningDashboard });
-      queryClient.invalidateQueries({ queryKey: queryKeys.planningHeatmap() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+      applyDashboardSnapshot(queryClient, payload);
     };
 
-    const invalidateTourQueries = () => {
-      invalidateDashboardQueries();
+    const invalidateAgentTour = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.agentTour });
+    };
+
+    const invalidatePlanningHeatmap = () => {
+      setLastEventAt(Date.now());
+      queryClient.invalidateQueries({ queryKey: queryKeys.planningHeatmap() });
     };
 
     const closeStream = () => {
@@ -188,19 +224,20 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
 
       eventSource.addEventListener('planning.dashboard.snapshot', (event) => {
         trackLastEventId(event);
-        invalidateDashboardQueries();
+        handleDashboardSnapshot(readEventPayload(event));
       });
       eventSource.addEventListener('planning.container.critical', (event) => {
         trackLastEventId(event);
-        invalidateDashboardQueries();
+        invalidatePlanningHeatmap();
       });
       eventSource.addEventListener('planning.emergency.created', (event) => {
         trackLastEventId(event);
-        invalidateTourQueries();
+        invalidatePlanningHeatmap();
+        invalidateAgentTour();
       });
       eventSource.addEventListener('planning.tour.updated', (event) => {
         trackLastEventId(event);
-        invalidateTourQueries();
+        invalidateAgentTour();
       });
       eventSource.addEventListener('system.keepalive', (event) => {
         trackLastEventId(event);
@@ -217,9 +254,9 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
       }
       closeStream();
     };
-  }, [enabled, isEventSourceSupported, queryClient]);
+  }, [enabled, isEventSourceSupported, planningSseEnabled, queryClient]);
 
-  const resolvedConnectionState = !enabled
+  const resolvedConnectionState = !enabled || !planningSseEnabled
     ? 'disabled'
     : !isEventSourceSupported
       ? 'fallback'

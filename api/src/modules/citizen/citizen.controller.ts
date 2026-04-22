@@ -10,11 +10,13 @@ import {
   Post,
   Query,
   Req,
+  ServiceUnavailableException,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 
 import { parsePaginationParams } from '../../common/http/pagination.js';
+import { loadRuntimeFeatureFlags } from '../../config/runtime-features.js';
 import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
 import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import { ResponseCache } from '../performance/http-response-cache.decorator.js';
@@ -23,6 +25,8 @@ import { CitizenService } from './citizen.service.js';
 import { CreateCitizenReportDto } from './dto/create-citizen-report.dto.js';
 import { RegisterNotificationDeviceDto } from './dto/register-notification-device.dto.js';
 import { UpdateChallengeProgressDto } from './dto/update-challenge-progress.dto.js';
+
+const RUNTIME_FEATURE_FLAGS = loadRuntimeFeatureFlags(process.env as Record<string, unknown>);
 
 @Controller('citizen')
 @UseGuards(AuthenticatedUserGuard)
@@ -122,6 +126,7 @@ export class CitizenController {
     vary: ['Authorization', 'Cookie'],
   })
   async challenges(@Req() request: RequestWithAuthUser) {
+    this.requireCitizenChallengesEnabled();
     const items = await this.citizenService.listChallenges(this.requireUserId(request));
     return { challenges: items };
   }
@@ -131,6 +136,7 @@ export class CitizenController {
     @Req() request: RequestWithAuthUser,
     @Param('id', new ParseUUIDPipe()) challengeId: string,
   ) {
+    this.requireCitizenChallengesEnabled();
     return this.citizenService.enrollInChallenge(this.requireUserId(request), challengeId);
   }
 
@@ -140,11 +146,18 @@ export class CitizenController {
     @Param('id', new ParseUUIDPipe()) challengeId: string,
     @Body() dto: UpdateChallengeProgressDto,
   ) {
+    this.requireCitizenChallengesEnabled();
     return this.citizenService.updateChallengeProgress(
       this.requireUserId(request),
       challengeId,
       dto.progressDelta,
     );
+  }
+
+  private requireCitizenChallengesEnabled() {
+    if (!RUNTIME_FEATURE_FLAGS.citizenChallengesEnabled) {
+      throw new ServiceUnavailableException('Citizen challenges are disabled.');
+    }
   }
 
   private requireUserId(request: RequestWithAuthUser) {

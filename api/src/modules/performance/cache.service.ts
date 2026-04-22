@@ -49,8 +49,8 @@ const DEFAULT_CACHE_DEFAULT_TTL_SECONDS = 60;
 const DEFAULT_CACHE_PREFIX = 'ecotrack';
 const DEFAULT_CACHE_MAX_MEMORY_ENTRIES = 250;
 const DEFAULT_CACHE_PROFILE_TTLS: Record<Exclude<CacheProfile, 'default'>, number> = {
-  dashboard: 30,
-  planning: 20,
+  dashboard: 300,
+  planning: 300,
   analytics: 60,
   citizen: 30,
 };

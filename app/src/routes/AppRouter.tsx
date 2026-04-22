@@ -2,6 +2,7 @@ import { Suspense, lazy, type ReactElement } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import AppStatusScreen from "../components/AppStatusScreen";
 import RouteScrollToTop from "../components/RouteScrollToTop";
+import { loadAppRuntimeConfig } from "../config/runtimeFeatures";
 import { useCurrentUser } from "../hooks/useAuth";
 import AppLayout from "../layouts/AppLayout";
 import AuthLayout from "../layouts/AuthLayout";
@@ -69,6 +70,11 @@ function RootLandingRoute() {
 
 function AdminRoute() {
   const { user } = useCurrentUser();
+  const { adminWorkspaceEnabled } = loadAppRuntimeConfig();
+
+  if (!adminWorkspaceEnabled) {
+    return <Navigate to="/app" replace />;
+  }
 
   if (!hasAdminAccess(user)) {
     return (
@@ -109,6 +115,11 @@ function ManagerRoute() {
 
 function ManagerReportsRoute() {
   const { user } = useCurrentUser();
+  const { managerReportsEnabled } = loadAppRuntimeConfig();
+
+  if (!managerReportsEnabled) {
+    return <Navigate to="/app" replace />;
+  }
 
   if (!hasManagerAccess(user)) {
     return (
@@ -135,6 +146,23 @@ function ManagerToursRoute() {
   }
 
   return withRouteSuspense(<ManagerToursPage />);
+}
+
+function CitizenChallengesRoute() {
+  const { user } = useCurrentUser();
+  const { citizenChallengesEnabled } = loadAppRuntimeConfig();
+
+  if (!citizenChallengesEnabled) {
+    return <Navigate to="/app" replace />;
+  }
+
+  if (!hasCitizenAccess(user)) {
+    return (
+      <AccessDeniedMessage message="You don't have permission to access citizen tools." />
+    );
+  }
+
+  return withRouteSuspense(<CitizenChallengesPage />);
 }
 
 function AccessDeniedMessage({ message }: { message: string }) {
@@ -223,7 +251,7 @@ export default function AppRouter() {
             <Route path="citizen" element={<CitizenRouteGuard />}>
               <Route path="report" element={withRouteSuspense(<CitizenReportPage />)} />
               <Route path="profile" element={withRouteSuspense(<CitizenProfilePage />)} />
-              <Route path="challenges" element={withRouteSuspense(<CitizenChallengesPage />)} />
+              <Route path="challenges" element={<CitizenChallengesRoute />} />
             </Route>
             <Route element={<SupportWorkspaceRouteGuard />}>
               <Route path="support" element={withRouteSuspense(<SupportPage />)} />

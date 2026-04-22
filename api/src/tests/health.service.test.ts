@@ -21,7 +21,7 @@ const createSelectionChain = (error?: unknown) => {
 };
 
 describe('HealthService', () => {
-  it('returns ok when the auth, ticketing, planning, and async schema dependencies are queryable', async () => {
+  it('returns ok when the identity, ticketing, planning, and async schema dependencies are queryable', async () => {
     const dbMock = {
       select: vi
         .fn()
@@ -48,7 +48,7 @@ describe('HealthService', () => {
       status: 'ok',
       checks: [
         { name: 'ticketing.schema', status: 'ok' },
-        { name: 'auth.schema', status: 'ok' },
+        { name: 'identity.schema', status: 'ok' },
         { name: 'planning.dashboard.schema', status: 'ok' },
         { name: 'planning.telemetry.schema', status: 'ok' },
         { name: 'integration.event-connectors.schema', status: 'ok' },
@@ -58,12 +58,12 @@ describe('HealthService', () => {
     expect(dbMock.select).toHaveBeenCalledTimes(11);
   });
 
-  it('returns an error payload when an auth schema probe fails', async () => {
+  it('returns an error payload when an identity schema probe fails', async () => {
     const dbMock = {
       select: vi
         .fn()
         .mockReturnValueOnce(createSelectionChain())
-        .mockReturnValueOnce(createSelectionChain(new Error('column auth.users.zone_id does not exist')))
+        .mockReturnValueOnce(createSelectionChain(new Error('column identity.users.zone_id does not exist')))
         .mockReturnValueOnce(createSelectionChain())
         .mockReturnValueOnce(createSelectionChain())
         .mockReturnValueOnce(createSelectionChain())
@@ -82,13 +82,13 @@ describe('HealthService', () => {
     const result = await service.checkDatabase();
 
     expect(result.status).toBe('error');
-    expect(result.message).toContain('auth.schema');
+    expect(result.message).toContain('identity.schema');
     expect(result.checks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'auth.schema',
+          name: 'identity.schema',
           status: 'error',
-          message: 'column auth.users.zone_id does not exist',
+          message: 'column identity.users.zone_id does not exist',
         }),
       ]),
     );
