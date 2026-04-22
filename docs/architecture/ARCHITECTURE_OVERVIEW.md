@@ -59,7 +59,7 @@ The repository is moving from a browser-only client plus platform stack to a bro
   - `API_BASE_URL`
   - `VITE_API_BASE_URL`
   - `EXPO_PUBLIC_API_BASE_URL`
-- Canonical database name in templates: `ticketdb`.
+- Canonical database name in templates: `ecotrack`.
 
 ## Visual Views
 

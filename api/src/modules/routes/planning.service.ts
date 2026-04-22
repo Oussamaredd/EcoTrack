@@ -340,6 +340,17 @@ export class PlanningService {
     };
   }
 
+  hasActiveRealtimeConsumers() {
+    return (
+      this.realtimeDiagnostics.activeSseConnections > 0 ||
+      this.realtimeDiagnostics.activeWebSocketConnections > 0
+    );
+  }
+
+  hasActiveWebSocketConnections() {
+    return this.realtimeDiagnostics.activeWebSocketConnections > 0;
+  }
+
   registerSseConnection() {
     this.realtimeDiagnostics.activeSseConnections += 1;
     this.realtimeDiagnostics.counters.sseConnected += 1;
@@ -446,6 +457,10 @@ export class PlanningService {
   }
 
   private async publishDashboardSnapshotSafely(trigger: string) {
+    if (!this.hasActiveRealtimeConsumers()) {
+      return;
+    }
+
     try {
       await this.publishDashboardSnapshot();
     } catch (error) {
@@ -487,6 +502,10 @@ export class PlanningService {
   }
 
   private broadcastStreamEvent(event: PlanningStreamEvent) {
+    if (!this.hasActiveRealtimeConsumers()) {
+      return;
+    }
+
     this.streamEventBuffer.push(event);
     if (this.streamEventBuffer.length > STREAM_EVENT_BUFFER_SIZE) {
       this.streamEventBuffer.splice(0, this.streamEventBuffer.length - STREAM_EVENT_BUFFER_SIZE);

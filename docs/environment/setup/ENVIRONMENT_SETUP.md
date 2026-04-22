@@ -40,9 +40,10 @@ Optional service-scoped template (reference only; root `/.env` remains the local
 cp api/.env.example api/.env
 ```
 
-Managed Neon local-testing note:
+Managed Postgres local-testing note:
 
-- When you intentionally want local native `api`/`database` commands to target the managed Neon baseline, update root `/.env` `DATABASE_URL` to the direct Neon connection string.
+- When you intentionally want local native `api`/`database` commands to target the managed deployment database, update root `/.env` `DATABASE_URL` to the direct Postgres connection string.
+- Self-managed examples in this repo use database name `ecotrack`, but provider-managed hosted Postgres services such as Supabase may expose the primary database as `postgres`.
 - Keep `app/.env.local` frontend-only (`VITE_*` keys only).
 - Keep `mobile/.env.local` mobile-only (`EXPO_PUBLIC_*` keys only).
 - Keep `infrastructure/environments/.env.docker` pointed at the local Docker Postgres sandbox unless you are deliberately changing the Docker workflow.
@@ -130,6 +131,7 @@ Deprecated aliases:
 ```bash
 npm run validate-env:all
 npm run validate:workspace-toolchain
+npm run validate:workspace-toolchain:api-deploy
 npm run dev:doctor
 npm run dev:mobile
 npm run infra:health
@@ -137,6 +139,7 @@ npm run smoke-test
 npm run db:migrate --workspace=ecotrack-database
 npm run build
 npm run test
+npm run deploy:render:verify-local:managed-postgres
 ```
 
 - On WSL, `ecotrack-database` falls back from loopback `DATABASE_URL` hosts to the Windows-host gateway for migration, seed, and shared database-client flows when `localhost` is unreachable from the distro.

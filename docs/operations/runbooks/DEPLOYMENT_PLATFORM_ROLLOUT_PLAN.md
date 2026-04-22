@@ -115,13 +115,13 @@ The intended database discipline is:
 Environment strategy for this phase:
 
 - start with one deployment-ready Neon project for the app
-- keep the canonical database name aligned with `ticketdb`
+- keep the canonical database name aligned with `ecotrack`
 - use branches or separate project boundaries for future environment separation
 - store the Neon connection string only in provider secrets and deployment envs
 - implemented baseline:
   - Neon project `ecotrack` in `aws-eu-central-1` (Frankfurt)
   - one baseline branch: `main`
-  - canonical managed database: `ticketdb`
+  - canonical managed database target: `ecotrack`
   - repo Drizzle migrations and seed flow applied against the direct Neon connection string
   - local API readiness verified against the managed database baseline
   - see `docs/operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the exact validated state
@@ -129,7 +129,7 @@ Environment strategy for this phase:
 Checklist:
 
 - [x] Create the Neon project for EcoTrack.
-- [x] Create the deployment database with the canonical `ticketdb` naming.
+- [x] Create the deployment database with the canonical `ecotrack` naming.
 - [x] Capture the managed `DATABASE_URL` outside the repository.
 - [x] Define migration policy for deployment environments.
 - [x] Define whether demo data uses seed scripts or a one-time import.
@@ -162,13 +162,15 @@ Completion definition:
 - the service can connect to Neon and pass startup validation
 - implemented baseline:
   - Render web service `ecotrack-3ggh` is live at `https://ecotrack-3ggh.onrender.com`
-  - monorepo build runs from the repo root with `npm run deploy:render:build`, which now compiles `database`, applies Drizzle migrations against the direct `DATABASE_URL`, builds `api`, and validates runtime dependencies
+  - repo-managed Postgres targets use the repo-root build command `npm run deploy:render:build`, which compiles `database`, applies Drizzle migrations against the direct `DATABASE_URL`, builds `api`, and validates runtime dependencies
+  - already-bootstrapped managed Postgres targets such as the Supabase cutover path use `npm run deploy:render:build:managed-postgres`, which installs dev deps, validates the root/API/database toolchain, builds `database` if needed, builds `api`, validates runtime dependencies, and does not replay the numbered Drizzle migration chain
   - runtime start command is `npm run deploy:render:start`
   - Render port contract is aligned with canonical `API_PORT`, with hosted-runtime fallback to Render-injected `PORT` when `API_PORT` is absent
   - readiness health check uses `/api/health/ready`
   - baseline backend deployment env values are configured on Render; final frontend/public-origin alignment remains Phase 6 work
-  - `npm ci --omit=dev` is not a supported Render build command for this repo; the canonical build path uses repo-root `npm ci --include=dev`, validates the workspace toolchain, compiles `database`, runs Drizzle migrations, compiles `api`, and validates that every API production dependency still resolves from `api/dist/main.js`
-  - local Windows verification should use `npm run deploy:render:verify-local` instead of the full Render build command if `npm ci` is blocked by file-locking or antivirus on native modules under `node_modules`
+  - `npm ci --omit=dev` is not a supported Render build command for this repo; the canonical repo-managed DB path uses repo-root `npm ci --include=dev`, validates the workspace toolchain, compiles `database`, runs Drizzle migrations, compiles `api`, and validates that every API production dependency still resolves from `api/dist/main.js`
+  - managed provider targets that were bootstrapped from `database/migrations/baselines/managed-postgres-current.sql` should not replay the historical migration chain on Render; use `npm run deploy:render:build:managed-postgres` instead
+  - local Windows verification should use `npm run deploy:render:verify-local` for the canonical migration-running path, or `npm run deploy:render:verify-local:managed-postgres` for the already-bootstrapped managed-provider path, if `npm ci` is blocked by file-locking or antivirus on native modules under `node_modules`
   - local recovery uses one repo-root install contract only: stop active Node/Vite/Expo processes, rerun `npm ci --include=dev`, run `npm run validate:workspace-toolchain`, then rerun Render verification; do not use workspace-local `--prefix` installs
 
 Checklist:
@@ -280,7 +282,7 @@ Implemented release discipline:
   1. run `.github/workflows/CD.yml` (`CD Deployment`) against the intended target environment
   2. let the workflow execute repo-owned pre-deploy validation (`validate-env`, lint, typecheck, tests, Render verification, frontend production build)
   3. trigger the backend and frontend deploy hooks owned by the target GitHub Environment
-  4. let the Render backend build run `npm run deploy:render:build`, which applies Drizzle migrations before the API release is started
+  4. let the Render backend build run `npm run deploy:render:build` for repo-managed DB targets, or `npm run deploy:render:build:managed-postgres` for already-bootstrapped managed-provider targets such as the Supabase cutover path
   5. run hosted smoke checks on frontend HTML, API readiness, optional OAuth redirect, and optional release-version assertions
   6. review the uploaded release artifacts and GitHub step summary before closing the release
 - migrations remain release-controlled through the backend deploy path and should continue targeting the direct Neon `DATABASE_URL`

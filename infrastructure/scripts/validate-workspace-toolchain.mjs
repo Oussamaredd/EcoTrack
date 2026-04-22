@@ -13,7 +13,7 @@ const fail = (message) => {
   process.exit(1);
 };
 
-const workspaces = [
+const workspaceDefinitions = [
   {
     name: "root",
     manifestPath: rootManifestPath,
@@ -41,6 +41,8 @@ const workspaces = [
   },
 ];
 
+const supportedWorkspaceNames = new Set(workspaceDefinitions.map((workspace) => workspace.name));
+
 const unsupportedWorkspaceLockfiles = [
   path.join(repoRoot, "app", "package-lock.json"),
   path.join(repoRoot, "mobile", "package-lock.json"),
@@ -63,6 +65,59 @@ const resolvePackage = (requireFromManifest, packageName) => {
   return null;
 };
 
+const parseRequestedWorkspaces = () => {
+  const requestedWorkspaceNames = [];
+  const args = process.argv.slice(2);
+
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+
+    if (argument === "--workspace") {
+      const workspaceName = args[index + 1];
+
+      if (!workspaceName) {
+        fail("Missing workspace name after --workspace.");
+      }
+
+      requestedWorkspaceNames.push(workspaceName);
+      index += 1;
+      continue;
+    }
+
+    if (argument.startsWith("--workspace=")) {
+      const workspaceName = argument.slice("--workspace=".length).trim();
+
+      if (!workspaceName) {
+        fail("Missing workspace name after --workspace=.");
+      }
+
+      requestedWorkspaceNames.push(workspaceName);
+      continue;
+    }
+
+    fail(`Unsupported argument '${argument}'. Use repeated --workspace <name> selectors only.`);
+  }
+
+  if (requestedWorkspaceNames.length === 0) {
+    return workspaceDefinitions;
+  }
+
+  const invalidWorkspaceNames = requestedWorkspaceNames.filter(
+    (workspaceName) => !supportedWorkspaceNames.has(workspaceName),
+  );
+
+  if (invalidWorkspaceNames.length > 0) {
+    fail(
+      `Unsupported workspace selectors: ${invalidWorkspaceNames.join(
+        ", ",
+      )}. Supported values: ${workspaceDefinitions.map((workspace) => workspace.name).join(", ")}.`,
+    );
+  }
+
+  const selectedWorkspaceNames = new Set(["root", ...requestedWorkspaceNames]);
+  return workspaceDefinitions.filter((workspace) => selectedWorkspaceNames.has(workspace.name));
+};
+
 const main = () => {
   if (!fs.existsSync(rootLockfilePath)) {
     fail("Missing root package-lock.json. Root workspace installs require the committed lockfile.");
@@ -79,7 +134,9 @@ const main = () => {
 
   const missingPackages = [];
 
-  for (const workspace of workspaces) {
+  const selectedWorkspaces = parseRequestedWorkspaces();
+
+  for (const workspace of selectedWorkspaces) {
     const requireFromManifest = createRequire(workspace.manifestPath);
 
     for (const packageName of workspace.packages) {
@@ -99,7 +156,9 @@ const main = () => {
   }
 
   console.log(
-    "[validate-workspace-toolchain] Root lockfile and workspace toolchain packages are present; use repo-root installs only.",
+    `[validate-workspace-toolchain] Root lockfile and required toolchain packages are present for workspaces: ${selectedWorkspaces
+      .map((workspace) => workspace.name)
+      .join(", ")}. Use repo-root installs only.`,
   );
 };
 

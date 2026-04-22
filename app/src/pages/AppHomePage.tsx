@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { isFeatureRouteEnabled, loadAppRuntimeConfig, type AppRuntimeConfig } from '../config/runtimeFeatures';
 import { useCurrentUser } from '../hooks/useAuth';
 import { useCitizenProfile } from '../hooks/useCitizen';
 import {
@@ -270,6 +271,9 @@ const resolveFirstName = (user: {
   return 'there';
 };
 
+const filterRuntimeLinks = (links: WorkspaceLink[], runtimeConfig: AppRuntimeConfig) =>
+  links.filter((link) => isFeatureRouteEnabled(link.to, runtimeConfig));
+
 const renderRouteIcon = (route: string, size = 16) => {
   if (route === '/app/support' || route === '/support') {
     return <LifeBuoy size={size} aria-hidden="true" />;
@@ -493,13 +497,17 @@ function CitizenEntrySection({
 
 export default function AppHomePage() {
   const { user } = useCurrentUser();
+  const runtimeConfig = loadAppRuntimeConfig();
   const canAccessManager = hasManagerAccess(user);
   const canAccessAgent = hasAgentAccess(user);
   const canAccessCitizen = hasCitizenAccess(user);
   const canAccessAdmin = hasAdminAccess(user);
   const canAccessSupportWorkspace = hasSupportWorkspaceAccess(user);
   const universalLinks = buildUniversalLinks(canAccessSupportWorkspace);
-  const citizenFollowUpLinks = buildCitizenFollowUpLinks(canAccessSupportWorkspace);
+  const citizenFollowUpLinks = filterRuntimeLinks(
+    buildCitizenFollowUpLinks(canAccessSupportWorkspace),
+    runtimeConfig,
+  );
   const citizenProfileQuery = useCitizenProfile(canAccessCitizen);
   const citizenProfile = ((citizenProfileQuery.data ?? null) as CitizenProfileSnapshot | null);
   const reportsSubmitted = Math.max(0, citizenProfile?.impact?.reportsSubmitted ?? 0);
@@ -523,14 +531,22 @@ export default function AppHomePage() {
     canAccessAgent,
     canAccessCitizen,
     canAccessAdmin,
-  });
-  const priorityActions = buildPriorityActions({
-    canAccessManager,
-    canAccessAgent,
-    canAccessCitizen,
-    canAccessAdmin,
-    universalLinks,
-  });
+  })
+    .map((guide) => ({
+      ...guide,
+      links: filterRuntimeLinks(guide.links, runtimeConfig),
+    }))
+    .filter((guide) => guide.links.length > 0);
+  const priorityActions = filterRuntimeLinks(
+    buildPriorityActions({
+      canAccessManager,
+      canAccessAgent,
+      canAccessCitizen,
+      canAccessAdmin,
+      universalLinks,
+    }),
+    runtimeConfig,
+  );
   const roleNames = collectRoleNames(user);
   const firstName = resolveFirstName(user);
   const accessibleSurfaceCount =

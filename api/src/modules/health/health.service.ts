@@ -45,7 +45,7 @@ export class HealthService {
           .from(tickets)
           .limit(1);
       }),
-      this.runCheck('auth.schema', async () => {
+      this.runCheck('identity.schema', async () => {
         await Promise.all([
           this.db
             .select({

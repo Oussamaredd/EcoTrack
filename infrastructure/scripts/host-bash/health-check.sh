@@ -56,6 +56,6 @@ check "frontend-edge-ready" "$FRONTEND_EDGE_READY_URL"
 check_closed "backend-host-port" "$BACKEND_HOST_PORT_URL"
 check_docker_exec "backend-live" backend curl -fsS "$BACKEND_INTERNAL_LIVE_URL"
 check_docker_exec "backend-ready" backend curl -fsS "$BACKEND_INTERNAL_READY_URL"
-check_docker_exec "database" db pg_isready -U postgres -d ticketdb
+check_docker_exec "database" db pg_isready -U postgres -d ecotrack
 
 echo "[health] done"

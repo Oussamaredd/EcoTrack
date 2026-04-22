@@ -131,11 +131,11 @@ export default (): AppConfig => ({
   cache: {
     analyticsTtlSeconds: toPositiveInt(process.env.CACHE_ANALYTICS_TTL_SECONDS, 60),
     citizenTtlSeconds: toPositiveInt(process.env.CACHE_CITIZEN_TTL_SECONDS, 30),
-    dashboardTtlSeconds: toPositiveInt(process.env.CACHE_DASHBOARD_TTL_SECONDS, 30),
+    dashboardTtlSeconds: toPositiveInt(process.env.CACHE_DASHBOARD_TTL_SECONDS, 300),
     defaultTtlSeconds: toPositiveInt(process.env.CACHE_DEFAULT_TTL_SECONDS, 60),
     enabled: process.env.CACHE_ENABLED?.trim().toLowerCase() !== 'false',
     maxMemoryEntries: toPositiveInt(process.env.CACHE_MAX_MEMORY_ENTRIES, 250),
-    planningTtlSeconds: toPositiveInt(process.env.CACHE_PLANNING_TTL_SECONDS, 20),
+    planningTtlSeconds: toPositiveInt(process.env.CACHE_PLANNING_TTL_SECONDS, 300),
     prefix: process.env.CACHE_PREFIX?.trim() || 'ecotrack',
     redisUrl: process.env.CACHE_REDIS_URL?.trim() || null,
   },

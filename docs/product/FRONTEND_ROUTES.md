@@ -38,14 +38,14 @@ Special case:
 | Path | Component | Notes |
 | --- | --- | --- |
 | `/app` | `AppHomePage` | Shared authenticated role hub; for citizen-capable accounts with zero submitted reports it prioritizes first-report onboarding before falling back to the lighter returning-user citizen lane |
-| `/app/dashboard` | `Dashboard` | Primary manager/admin desktop monitoring surface; requires `manager`/`admin`/`super_admin`, otherwise redirects to `/app` |
+| `/app/dashboard` | `Dashboard` | Primary manager/admin desktop monitoring surface; requires `manager`/`admin`/`super_admin`, otherwise redirects to `/app`. In the low-cost MVP baseline it only opens realtime while the dashboard tab is visible, prefers websocket push, keeps SSE disabled by default, and falls back to 5-minute polling. |
 | `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; web citizen companion flow for reporting issues on existing mapped containers with typed issue selection and latest known seeded/simulated context |
 | `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; web follow-up surface for citizen history, current report status, and prototype impact visibility |
-| `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied |
+| `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied. Deferred behind `VITE_CITIZEN_CHALLENGES_ENABLED` / `CITIZEN_CHALLENGES_ENABLED` and off by default for the low-cost MVP surface. |
 | `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied. This retained web companion surface supports demo, accessibility, and recovery use cases while mobile remains the primary field-execution lane. Refresh reloads server tour state, while persisted-route rebuild remains a manager-only action. The page is zone-assigned, shows the zone depot/start location, loads all paginated mapped containers for that assigned zone to verify route coverage, and renders only the routed stop sequence on the map with numbered operational markers. When the page is showing an overdue or cached tour snapshot, it also offers `Reload Without Cache` recovery. |
 | `/app/manager/planning` | `ManagerPlanningPage` | Primary manager desktop planning surface for route optimization, zone-safe assignment, and manual persisted-route rebuild for the last created tour. The page requires a zone before it lists assignable agents, labels zones by zone name for clarity, and shows the server-side nearest-neighbor + 2-opt optimization summary for the capped four-stop route. |
 | `/app/manager/tours` | `ManagerToursPage` | Manager tour operations list for reviewing scheduled tours and rebuilding any persisted route |
-| `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history; email delivery stays disabled until the recipient field contains one plausible address |
+| `/app/manager/reports` | `ManagerReportsPage` | Monthly report generation/download/history; email delivery stays disabled until the recipient field contains one plausible address. Deferred behind `VITE_MANAGER_REPORTS_ENABLED` / `PLANNING_REPORTS_ENABLED` and off by default for the low-cost MVP surface. |
 | `/app/support` | `SupportPage` | Unified support workspace with Advanced, Simple, and Create views; requires support-workspace access (`agent`/`manager`/`admin`/`super_admin`), otherwise redirects to public `/support` |
 | `/app/tickets` | `Navigate` redirect | Compatibility redirect to `/app/support#simple` for support-workspace roles; citizen-only sessions fall back to public `/support` |
 | `/app/tickets/advanced` | `Navigate` redirect | Compatibility redirect to `/app/support#advanced` for support-workspace roles; citizen-only sessions fall back to public `/support` |
@@ -53,7 +53,7 @@ Special case:
 | `/app/tickets/:id/details` | `TicketDetails` | Ticket details with comments pagination via `commentsPage` query param; requires support-workspace access, otherwise redirects to public `/support` |
 | `/app/tickets/:id/treat` | `TreatTicketPage` | Ticket treatment flow; requires support-workspace access, otherwise redirects to public `/support` |
 | `/app/settings` | `SettingsPage` | Account settings workspace for display name updates, profile photo upload/removal, password changes for local accounts, and account/security overview panels |
-| `/app/admin` | `AdminDashboard` | Web-only oversight and configuration surface; requires `admin`/`super_admin` role |
+| `/app/admin` | `AdminDashboard` | Web-only oversight and configuration surface; requires `admin`/`super_admin` role. Deferred behind `VITE_ADMIN_WORKSPACE_ENABLED` / `ADMIN_WORKSPACE_ENABLED` and off by default for the low-cost MVP surface. |
 
 Authenticated shell behavior:
 
@@ -63,7 +63,7 @@ Authenticated shell behavior:
 - The role hub and route copy reinforce the intended split: citizens and agents are mobile-first, while managers and admins are web-first.
 - Sidebar top: logo link on the left and sidebar toggle on the right.
 - Sidebar navigation is priority-ordered with the shared role hub first.
-- Primary navigation can include Role Hub, Manager Dashboard, Agent Tour, Tour Planning, Tour Operations, Manager Reports, Citizen Reporting, Impact & History, and Challenges depending on role.
+- Primary navigation can include Role Hub, Manager Dashboard, Agent Tour, Tour Planning, Tour Operations, Citizen Reporting, Impact & History, and support/settings depending on role. Manager Reports, Challenges, and Admin Center appear only when their feature flags are enabled.
 - Sidebar bottom: Settings, a role-aware Support link (internal support workspace for support-workspace roles, public `/support` for citizen-only sessions), optional Admin Center, and Sign Out actions.
 - Sidebar toggle behavior:
   - Desktop (`min-width: 721px`): docked sidebar that expands/collapses and pushes content; collapsed state persists in browser local storage.
@@ -79,6 +79,7 @@ Authenticated shell behavior:
 - Role-protected app surfaces use a shared Access Denied presentation pattern (`app-access-denied`).
 - Unauthorized authenticated requests for `/app/dashboard` are redirected back to `/app` instead of rendering the dashboard.
 - `/app/dashboard` now lazy-loads non-critical analytics panels and a manager heatmap panel after the shell and KPI strip have rendered.
+- Dashboard query refresh is visibility-aware: when the browser tab is hidden, websocket/SSE activity is suspended and the page resumes on-demand refresh only after the dashboard becomes visible again.
 - The citizen follow-up loop currently exposes truthful web visibility through report submission confirmation, history status, resolved-report counts, and prototype impact estimates. Route linkage is not yet exposed directly to citizen web users.
 - Settings form behavior:
   - Display name changes are validated client-side before submission.
@@ -101,7 +102,7 @@ PWA install behavior:
 - `/api` and `/api/*` are reverse proxied to the backend container, preserving forwarded headers.
 - Realtime planning endpoints keep dedicated proxy rules:
   - `/api/planning/ws` enables websocket upgrade headers and long read/write timeouts.
-  - `/api/planning/stream` disables proxy buffering/cache so SSE delivery is not delayed.
+  - `/api/planning/stream` disables proxy buffering/cache so SSE delivery is not delayed when the transport is explicitly enabled; the low-cost MVP baseline keeps SSE disabled by default.
 - Static asset caching is tiered:
   - `/assets/*` uses long-lived immutable caching.
   - `/branding/*` and application icons use shorter cache windows with stale-while-revalidate support.

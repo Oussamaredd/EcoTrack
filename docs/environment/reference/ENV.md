@@ -24,13 +24,14 @@ Mobile workspace note:
 Database package runtime note:
 - `ecotrack-database` runtime entrypoints (for example `db:seed`) fall back to root `/.env` when `DATABASE_URL` is not already present in process env.
 
-Neon managed baseline note:
-- Neon is the managed deployment Postgres baseline for Phase 3.
-- Local Docker Postgres remains a local-only sandbox and is not continuously synced with Neon.
-- For Neon-backed migration and seed operations, `DATABASE_URL` must be the direct Neon connection string, not the pooled `-pooler` hostname.
+Managed Postgres baseline note:
+- Neon remains the current managed deployment Postgres baseline until the Supabase cutover is executed.
+- Local Docker Postgres remains a local-only sandbox and is not continuously synced with the managed deployment database.
+- For managed-database migration and seed operations, `DATABASE_URL` must be the direct Postgres connection string, not a pooled/provider proxy hostname.
 - `DATABASE_POOLER_URL`, when used, is for runtime traffic only and should point at a PgBouncer or provider pooler listener.
-- Store Neon connection strings only in local untracked env files or deployment/provider secret stores.
-- See `docs/operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the bootstrap and validation workflow.
+- The repo now keeps app-owned auth data in the `identity` schema so provider-managed `auth` schemas, including Supabase Auth, stay available for future adoption.
+- Store managed connection strings only in local untracked env files or deployment/provider secret stores.
+- See `docs/operations/runbooks/NEON_MANAGED_POSTGRES_BASELINE.md` for the current baseline and migration-prep workflow.
 
 ## Canonical Keys
 
@@ -52,6 +53,13 @@ Neon managed baseline note:
 - `IOT_VALIDATED_CONSUMER_BATCH_SIZE` for the maximum validated-event deliveries drained per consumer batch
 - `IOT_INGESTION_SHARD_COUNT` for the number of virtual partitions used by the staged-ingestion worker
 - `IOT_VALIDATED_CONSUMER_SHARD_COUNT` for the number of virtual partitions used by the validated-event consumer
+- `PLANNING_SSE_ENABLED` to enable or disable the planning SSE transport
+- `PLANNING_WEBSOCKET_ENABLED` to enable or disable the planning websocket transport
+- `PLANNING_REALTIME_INTERVAL_MS` for the planning websocket snapshot interval and SSE keepalive/snapshot interval
+- `PLANNING_REPORTS_ENABLED` to expose or defer manager reporting endpoints
+- `ADMIN_WORKSPACE_ENABLED` to expose or defer the admin workspace surface
+- `BILLING_ENABLED` to expose or defer billing endpoints and module wiring
+- `CITIZEN_CHALLENGES_ENABLED` to expose or defer citizen challenge endpoints
 - `CACHE_ENABLED` to turn API read caching on or off
 - `CACHE_PREFIX` for cache-key namespace isolation across environments
 - `CACHE_DEFAULT_TTL_SECONDS` for default API read-cache TTL
@@ -72,6 +80,14 @@ Neon managed baseline note:
 - `LOGSTASH_HOST` for the log shipping target hostname
 - `LOGSTASH_PORT` for the log shipping target TCP port
 - `VITE_API_BASE_URL` for the browser-facing API base URL (normally the frontend origin in proxied runtimes)
+- `VITE_API_TELEMETRY_ENABLED` to allow or suppress frontend telemetry posts back into the API
+- `VITE_DASHBOARD_REFRESH_INTERVAL_MS` for dashboard polling when live push is inactive or suspended
+- `VITE_PLANNING_REFRESH_INTERVAL_MS` for planning/dashboard support polling and cache freshness
+- `VITE_PLANNING_SSE_ENABLED` to enable or disable the browser SSE client for planning realtime
+- `VITE_PLANNING_WEBSOCKET_ENABLED` to enable or disable the browser websocket client for planning realtime
+- `VITE_MANAGER_REPORTS_ENABLED` to expose or defer the manager reports route in the web shell
+- `VITE_CITIZEN_CHALLENGES_ENABLED` to expose or defer the citizen challenges route in the web shell
+- `VITE_ADMIN_WORKSPACE_ENABLED` to expose or defer the admin workspace route in the web shell
 - `EXPO_PUBLIC_API_BASE_URL` for the native mobile API base URL (must resolve to a device/simulator reachable API origin)
 - `VITE_MAP_TILE_URL_TEMPLATE` for the frontend Leaflet tile source template
 - `VITE_MAP_TILE_ATTRIBUTION` for the frontend map attribution label
@@ -150,7 +166,7 @@ Agent tour mapping note:
 
 ## Optional IoT Ingestion Keys
 
-- `IOT_INGESTION_ENABLED` to expose the async IoT ingestion endpoints and worker (default `true`)
+- `IOT_INGESTION_ENABLED` to expose the async IoT ingestion endpoints and worker (default `false`)
 - `IOT_QUEUE_CONCURRENCY` for the number of concurrent queue workers draining buffered measurements (default `50`)
 - `IOT_QUEUE_BATCH_SIZE` for the maximum measurements processed per worker batch and DB write chunk (default `500`)
 - `IOT_BACKPRESSURE_THRESHOLD` for the queued-measurement ceiling that pauses new ingestion requests with `503` responses (default `100000`)
@@ -160,6 +176,25 @@ Agent tour mapping note:
 - `IOT_INGESTION_SHARD_COUNT` for the number of virtual shards used by the staged-ingestion queue and recovery loop (default `12`)
 - `IOT_VALIDATED_CONSUMER_SHARD_COUNT` for the number of virtual shards used by the validated-delivery queue and recovery loop (default `12`)
 
+## Optional Planning Realtime And Feature Flags
+
+- `PLANNING_SSE_ENABLED` enables the planning SSE transport (default `false`)
+- `PLANNING_WEBSOCKET_ENABLED` enables the planning websocket transport (default `true`)
+- `PLANNING_REALTIME_INTERVAL_MS` sets the planning websocket snapshot cadence and the SSE keepalive/snapshot cadence (default `300000`)
+- `PLANNING_REPORTS_ENABLED` enables manager reporting endpoints and downloads (default `false`)
+- `ADMIN_WORKSPACE_ENABLED` enables the admin module import and admin route surface (default `false`)
+- `BILLING_ENABLED` enables the billing module import (default `false`)
+- `CITIZEN_CHALLENGES_ENABLED` enables citizen challenge endpoints (default `false`)
+- `VITE_API_TELEMETRY_ENABLED` enables frontend telemetry posts back into `/api/errors` and `/api/metrics/frontend` (default `false`)
+- `VITE_DASHBOARD_REFRESH_INTERVAL_MS` sets dashboard polling cadence when push is unavailable or paused (default `300000`)
+- `VITE_PLANNING_REFRESH_INTERVAL_MS` sets planning query freshness and polling cadence (default `300000`)
+- `VITE_PLANNING_SSE_ENABLED` enables the browser SSE client for planning realtime (default `false`)
+- `VITE_PLANNING_WEBSOCKET_ENABLED` enables the browser websocket client for planning realtime (default `true`)
+- `VITE_MANAGER_REPORTS_ENABLED` enables the manager reports route and related navigation (default `false`)
+- `VITE_CITIZEN_CHALLENGES_ENABLED` enables the citizen challenges route and related navigation (default `false`)
+- `VITE_ADMIN_WORKSPACE_ENABLED` enables the admin route and related navigation (default `false`)
+- Low-cost MVP baseline: keep SSE disabled, keep websocket visibility-driven, use the 5-minute interval, and defer reports/challenges/admin until the operational loop needs them.
+
 ## Optional Performance And Edge Keys
 
 - `DATABASE_POOLER_URL` points API runtime traffic at a PgBouncer or provider pooler while keeping migrations and seeds on direct `DATABASE_URL`
@@ -167,8 +202,8 @@ Agent tour mapping note:
 - `CACHE_ENABLED` enables API read caching (default `true`)
 - `CACHE_PREFIX` scopes cache keys by environment or deployment slot (default `ecotrack`)
 - `CACHE_DEFAULT_TTL_SECONDS` sets the fallback read-cache TTL (default `60`)
-- `CACHE_DASHBOARD_TTL_SECONDS` sets dashboard TTL (default `30`)
-- `CACHE_PLANNING_TTL_SECONDS` sets planning TTL (default `20`)
+- `CACHE_DASHBOARD_TTL_SECONDS` sets dashboard TTL (default `300`)
+- `CACHE_PLANNING_TTL_SECONDS` sets planning TTL (default `300`)
 - `CACHE_ANALYTICS_TTL_SECONDS` sets analytics TTL (default `60`)
 - `CACHE_CITIZEN_TTL_SECONDS` sets citizen TTL (default `30`)
 - `CACHE_MAX_MEMORY_ENTRIES` caps the in-process L1 cache size (default `250`)
@@ -310,6 +345,7 @@ Deprecated runtime aliases:
 - The monorepo install contract is one committed root `package-lock.json` plus repo-root `npm ci --include=dev`.
 - Do not use `npm install --prefix <workspace>` or create workspace-local `package-lock.json` files.
 - Use `npm run validate:workspace-toolchain` before cross-layer build, lint, test, or Render verification when local dependency drift is suspected.
+- For API-only Render deploys that build `api` plus the shared `database` package, use `npm run validate:workspace-toolchain:api-deploy` or `npm run deploy:render:verify-local:managed-postgres` instead of the full monorepo verification path.
 
 ## Frontend/Backend Separation
 
@@ -345,8 +381,9 @@ Deprecated runtime aliases:
 
 ## Database Naming
 
-- Canonical DB name is `ticketdb`.
-- All committed `DATABASE_URL` examples must resolve to `/ticketdb`.
+- Canonical self-managed DB name is `ecotrack`.
+- All committed self-managed `DATABASE_URL` examples should resolve to `/ecotrack`.
+- Provider-managed hosted Postgres URLs, including Supabase hosted connection strings, may resolve to `/postgres`.
 
 ## Local Setup
 

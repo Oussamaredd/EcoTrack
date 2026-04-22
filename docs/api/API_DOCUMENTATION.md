@@ -4,6 +4,11 @@
 
 EcoTrack exposes a REST API for citizen reporting, agent tour execution, manager planning, support workflows, and admin governance.
 
+Low-cost MVP baseline notes:
+- The core preserved product loop is citizen signal -> manager planning/optimization -> agent execution -> refreshed manager dashboards.
+- SSE planning push is disabled by default, websocket push is throttled to a 5-minute cadence, and manager dashboard refresh is intended to run only while the dashboard is actively open.
+- Deferred surfaces such as manager reports, citizen challenges, billing, and the admin workspace stay in the codebase but are feature-flagged off by default until scale justifies them.
+
 - Browser-facing base URL: `<frontend-origin>/api` (resolve the current local origin from the Port Contract in `README.md` or `docs/environment/reference/ENV.md`)
 - Direct API base URL (local-native backend diagnostics only): `http://localhost:3001/api`
 - In Docker, the backend `3001` port is internal-only; browser traffic must enter through the `3000` edge
@@ -49,7 +54,7 @@ GET /auth/google/callback
 OAuth provisioning notes:
 - First-time Google OAuth users are created with the `citizen` role.
 - Existing Google OAuth users are normalized to `citizen` during auth and migration backfills.
-- The API also writes the matching RBAC link in `auth.user_roles` so permission guards resolve consistently.
+- The API also writes the matching RBAC link in `identity.user_roles` so permission guards resolve consistently.
 - Bearer-protected API routes accept local access JWTs only. Cookie-backed OAuth session helpers accept OAuth session tokens only.
 - Expired tokens and mismatched token types are rejected instead of falling back between the OAuth session and local bearer flows.
 - Global throttling defaults to `120` requests per `60s` window per client. Auth abuse routes such as `POST /login` use a stricter default ceiling of `10` requests per window.
@@ -96,6 +101,7 @@ Additional downstream projections now persist per-zone aggregates in `analytics.
 `GET /api/iot/v1/health` returns backlog health, backpressure state, pending staged-event counts, the rolling validated-event count for the last hour, worker processing counters, and separate timeseries-consumer plus rollup-consumer counters.
 `GET /api/iot/v1/rollups/latest` returns precomputed 10-minute IoT rollups so dashboards and operators can query rich metrics without re-aggregating raw measurements.
 When staged-event backlog reaches `IOT_BACKPRESSURE_THRESHOLD`, the ingestion endpoints respond with `503` until the backlog falls below the configured ceiling.
+- `IOT_INGESTION_ENABLED=false` is now the default low-cost deployment baseline; seeded and already projected data remain readable while live ingestion endpoints/workers stay unavailable until explicitly re-enabled.
 
 ### Citizen Reporting and Engagement
 
@@ -129,6 +135,7 @@ Citizen reporting notes:
 - `POST /api/citizen/notifications/:notificationId/read` marks a citizen inbox item as read.
 - citizen report creation now also creates a user-scoped inbox item and queues `push` deliveries for active registered devices.
 - First-in-window typed incidents still queue a zone-scoped manager notification for operations triage.
+- `GET /api/citizen/challenges`, `POST /api/citizen/challenges/:challengeId/enroll`, and `POST /api/citizen/challenges/:challengeId/progress` now return `503 Service Unavailable` when `CITIZEN_CHALLENGES_ENABLED=false`.
 
 ### Agent Tours and Field Execution
 
@@ -195,6 +202,7 @@ POST /planning/reports/:reportId/regenerate
 
 Report generation supports:
 - `GET /api/dashboard` returns the workspace dashboard read model for authenticated users with `ecotrack.analytics.read` and now emits short-lived private cache headers.
+- `GET /api/dashboard` now uses the low-cost default cache profile (`Cache-Control`/response-cache TTL `300s`) so manager dashboard reads can be reused instead of recomputed on every refresh.
 - `format: "pdf"` for binary PDF download
 - `format: "csv"` for Excel-compatible CSV download
 - local day-boundary reporting windows (`periodStart` / `periodEnd` should be sent using the manager's local timezone window, not forced UTC midnight)
@@ -223,7 +231,11 @@ When `assignedAgentId` is provided to `POST /api/planning/create-tour`, that age
 `GET /api/planning/heatmap` returns a pre-aggregated manager heatmap read model with `zoneSummaries`, `containerSignals`, and deterministic `low` / `medium` / `high` risk tiers.
 `GET /api/planning/alerts` exposes persisted `alert_events`, and `POST /api/planning/alerts/:id/acknowledge` marks an alert as acknowledged.
 `GET /api/planning/notifications` returns recent persisted notifications with their delivery attempts.
-- `GET /api/planning/dashboard`, `GET /api/planning/heatmap`, `GET /api/planning/alerts`, `GET /api/planning/notifications`, `GET /api/planning/reports/history`, and `GET /api/planning/reports/:reportId/download` now emit response-cache headers for short-lived read reuse.
+- `GET /api/planning/dashboard`, `GET /api/planning/heatmap`, `GET /api/planning/alerts`, `GET /api/planning/notifications`, `GET /api/planning/reports/history`, and `GET /api/planning/reports/:reportId/download` now emit response-cache headers for low-cost read reuse with the default planning/dashboard TTLs raised to `300s`.
+- `POST /api/planning/stream/session` and `GET /api/planning/stream` return `503 Service Unavailable` when `PLANNING_SSE_ENABLED=false`; SSE is off by default in the low-cost MVP baseline.
+- `POST /api/planning/ws-session` returns `503 Service Unavailable` when `PLANNING_WEBSOCKET_ENABLED=false`.
+- When websocket realtime is enabled, the planning gateway starts its periodic dashboard snapshot timer only while at least one dashboard websocket client is connected, sends one snapshot on the configured `PLANNING_REALTIME_INTERVAL_MS` cadence (default `300000` / 5 minutes), and stops the timer again as soon as the last dashboard websocket client disconnects. Socket liveness stays on the transport heartbeat instead of an extra app-level keepalive message.
+- `POST /api/planning/reports/generate`, `GET /api/planning/reports/history`, `GET /api/planning/reports/:reportId/download`, and `POST /api/planning/reports/:reportId/regenerate` now return `503 Service Unavailable` when `PLANNING_REPORTS_ENABLED=false`.
 
 ### Billing
 
@@ -238,6 +250,7 @@ GET /billing/invoices/:invoiceId
 ```
 
 Billing notes:
+- Billing routes remain implemented but `BILLING_ENABLED=false` is the low-cost default, so the billing module can stay deferred without deleting the code.
 - Billing is currently Development-owned and zone-scoped only.
 - `POST /billing/runs/preview` computes billable collection-event and alert-event line items without persisting a billing run.
 - `POST /billing/runs/finalize` persists the billing run, invoice, invoice line items, and source allocations in one transaction; duplicate account-period finalization is rejected.

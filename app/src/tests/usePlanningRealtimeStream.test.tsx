@@ -42,11 +42,12 @@ class MockEventSource {
     return undefined;
   }
 
-  emit(type: string, lastEventId?: string) {
+  emit(type: string, lastEventId?: string, data?: string) {
     const listeners = this.listeners.get(type) ?? [];
     for (const listener of listeners) {
       listener(
         new MessageEvent(type, {
+          data,
           lastEventId,
         }),
       );
@@ -92,6 +93,7 @@ describe('usePlanningRealtimeStream', () => {
       },
     });
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData');
 
     const { result } = renderHook(() => usePlanningRealtimeStream(true), {
       wrapper: createWrapper(queryClient),
@@ -124,12 +126,29 @@ describe('usePlanningRealtimeStream', () => {
     });
 
     await act(async () => {
-      stream.emit('planning.dashboard.snapshot', 'event-1');
+      stream.emit(
+        'planning.dashboard.snapshot',
+        'event-1',
+        JSON.stringify({
+          ecoKpis: {
+            containers: 5,
+            zones: 2,
+            tours: 3,
+          },
+        }),
+      );
       await Promise.resolve();
     });
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['planning-dashboard'] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard'] });
+    expect(setQueryDataSpy).toHaveBeenCalledWith(['planning-dashboard'], expect.any(Function));
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: ['dashboard'] });
+
+    await act(async () => {
+      stream.emit('planning.container.critical', 'event-critical');
+      await Promise.resolve();
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['planning-heatmap', 'all', 'all'] });
 
     await act(async () => {
       stream.emit('planning.tour.updated', 'event-2');

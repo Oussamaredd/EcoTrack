@@ -16,6 +16,7 @@ import {
   DEFAULT_RATE_LIMIT_MAX_REQUESTS,
   DEFAULT_RATE_LIMIT_WINDOW_MS,
 } from './config/rate-limit.js';
+import { loadRuntimeFeatureFlags } from './config/runtime-features.js';
 import { validateEnv } from './config/validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
@@ -61,6 +62,11 @@ const SENSITIVE_LOG_PATHS = [
 ];
 
 ensureApiEnvLoaded();
+const runtimeFeatureFlags = loadRuntimeFeatureFlags(process.env as Record<string, unknown>);
+const optionalFeatureModules = [
+  ...(runtimeFeatureFlags.adminWorkspaceEnabled ? [AdminModule] : []),
+  ...(runtimeFeatureFlags.billingEnabled ? [BillingModule] : []),
+];
 
 const toPositiveInt = (value: unknown, fallback: number): number => {
   const parsed = Number(value);
@@ -290,9 +296,7 @@ const getTraceFields = (request: Request) => {
     AuthModule,
     HealthModule,
     TicketsModule,
-    BillingModule,
     DashboardModule,
-    AdminModule,
     MonitoringModule,
     PlanningModule,
     ZonesModule,
@@ -304,6 +308,7 @@ const getTraceFields = (request: Request) => {
     CitizenReportsModule,
     GamificationModule,
     AnalyticsModule,
+    ...optionalFeatureModules,
   ],
   providers: [
     {

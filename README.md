@@ -234,7 +234,7 @@ Deprecated aliases (temporary compatibility only):
 - provider-injected `PORT` -> runtime fallback only when `API_PORT` is absent
 - `DB_*` -> `DATABASE_URL`
 
-Database name policy: committed connection-string templates target `ticketdb`.
+Database name policy: committed self-managed connection-string templates target `ecotrack`; provider-managed hosted Postgres URLs may target `postgres`.
 
 ## Root Commands
 
@@ -261,7 +261,11 @@ Database name policy: committed connection-string templates target `ticketdb`.
 - `npm run validate-specs` - enforce CDC traceability matrix and executable spec contracts
 - `npm run validate-env:all` - validate all committed env templates for local, Docker, and deploy workflows
 - `npm run validate:workspace-toolchain` - verify the root lockfile and required workspace tool packages before cross-layer build/lint/test flows
+- `npm run validate:workspace-toolchain:api-deploy` - verify only the root, API, and database workspace toolchain packages for Render API deploy flows
 - `npm run validate-doc-sync` - validate that behavior, env, schema, workflow, and release changes update the required docs in the same change set
+- `npm run deploy:render:build` - canonical Render build for repo-managed Postgres targets that should apply the numbered Drizzle migration chain during deploy
+- `npm run deploy:render:build:managed-postgres` - Render build for already-bootstrapped managed Postgres targets such as the Supabase cutover path; installs dev deps, validates the API deploy toolchain, builds `database` if needed, builds `api`, validates runtime dependencies, and does not replay numbered Drizzle migrations
+- `npm run deploy:render:verify-local:managed-postgres` - local verification for the managed-Postgres Render build path when you want the same API-only checks without re-running `npm ci`
 - `npm run ci:cdc:summary` - generate CDC evidence artifact used by CI preflight
 - `npm run ci:release:manifest` - generate the release manifest consumed by `CD Deployment`
 - `npm run ci:release:deploy-hooks` - trigger configured frontend/backend deploy hooks and capture evidence

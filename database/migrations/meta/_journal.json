@@ -183,6 +183,13 @@
       "when": 1775077319405,
       "tag": "0025_windy_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1776855822227,
+      "tag": "0026_identity_schema_for_supabase",
+      "breakpoints": true
     }
   ]
 }

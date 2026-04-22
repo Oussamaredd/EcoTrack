@@ -19,9 +19,9 @@ export class DashboardController {
   @Get()
   @ResponseCache({
     cacheTags: ['dashboard'],
-    maxAgeSeconds: 30,
+    maxAgeSeconds: 300,
     scope: 'private',
-    staleWhileRevalidateSeconds: 60,
+    staleWhileRevalidateSeconds: 300,
     vary: ['Authorization', 'Cookie'],
   })
   async getDashboard() {

@@ -54,6 +54,7 @@ describe('usePlanningRealtimeSocket', () => {
     ioMock.mockReturnValue(socket);
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData');
 
     const { result } = renderHook(() => usePlanningRealtimeSocket(true), {
       wrapper: createWrapper(queryClient),
@@ -78,12 +79,29 @@ describe('usePlanningRealtimeSocket', () => {
     });
 
     await act(async () => {
-      socket.handlers['planning.dashboard.snapshot']?.({});
+      socket.handlers['planning.dashboard.snapshot']?.({
+        id: 'snapshot-1',
+        event: 'planning.dashboard.snapshot',
+        data: {
+          ecoKpis: {
+            containers: 5,
+            zones: 2,
+            tours: 3,
+          },
+        },
+      });
       await Promise.resolve();
     });
 
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['planning-dashboard'] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dashboard'] });
+    expect(setQueryDataSpy).toHaveBeenCalledWith(['planning-dashboard'], expect.any(Function));
+    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: ['dashboard'] });
+
+    await act(async () => {
+      socket.handlers['planning.container.critical']?.({});
+      await Promise.resolve();
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['planning-heatmap', 'all', 'all'] });
 
     await act(async () => {
       socket.handlers['planning.tour.updated']?.({});

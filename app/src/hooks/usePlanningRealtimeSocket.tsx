@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io, type Socket } from 'socket.io-client';
 
+import { loadAppRuntimeConfig } from '../config/runtimeFeatures';
 import {
   ApiRequestError,
   API_BASE,
@@ -66,13 +67,33 @@ const requestWebSocketSessionToken = async () => {
   throw new Error('Missing websocket session token');
 };
 
+const applyDashboardSnapshot = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  event?: PlanningRealtimeEvent,
+) => {
+  if (!event?.data || typeof event.data !== 'object') {
+    return;
+  }
+
+  queryClient.setQueryData(queryKeys.planningDashboard, (currentValue: unknown) => {
+    const currentData =
+      currentValue && typeof currentValue === 'object' ? (currentValue as Record<string, unknown>) : {};
+
+    return {
+      ...currentData,
+      ...event.data,
+    };
+  });
+};
+
 export const usePlanningRealtimeSocket = (enabled: boolean) => {
   const queryClient = useQueryClient();
+  const { planningWebsocketEnabled } = loadAppRuntimeConfig();
   const [connectionState, setConnectionState] = useState<PlanningSocketState>('reconnecting');
   const [lastEventAt, setLastEventAt] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !planningWebsocketEnabled) {
       return;
     }
 
@@ -81,16 +102,18 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
     let reconnectTimer: number | null = null;
     let isCancelled = false;
 
-    const invalidateDashboardQueries = () => {
+    const handleDashboardSnapshot = (event?: PlanningRealtimeEvent) => {
       setLastEventAt(Date.now());
-      queryClient.invalidateQueries({ queryKey: queryKeys.planningDashboard });
-      queryClient.invalidateQueries({ queryKey: queryKeys.planningHeatmap() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+      applyDashboardSnapshot(queryClient, event);
     };
 
-    const invalidateTourQueries = () => {
-      invalidateDashboardQueries();
+    const invalidateAgentTour = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.agentTour });
+    };
+
+    const invalidatePlanningHeatmap = () => {
+      setLastEventAt(Date.now());
+      queryClient.invalidateQueries({ queryKey: queryKeys.planningHeatmap() });
     };
 
     const closeSocket = () => {
@@ -187,24 +210,21 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
         scheduleReconnect();
       });
 
-      socket.on('planning.dashboard.snapshot', (_event: PlanningRealtimeEvent) => {
-        invalidateDashboardQueries();
+      socket.on('planning.dashboard.snapshot', (event: PlanningRealtimeEvent) => {
+        handleDashboardSnapshot(event);
       });
 
-      socket.on('planning.container.critical', (_event: PlanningRealtimeEvent) => {
-        invalidateDashboardQueries();
+      socket.on('planning.container.critical', () => {
+        invalidatePlanningHeatmap();
       });
 
-      socket.on('planning.emergency.created', (_event: PlanningRealtimeEvent) => {
-        invalidateTourQueries();
+      socket.on('planning.emergency.created', () => {
+        invalidatePlanningHeatmap();
+        invalidateAgentTour();
       });
 
-      socket.on('planning.tour.updated', (_event: PlanningRealtimeEvent) => {
-        invalidateTourQueries();
-      });
-
-      socket.on('system.keepalive', (_event: PlanningRealtimeEvent) => {
-        setLastEventAt(Date.now());
+      socket.on('planning.tour.updated', () => {
+        invalidateAgentTour();
       });
     };
 
@@ -219,9 +239,9 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
 
       closeSocket();
     };
-  }, [enabled, queryClient]);
+  }, [enabled, planningWebsocketEnabled, queryClient]);
 
-  const resolvedConnectionState = enabled ? connectionState : 'disabled';
+  const resolvedConnectionState = enabled && planningWebsocketEnabled ? connectionState : 'disabled';
 
   return useMemo(
     () => ({

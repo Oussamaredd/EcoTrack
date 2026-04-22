@@ -121,7 +121,7 @@ type BillingRateRuleFilters = {
   eventType?: string;
 };
 
-export const authSchema = pgSchema('auth');
+export const identitySchema = pgSchema('identity');
 export const coreSchema = pgSchema('core');
 export const iotSchema = pgSchema('iot');
 export const opsSchema = pgSchema('ops');
@@ -136,7 +136,7 @@ export const exportSchema = pgSchema('export');
 export const supportSchema = pgSchema('support');
 export const billingSchema = pgSchema('billing');
 
-export const users = authSchema.table(
+export const users = identitySchema.table(
   'users',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -157,7 +157,7 @@ export const users = authSchema.table(
   }),
 );
 
-export const passwordResetTokens = authSchema.table('password_reset_tokens', {
+export const passwordResetTokens = identitySchema.table('password_reset_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
     .notNull()
@@ -770,7 +770,7 @@ export const reportExports = exportSchema.table(
   }),
 );
 
-export const roles = authSchema.table('roles', {
+export const roles = identitySchema.table('roles', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull().unique(),
   description: text('description'),
@@ -779,7 +779,7 @@ export const roles = authSchema.table('roles', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const userRoles = authSchema.table(
+export const userRoles = identitySchema.table(
   'user_roles',
   {
     userId: uuid('user_id')

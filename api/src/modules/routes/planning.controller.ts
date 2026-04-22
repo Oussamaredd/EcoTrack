@@ -12,12 +12,14 @@ import {
   Query,
   Req,
   Res,
+  ServiceUnavailableException,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 import { normalizeSearchTerm } from '../../common/http/pagination.js';
+import { loadPlanningRealtimeConfig, loadRuntimeFeatureFlags } from '../../config/runtime-features.js';
 import { AuthenticatedUserGuard } from '../auth/authenticated-user.guard.js';
 import type { RequestWithAuthUser } from '../auth/authorization.types.js';
 import { RequirePermissions } from '../auth/permissions.decorator.js';
@@ -31,8 +33,10 @@ import { TriggerEmergencyCollectionDto } from './dto/trigger-emergency-collectio
 import { PlanningService } from './planning.service.js';
 import { decodeStoredReportContent, resolveReportDownloadMeta } from './report-artifact.utils.js';
 
-const STREAM_KEEPALIVE_INTERVAL_MS = 25_000;
-const STREAM_SNAPSHOT_INTERVAL_MS = 10_000;
+const PLANNING_REALTIME_CONFIG = loadPlanningRealtimeConfig(process.env as Record<string, unknown>);
+const RUNTIME_FEATURE_FLAGS = loadRuntimeFeatureFlags(process.env as Record<string, unknown>);
+const STREAM_KEEPALIVE_INTERVAL_MS = PLANNING_REALTIME_CONFIG.messageIntervalMs;
+const STREAM_SNAPSHOT_INTERVAL_MS = PLANNING_REALTIME_CONFIG.messageIntervalMs;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 @Controller('planning')
@@ -81,9 +85,9 @@ export class PlanningController {
   @RequirePermissions('ecotrack.analytics.read')
   @ResponseCache({
     cacheTags: ['planning', 'planning-dashboard'],
-    maxAgeSeconds: 20,
+    maxAgeSeconds: 300,
     scope: 'private',
-    staleWhileRevalidateSeconds: 40,
+    staleWhileRevalidateSeconds: 300,
     vary: ['Authorization', 'Cookie'],
   })
   async dashboard() {
@@ -94,9 +98,9 @@ export class PlanningController {
   @RequirePermissions('ecotrack.analytics.read')
   @ResponseCache({
     cacheTags: ['planning', 'planning-heatmap'],
-    maxAgeSeconds: 20,
+    maxAgeSeconds: 300,
     scope: 'private',
-    staleWhileRevalidateSeconds: 40,
+    staleWhileRevalidateSeconds: 300,
     vary: ['Authorization', 'Cookie'],
   })
   async heatmap(
@@ -124,9 +128,9 @@ export class PlanningController {
   @RequirePermissions('ecotrack.analytics.read')
   @ResponseCache({
     cacheTags: ['planning', 'planning-alerts'],
-    maxAgeSeconds: 20,
+    maxAgeSeconds: 300,
     scope: 'private',
-    staleWhileRevalidateSeconds: 40,
+    staleWhileRevalidateSeconds: 300,
     vary: ['Authorization', 'Cookie'],
   })
   async alerts(
@@ -156,9 +160,9 @@ export class PlanningController {
   @RequirePermissions('ecotrack.analytics.read')
   @ResponseCache({
     cacheTags: ['planning', 'planning-notifications'],
-    maxAgeSeconds: 20,
+    maxAgeSeconds: 300,
     scope: 'private',
-    staleWhileRevalidateSeconds: 40,
+    staleWhileRevalidateSeconds: 300,
     vary: ['Authorization', 'Cookie'],
   })
   async notifications(@Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number) {
@@ -176,6 +180,10 @@ export class PlanningController {
   @Get('stream')
   @RequirePermissions('ecotrack.analytics.read')
   async stream(@Req() request: RequestWithAuthUser, @Res() response: Response) {
+    if (!PLANNING_REALTIME_CONFIG.sseEnabled) {
+      throw new ServiceUnavailableException('Planning SSE is disabled.');
+    }
+
     this.requireUserId(request);
     this.planningService.registerSseConnection();
 
@@ -279,12 +287,20 @@ export class PlanningController {
   @Post('stream/session')
   @RequirePermissions('ecotrack.analytics.read')
   async issueStreamSession(@Req() request: RequestWithAuthUser) {
+    if (!PLANNING_REALTIME_CONFIG.sseEnabled) {
+      throw new ServiceUnavailableException('Planning SSE is disabled.');
+    }
+
     return this.planningService.issueStreamSession(request.authUser);
   }
 
   @Post(['ws-session', 'ws/session'])
   @RequirePermissions('ecotrack.analytics.read')
   async issueWebSocketSession(@Req() request: RequestWithAuthUser) {
+    if (!PLANNING_REALTIME_CONFIG.websocketEnabled) {
+      throw new ServiceUnavailableException('Planning websocket transport is disabled.');
+    }
+
     return this.planningService.issueWebSocketSession(request.authUser);
   }
 
@@ -300,6 +316,7 @@ export class PlanningController {
   @Post('reports/generate')
   @RequirePermissions('ecotrack.analytics.read')
   async generateReport(@Req() request: RequestWithAuthUser, @Body() dto: GenerateReportDto) {
+    this.requirePlanningReportsEnabled();
     return this.planningService.generateReport(dto, this.requireUserId(request));
   }
 
@@ -307,12 +324,13 @@ export class PlanningController {
   @RequirePermissions('ecotrack.analytics.read')
   @ResponseCache({
     cacheTags: ['planning', 'planning-report-history'],
-    maxAgeSeconds: 20,
+    maxAgeSeconds: 300,
     scope: 'private',
-    staleWhileRevalidateSeconds: 40,
+    staleWhileRevalidateSeconds: 300,
     vary: ['Authorization', 'Cookie'],
   })
   async reportHistory() {
+    this.requirePlanningReportsEnabled();
     return { reports: await this.planningService.listReportHistory() };
   }
 
@@ -322,6 +340,7 @@ export class PlanningController {
     @Param('id', new ParseUUIDPipe()) reportId: string,
     @Res({ passthrough: true }) response: Response,
   ) {
+    this.requirePlanningReportsEnabled();
     const report = await this.planningService.getReportById(reportId);
     const metadata = resolveReportDownloadMeta(report.format);
     response.setHeader('Content-Type', metadata.contentType);
@@ -336,7 +355,14 @@ export class PlanningController {
     @Req() request: RequestWithAuthUser,
     @Param('id', new ParseUUIDPipe()) reportId: string,
   ) {
+    this.requirePlanningReportsEnabled();
     return this.planningService.regenerateReport(reportId, this.requireUserId(request));
+  }
+
+  private requirePlanningReportsEnabled() {
+    if (!RUNTIME_FEATURE_FLAGS.planningReportsEnabled) {
+      throw new ServiceUnavailableException('Planning reports are disabled.');
+    }
   }
 
   private requireUserId(request: RequestWithAuthUser) {

@@ -62,8 +62,9 @@ Deprecated aliases (read-only compatibility window):
 
 ## 6) Database Naming Policy
 
-- Canonical database name is `ticketdb`.
-- All committed `DATABASE_URL` examples and compose templates must target `/ticketdb`.
+- Canonical self-managed database name is `ecotrack`.
+- All committed self-managed `DATABASE_URL` examples and compose templates must target `/ecotrack`.
+- Provider-managed hosted Postgres URLs may legitimately target `/postgres`; that does not change the app-owned logical platform name.
 
 ## 7) Migration Window Notes
 

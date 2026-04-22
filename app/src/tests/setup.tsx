@@ -93,6 +93,14 @@ const mockFetch = vi.fn(async (input: RequestInfo | URL) => {
 
 beforeEach(() => {
   mockFetch.mockClear();
+  vi.stubEnv("VITE_ADMIN_WORKSPACE_ENABLED", "true");
+  vi.stubEnv("VITE_API_TELEMETRY_ENABLED", "false");
+  vi.stubEnv("VITE_CITIZEN_CHALLENGES_ENABLED", "true");
+  vi.stubEnv("VITE_DASHBOARD_REFRESH_INTERVAL_MS", "300000");
+  vi.stubEnv("VITE_MANAGER_REPORTS_ENABLED", "true");
+  vi.stubEnv("VITE_PLANNING_REFRESH_INTERVAL_MS", "300000");
+  vi.stubEnv("VITE_PLANNING_SSE_ENABLED", "true");
+  vi.stubEnv("VITE_PLANNING_WEBSOCKET_ENABLED", "true");
   globalThis.fetch = mockFetch as unknown as typeof fetch;
   Object.defineProperty(window, "matchMedia", {
     writable: true,

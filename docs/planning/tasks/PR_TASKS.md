@@ -26,7 +26,7 @@ Completed in this documentation pass:
 - the `github-pages` environment is no longer part of the app release path
 - repo deployment notes no longer describe GitHub Pages as an app target
 - Neon is now provisioned as the managed deployment database baseline in `aws-eu-central-1` (Frankfurt)
-- the canonical `ticketdb` managed database is created on the single baseline branch
+- the canonical `ecotrack` managed database target is created on the single baseline branch
 - the repo Drizzle migration chain and existing seed strategy have been validated against Neon
 - local API readiness has been validated against the direct Neon connection string
 - Cloudflare Pages now serves the frontend at `https://ecotrack-jmj.pages.dev`
@@ -89,7 +89,7 @@ Description:
 This task creates the deployment-ready managed Postgres baseline without changing the local Docker development database role.
 
 - [x] Create the Neon project for EcoTrack.
-- [x] Create the managed deployment database using the canonical `ticketdb` naming.
+- [x] Create the managed deployment database using the canonical `ecotrack` naming.
 - [x] Store the managed `DATABASE_URL` outside the repository.
 - [x] Define the migration policy for deployed environments.
 - [x] Define whether demo data uses seed scripts or a one-time import.
@@ -111,13 +111,13 @@ This task prepares the existing Nest runtime to run as one web service with a pr
 Validated implementation notes:
 
 - Render web service `ecotrack-3ggh` is live at `https://ecotrack-3ggh.onrender.com`.
-- The backend uses the repo-root monorepo build command `npm run deploy:render:build`.
+- The backend uses the repo-root build command `npm run deploy:render:build` for repo-managed Postgres targets, or `npm run deploy:render:build:managed-postgres` for already-bootstrapped managed-provider targets such as the Supabase cutover path.
 - The API start command is `npm run deploy:render:start`.
 - The Render runtime binds through `API_PORT=10000`.
 - The readiness health check path is `/api/health/ready`.
 - On the Render free plan, database migrations are a manual release step: run `npm run db:migrate --workspace=ecotrack-database` against the direct Neon `DATABASE_URL` before deploys that include schema changes.
 - `npm ci --omit=dev` is outside the supported Render contract for this monorepo; the canonical build path uses repo-root `npm ci --include=dev`, validates the workspace toolchain, and verifies that API runtime dependencies such as `express` resolve from `api/dist/main.js` before deploy completes.
-- Local Windows verification should use `npm run deploy:render:verify-local` if native-module file locks make `npm ci` fail with `EPERM`.
+- Local Windows verification should use `npm run deploy:render:verify-local` for the migration-running path, or `npm run deploy:render:verify-local:managed-postgres` for the already-bootstrapped managed-provider path, if native-module file locks make `npm ci` fail with `EPERM`.
 - Local recovery uses one repo-root install contract only: stop active Node/Vite/Expo processes, rerun `npm ci --include=dev`, run `npm run validate:workspace-toolchain`, then rerun Render verification. Do not use workspace-local `--prefix` installs.
 - Baseline backend deployment env values are configured on Render; final frontend/public-origin alignment remains Task 6.
 
