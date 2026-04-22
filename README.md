@@ -182,6 +182,7 @@ Local auth contract:
 - frontend uses the direct local sign-in session when `accessToken` is present, and can still exchange login `code` via `POST /api/auth/exchange`
 - frontend stores `accessToken` in `localStorage`
 - protected API requests use `Authorization: Bearer <token>`
+- when `SUPABASE_URL` is configured, protected API requests also accept Supabase Auth access tokens and resolve the app profile through `identity.users.auth_user_id`
 - frontend clears stale local bearer state when protected API requests return `401`
 - reset endpoints are only `POST /api/forgot-password` and `POST /api/reset-password`
 - in production, forgot-password returns `204` with no token/url payload

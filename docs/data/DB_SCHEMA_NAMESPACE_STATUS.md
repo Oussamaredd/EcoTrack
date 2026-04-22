@@ -1,6 +1,6 @@
 # DB Schema Namespace Rollout Status
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## Purpose
 
@@ -56,6 +56,13 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 - Runtime auth APIs are unchanged in this phase; only the database namespace ownership changed.
 - `database/migrations/baselines/managed-postgres-current.sql` is now the repo-generated blank-target baseline for managed Postgres providers that already own `auth`.
 - `database/scripts/export-data-only.mjs` and `database/scripts/import-data-only.mjs` now provide the repo-owned data-only cutover path after the source database has applied `0026`.
+
+2026-04-23 Supabase Auth linkage note:
+
+- `database/migrations/0027_supabase_auth_user_link.sql` adds `identity.users.auth_user_id` as the application-owned bridge to `auth.users(id)`.
+- The app keeps `identity.users.id` as the stable profile/RBAC primary key so existing business foreign keys do not need to be rewritten for the Supabase Auth rollout.
+- `database/scripts/import-supabase-auth-users.mjs` now provides the one-off trusted import/link path that creates missing Supabase Auth users, preserves legacy password hashes where available, and backfills `identity.users.auth_user_id`.
+- The API now accepts Supabase bearer tokens when `SUPABASE_URL` is configured and resolves app authorization through the linked `identity.users` record.
 
 Known readiness exceptions from the original rollout pass:
 
@@ -212,6 +219,7 @@ Checklist:
 - [x] Decide whether `latitude` and `longitude` remain temporarily during backfill.
 - [x] Add operational depot fields (`depot_label`, `depot_latitude`, `depot_longitude`) to `core.zones`.
 - [x] Add optional zone assignment (`zone_id`) to `identity.users` for zone-bound agents.
+- [x] Add optional `auth_user_id` linkage on `identity.users` for provider-managed auth ownership without breaking app-owned foreign keys.
 - [x] Require non-null `latitude` and `longitude` on `core.containers` after backfill.
 - [ ] Add `route_geom` to `ops.tour_routes` if PostGIS is enabled. Blocked because PostGIS was unavailable in the active dev database.
 - [x] Add `started_at` and `completed_at` to `ops.tours`.

@@ -70,9 +70,10 @@ const buildDbMock = () => {
                   email: 'citizen@example.com',
                   displayName: payload.displayName ?? 'Citizen',
                   avatarUrl: payload.avatarUrl ?? null,
+                  authUserId: payload.authUserId ?? null,
                   authProvider: 'google',
                   googleId: payload.googleId ?? 'google-1',
-                  role: 'citizen',
+                  role: payload.role ?? 'citizen',
                   isActive: true,
                 },
               ]),
@@ -297,6 +298,50 @@ describe('UsersRepository local signup defaults', () => {
         id: 'local-user-1',
         role: 'citizen',
         roles: [{ id: 'role-citizen', name: 'citizen' }],
+      }),
+    );
+  });
+});
+
+describe('UsersRepository Supabase auth linking', () => {
+  it('links an existing app user to a Supabase auth user by email', async () => {
+    const { dbMock, updatedUsers } = buildDbMock();
+    dbMock.query.users.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'citizen@example.com',
+        displayName: 'Citizen User',
+        avatarUrl: null,
+        authProvider: 'local',
+        googleId: null,
+        role: 'citizen',
+        isActive: true,
+        authUserId: null,
+      });
+
+    const repository = new UsersRepository(dbMock as any);
+    const linked = await repository.ensureUserForAuth({
+      provider: 'local',
+      id: 'supabase-user-1',
+      authUserId: 'supabase-user-1',
+      email: 'citizen@example.com',
+      name: 'Citizen User',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
+
+    expect(updatedUsers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          authUserId: 'supabase-user-1',
+          avatarUrl: 'https://example.com/avatar.png',
+        }),
+      ]),
+    );
+    expect(linked).toEqual(
+      expect.objectContaining({
+        id: 'user-1',
+        authUserId: 'supabase-user-1',
       }),
     );
   });

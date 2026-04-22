@@ -31,6 +31,18 @@ type LocalUserRecord = {
   [key: string]: unknown;
 };
 
+type PersistedUserRecord = {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  authProvider: string;
+  googleId: string | null;
+  role: string;
+  isActive: boolean;
+  authUserId?: string | null;
+};
+
 @Injectable()
 export class UsersRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DatabaseClient) {}
@@ -39,6 +51,13 @@ export class UsersRepository {
     if (!email) return null;
     return this.db.query.users.findFirst({
       where: eq(users.email, email),
+    });
+  }
+
+  async findByAuthUserId(authUserId: string) {
+    if (!authUserId) return null;
+    return this.db.query.users.findFirst({
+      where: eq(users.authUserId, authUserId),
     });
   }
 
@@ -76,6 +95,10 @@ export class UsersRepository {
   async ensureUserForAuth(authUser: AuthUser) {
     if (!authUser) {
       return null;
+    }
+
+    if (authUser.authUserId) {
+      return this.ensureUserForSupabaseAuth(authUser);
     }
 
     if (authUser.provider === 'local') {
@@ -164,6 +187,38 @@ export class UsersRepository {
     return resolvedUser;
   }
 
+  private async ensureUserForSupabaseAuth(authUser: AuthUser) {
+    const authUserId = authUser.authUserId?.trim();
+    if (!authUserId) {
+      return null;
+    }
+
+    const existingByAuthUserId = await this.findByAuthUserId(authUserId);
+    if (existingByAuthUserId) {
+      return this.syncSupabaseLinkedUser(existingByAuthUserId, authUser);
+    }
+
+    const normalizedEmail = authUser.email?.trim();
+    if (normalizedEmail) {
+      const existingByEmail = await this.findByEmail(normalizedEmail);
+      if (existingByEmail) {
+        return this.linkExistingUserToSupabaseAuth(existingByEmail, authUserId, authUser);
+      }
+    }
+
+    if (!normalizedEmail) {
+      return null;
+    }
+
+    return this.createSupabaseUserProfile({
+      authUserId,
+      email: normalizedEmail,
+      displayName: authUser.name ?? undefined,
+      avatarUrl: authUser.avatarUrl ?? null,
+      provider: authUser.provider,
+    });
+  }
+
   async createLocalUser(params: {
     email: string;
     passwordHash: string;
@@ -244,6 +299,108 @@ export class UsersRepository {
       isActive: createdUserRecord.isActive,
       roles: selectedRoles,
     };
+  }
+
+  private async syncSupabaseLinkedUser(
+    existingUser: PersistedUserRecord,
+    authUser: AuthUser,
+  ) {
+    const updatePayload: {
+      authUserId: string;
+      updatedAt: Date;
+      displayName?: string;
+      avatarUrl?: string | null;
+    } = {
+      authUserId: authUser.authUserId!.trim(),
+      updatedAt: new Date(),
+    };
+
+    const nextDisplayName = authUser.name?.trim();
+    if (nextDisplayName && nextDisplayName !== existingUser.displayName) {
+      updatePayload.displayName = nextDisplayName;
+    }
+
+    if (authUser.avatarUrl !== undefined && authUser.avatarUrl !== existingUser.avatarUrl) {
+      updatePayload.avatarUrl = authUser.avatarUrl ?? null;
+    }
+
+    const [updated] = await this.db
+      .update(users)
+      .set(updatePayload)
+      .where(eq(users.id, existingUser.id))
+      .returning();
+
+    return updated ?? existingUser;
+  }
+
+  private async linkExistingUserToSupabaseAuth(
+    existingUser: PersistedUserRecord,
+    authUserId: string,
+    authUser: AuthUser,
+  ) {
+    const updatePayload: {
+      authUserId: string;
+      updatedAt: Date;
+      displayName?: string;
+      avatarUrl?: string | null;
+    } = {
+      authUserId,
+      updatedAt: new Date(),
+    };
+
+    const nextDisplayName = authUser.name?.trim();
+    if (nextDisplayName && nextDisplayName !== existingUser.displayName) {
+      updatePayload.displayName = nextDisplayName;
+    }
+
+    if (authUser.avatarUrl !== undefined) {
+      updatePayload.avatarUrl = authUser.avatarUrl ?? null;
+    }
+
+    const [updated] = await this.db
+      .update(users)
+      .set(updatePayload)
+      .where(eq(users.id, existingUser.id))
+      .returning();
+
+    return updated ?? existingUser;
+  }
+
+  private async createSupabaseUserProfile(params: {
+    authUserId: string;
+    email: string;
+    displayName?: string;
+    avatarUrl?: string | null;
+    provider: AuthUser['provider'];
+  }) {
+    const displayName = params.displayName?.trim() || params.email.split('@')[0] || 'User';
+    const defaultRole = await this.resolveRoleByName(LOCAL_DEFAULT_ROLE);
+
+    await this.db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(users)
+        .values({
+          authUserId: params.authUserId,
+          email: params.email,
+          passwordHash: null,
+          authProvider: params.provider,
+          googleId: null,
+          displayName,
+          avatarUrl: params.avatarUrl ?? null,
+          role: defaultRole.name,
+          isActive: true,
+        })
+        .returning();
+
+      if (created?.id) {
+        await tx.insert(userRoles).values({
+          userId: created.id,
+          roleId: defaultRole.id,
+        });
+      }
+    });
+
+    return this.findByAuthUserId(params.authUserId);
   }
 
   async updatePasswordHash(userId: string, passwordHash: string) {

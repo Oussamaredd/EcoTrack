@@ -23,6 +23,7 @@ import {
   getSessionMaxAge,
 } from './auth.utils.js';
 import type { AuthenticatedRequestUser } from './authorization.types.js';
+import { verifySupabaseAccessToken } from './supabase-jwt.js';
 
 const { sign, verify } = jwtPkg as any;
 const { compare, hash } = bcryptPkg as unknown as {
@@ -256,7 +257,7 @@ export class AuthService {
     return this.getAuthUserFromToken(token);
   }
 
-  getAuthUserFromAuthorizationHeader(authorizationHeader?: string) {
+  async getAuthUserFromAuthorizationHeader(authorizationHeader?: string) {
     if (!authorizationHeader) {
       return null;
     }
@@ -266,10 +267,15 @@ export class AuthService {
       return null;
     }
 
-    return this.getLocalAuthUserFromToken(token);
+    const legacyLocalUser = this.getLocalAuthUserFromToken(token);
+    if (legacyLocalUser) {
+      return legacyLocalUser;
+    }
+
+    return verifySupabaseAccessToken(token);
   }
 
-  getAuthUserFromRequest(
+  async getAuthUserFromRequest(
     request: Pick<Request, 'headers'> & {
       query?: Request['query'];
       path?: string;
@@ -277,7 +283,7 @@ export class AuthService {
       url?: string;
     },
   ) {
-    const bearerUser = this.getAuthUserFromAuthorizationHeader(request.headers.authorization);
+    const bearerUser = await this.getAuthUserFromAuthorizationHeader(request.headers.authorization);
     if (bearerUser) {
       return bearerUser;
     }
@@ -341,7 +347,7 @@ export class AuthService {
       url?: string;
     },
   ) {
-    const authUser = this.getAuthUserFromRequest(request);
+    const authUser = await this.getAuthUserFromRequest(request);
     if (!authUser) {
       return null;
     }
@@ -451,7 +457,7 @@ export class AuthService {
   }
 
   async getCurrentUser(request: Pick<Request, 'headers'>) {
-    const authUser = this.getAuthUserFromRequest(request);
+    const authUser = await this.getAuthUserFromRequest(request);
     if (!authUser) {
       throw new UnauthorizedException();
     }
@@ -477,7 +483,7 @@ export class AuthService {
     request: Pick<Request, 'headers'>,
     params: { displayName: string; avatarUrl?: string | null },
   ) {
-    const authUser = this.getAuthUserFromRequest(request);
+    const authUser = await this.getAuthUserFromRequest(request);
     if (!authUser) {
       throw new UnauthorizedException();
     }
@@ -504,7 +510,7 @@ export class AuthService {
     request: Pick<Request, 'headers'>,
     params: { currentPassword: string; newPassword: string },
   ) {
-    const authUser = this.getAuthUserFromRequest(request);
+    const authUser = await this.getAuthUserFromRequest(request);
     if (!authUser) {
       throw new UnauthorizedException();
     }

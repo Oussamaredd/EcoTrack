@@ -38,6 +38,7 @@ Managed Postgres baseline note:
 - `DATABASE_URL` for database connectivity
 - `DATABASE_POOLER_URL` for optional pooled runtime database connectivity
 - `DATABASE_POOL_MAX` for the application-side postgres client pool ceiling
+- `SUPABASE_URL` for API-side verification of Supabase Auth JWTs and other server-to-Supabase auth lookups that do not require admin scope
 - `API_PORT` for API listen port (canonical; hosted runtimes may fall back to injected `PORT` only when `API_PORT` is unset)
 - `API_BASE_URL` for backend-generated public API URLs (for example OAuth callback URLs at the frontend edge)
 - `ROUTING_API_BASE_URL` for backend road-routing service lookups
@@ -108,6 +109,7 @@ Agent tour mapping note:
 - `JWT_ACCESS_EXPIRES_IN` for local access-token TTL (for example `15m`)
 - `GOOGLE_CLIENT_ID` must be a Google OAuth Web client ID (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
 - `GOOGLE_CALLBACK_URL` for OAuth redirect callback (required in deploy templates; canonical path is fixed and should match `API_BASE_URL + /api/auth/google/callback`)
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only and should be used only for trusted admin or migration scripts such as the Supabase Auth user import, never for browser/mobile clients
 - `API_BASE_URL` accepts only absolute `http`/`https` URLs with no credentials, query string, or hash, and its path must normalize to `/` or `/api`.
 
 ## Port Contract

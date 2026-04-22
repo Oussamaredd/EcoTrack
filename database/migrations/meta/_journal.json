@@ -190,6 +190,13 @@
       "when": 1776855822227,
       "tag": "0026_identity_schema_for_supabase",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1776896451160,
+      "tag": "0027_supabase_auth_user_link",
+      "breakpoints": true
     }
   ]
 }

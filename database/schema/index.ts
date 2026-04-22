@@ -140,6 +140,7 @@ export const users = identitySchema.table(
   'users',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    authUserId: uuid('auth_user_id'),
     email: text('email').notNull().unique(),
     passwordHash: text('password_hash'),
     authProvider: text('auth_provider').default('google').notNull(),
@@ -153,6 +154,7 @@ export const users = identitySchema.table(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
+    authUserIdUniqueIdx: uniqueIndex('users_auth_user_id_unique').on(table.authUserId),
     zoneIdIdx: index('users_zone_id_idx').on(table.zoneId),
   }),
 );
