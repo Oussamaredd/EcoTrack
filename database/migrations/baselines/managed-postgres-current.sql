@@ -611,6 +611,7 @@ CREATE TABLE "identity"."user_roles" (
 
 CREATE TABLE "identity"."users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"auth_user_id" uuid,
 	"email" text NOT NULL,
 	"password_hash" text,
 	"auth_provider" text DEFAULT 'google' NOT NULL,
@@ -858,6 +859,7 @@ CREATE INDEX "tickets_support_category_created_at_idx" ON "support"."tickets" US
 CREATE INDEX "tickets_assignee_created_at_idx" ON "support"."tickets" USING btree ("assignee_id","created_at");
 CREATE INDEX "tours_scheduled_for_idx" ON "ops"."tours" USING btree ("scheduled_for");
 CREATE INDEX "tours_zone_scheduled_for_idx" ON "ops"."tours" USING btree ("zone_id","scheduled_for");
+CREATE UNIQUE INDEX "users_auth_user_id_unique" ON "identity"."users" USING btree ("auth_user_id");
 CREATE INDEX "users_zone_id_idx" ON "identity"."users" USING btree ("zone_id");
 CREATE UNIQUE INDEX "validated_event_deliveries_consumer_event_idx" ON "iot"."validated_event_deliveries" USING btree ("consumer_name","validated_event_id");
 CREATE INDEX "validated_event_deliveries_status_next_attempt_idx" ON "iot"."validated_event_deliveries" USING btree ("processing_status","next_attempt_at");
@@ -874,3 +876,7 @@ CREATE INDEX "zone_current_state_updated_at_idx" ON "analytics"."zone_current_st
 
 -- Manual supplement for historical partitioned storage not represented in Drizzle export.
 CREATE TABLE IF NOT EXISTS "iot"."measurements_default" PARTITION OF "iot"."measurements" DEFAULT;
+-- Manual supplement for provider-owned auth.users linkage omitted from the Drizzle export.
+ALTER TABLE "identity"."users"
+  ADD CONSTRAINT "users_auth_user_id_auth_users_id_fk"
+  FOREIGN KEY ("auth_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

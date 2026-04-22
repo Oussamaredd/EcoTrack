@@ -44,6 +44,8 @@ Managed Postgres local-testing note:
 
 - When you intentionally want local native `api`/`database` commands to target the managed deployment database, update root `/.env` `DATABASE_URL` to the direct Postgres connection string.
 - Self-managed examples in this repo use database name `ecotrack`, but provider-managed hosted Postgres services such as Supabase may expose the primary database as `postgres`.
+- When you are testing or rolling out Supabase Auth, also set `SUPABASE_URL` in root `/.env` so the API can verify Supabase access tokens.
+- Keep `SUPABASE_SERVICE_ROLE_KEY` only in trusted shell or server-side env files when running the one-off `npm run db:auth:import:supabase --workspace=ecotrack-database` import script.
 - Keep `app/.env.local` frontend-only (`VITE_*` keys only).
 - Keep `mobile/.env.local` mobile-only (`EXPO_PUBLIC_*` keys only).
 - Keep `infrastructure/environments/.env.docker` pointed at the local Docker Postgres sandbox unless you are deliberately changing the Docker workflow.

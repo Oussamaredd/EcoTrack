@@ -73,6 +73,7 @@ const envSchema = z.object({
   GOOGLE_CALLBACK_URL: z.string().url().optional(),
   JWT_ACCESS_SECRET: z.string().optional(),
   JWT_ACCESS_EXPIRES_IN: z.string().optional(),
+  SUPABASE_URL: z.string().url().optional(),
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid connection string'),
 });
 

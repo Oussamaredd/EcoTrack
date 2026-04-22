@@ -16,6 +16,16 @@ const manualSqlBlocks = [
       '',
     ].join('\n'),
   },
+  {
+    name: 'identity.users.auth_user_id_fk',
+    sql: [
+      '-- Manual supplement for provider-owned auth.users linkage omitted from the Drizzle export.',
+      'ALTER TABLE "identity"."users"',
+      '  ADD CONSTRAINT "users_auth_user_id_auth_users_id_fk"',
+      '  FOREIGN KEY ("auth_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL ON UPDATE CASCADE;',
+      '',
+    ].join('\n'),
+  },
 ];
 
 fs.mkdirSync(outputDir, { recursive: true });

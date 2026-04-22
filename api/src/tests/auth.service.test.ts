@@ -6,6 +6,13 @@ import { AuthService } from '../modules/auth/auth.service.js';
 
 const MOCK_HASH_VALUE = ['fixture', 'hash'].join('-');
 const { sign } = jwtPkg as any;
+const { verifySupabaseAccessTokenMock } = vi.hoisted(() => ({
+  verifySupabaseAccessTokenMock: vi.fn(),
+}));
+
+vi.mock('../modules/auth/supabase-jwt.js', () => ({
+  verifySupabaseAccessToken: verifySupabaseAccessTokenMock,
+}));
 
 describe('AuthService', () => {
   const originalEnv = { ...process.env };
@@ -34,13 +41,14 @@ describe('AuthService', () => {
     process.env.CLIENT_ORIGIN = 'http://localhost:5173';
     delete process.env.NODE_ENV;
     usersServiceMock.getZoneAssignmentForUser.mockResolvedValue(null);
+    verifySupabaseAccessTokenMock.mockResolvedValue(null);
   });
 
   afterAll(() => {
     process.env = originalEnv;
   });
 
-  it('creates and parses local bearer token from Authorization header', () => {
+  it('creates and parses local bearer token from Authorization header', async () => {
     const service = new AuthService(usersServiceMock as any);
 
     const token = service.createLocalAccessToken({
@@ -50,8 +58,7 @@ describe('AuthService', () => {
       avatarUrl: null,
     });
 
-    const decoded = service.getAuthUserFromAuthorizationHeader(`Bearer ${token}`);
-    expect(decoded).toEqual({
+    await expect(service.getAuthUserFromAuthorizationHeader(`Bearer ${token}`)).resolves.toEqual({
       id: 'user-1',
       provider: 'local',
       email: 'local@example.com',
@@ -60,7 +67,29 @@ describe('AuthService', () => {
     });
   });
 
-  it('rejects oauth session tokens on bearer-protected APIs', () => {
+  it('accepts Supabase bearer tokens when legacy local verification misses', async () => {
+    const service = new AuthService(usersServiceMock as any);
+    verifySupabaseAccessTokenMock.mockResolvedValueOnce({
+      id: 'supabase-user-1',
+      authUserId: 'supabase-user-1',
+      provider: 'google',
+      email: 'google@example.com',
+      name: 'Google User',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
+
+    await expect(service.getAuthUserFromAuthorizationHeader('Bearer supabase-token')).resolves.toEqual({
+      id: 'supabase-user-1',
+      authUserId: 'supabase-user-1',
+      provider: 'google',
+      email: 'google@example.com',
+      name: 'Google User',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
+    expect(verifySupabaseAccessTokenMock).toHaveBeenCalledWith('supabase-token');
+  });
+
+  it('rejects oauth session tokens on bearer-protected APIs', async () => {
     const service = new AuthService(usersServiceMock as any);
     const oauthToken = service.createAuthToken({
       id: 'google-user-1',
@@ -70,7 +99,7 @@ describe('AuthService', () => {
       avatarUrl: null,
     });
 
-    expect(service.getAuthUserFromAuthorizationHeader(`Bearer ${oauthToken}`)).toBeNull();
+    await expect(service.getAuthUserFromAuthorizationHeader(`Bearer ${oauthToken}`)).resolves.toBeNull();
   });
 
   it('rejects local bearer tokens when read from cookie-backed oauth session helpers', () => {
@@ -85,7 +114,7 @@ describe('AuthService', () => {
     expect(service.getAuthUserFromCookie(`auth_token=${localToken}`)).toBeNull();
   });
 
-  it('rejects expired bearer tokens', () => {
+  it('rejects expired bearer tokens', async () => {
     const service = new AuthService(usersServiceMock as any);
     const expiredAccessToken = sign(
       {
@@ -100,10 +129,10 @@ describe('AuthService', () => {
       { expiresIn: -1 },
     );
 
-    expect(service.getAuthUserFromAuthorizationHeader(`Bearer ${expiredAccessToken}`)).toBeNull();
+    await expect(service.getAuthUserFromAuthorizationHeader(`Bearer ${expiredAccessToken}`)).resolves.toBeNull();
   });
 
-  it('does not accept access_token query fallback', () => {
+  it('does not accept access_token query fallback', async () => {
     const service = new AuthService(usersServiceMock as any);
     const token = service.createLocalAccessToken({
       id: 'user-1',
@@ -112,37 +141,37 @@ describe('AuthService', () => {
       avatarUrl: null,
     });
 
-    const decoded = service.getAuthUserFromRequest({
-      headers: {},
-      query: { access_token: token } as any,
-      path: '/api/planning/stream',
-    } as any);
-
-    expect(decoded).toBeNull();
+    await expect(
+      service.getAuthUserFromRequest({
+        headers: {},
+        query: { access_token: token } as any,
+        path: '/api/planning/stream',
+      } as any),
+    ).resolves.toBeNull();
   });
 
-  it('accepts planning stream session token only for planning stream path', () => {
+  it('accepts planning stream session token only for planning stream path', async () => {
     const service = new AuthService(usersServiceMock as any);
     const session = service.issuePlanningStreamSession('user-1');
 
-    const decodedFromStreamPath = service.getAuthUserFromRequest({
-      headers: {},
-      query: { stream_session: session.token } as any,
-      path: '/api/planning/stream',
-    } as any);
-
-    expect(decodedFromStreamPath).toMatchObject({
+    await expect(
+      service.getAuthUserFromRequest({
+        headers: {},
+        query: { stream_session: session.token } as any,
+        path: '/api/planning/stream',
+      } as any),
+    ).resolves.toMatchObject({
       id: 'user-1',
       provider: 'local',
     });
 
-    const decodedFromOtherPath = service.getAuthUserFromRequest({
-      headers: {},
-      query: { stream_session: session.token } as any,
-      path: '/api/planning/dashboard',
-    } as any);
-
-    expect(decodedFromOtherPath).toBeNull();
+    await expect(
+      service.getAuthUserFromRequest({
+        headers: {},
+        query: { stream_session: session.token } as any,
+        path: '/api/planning/dashboard',
+      } as any),
+    ).resolves.toBeNull();
   });
 
   it('issues and validates planning websocket session token', () => {

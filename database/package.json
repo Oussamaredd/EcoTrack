@@ -27,9 +27,11 @@
     "db:migrate:seed": "npm run db:migrate && npm run db:seed",
     "db:baseline:managed": "node ./scripts/export-managed-postgres-baseline.mjs",
     "db:export:data": "node ./scripts/export-data-only.mjs",
-    "db:import:data": "node ./scripts/import-data-only.mjs"
+    "db:import:data": "node ./scripts/import-data-only.mjs",
+    "db:auth:import:supabase": "node ./scripts/import-supabase-auth-users.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.104.0",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.4",

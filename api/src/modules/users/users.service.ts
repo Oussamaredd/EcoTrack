@@ -23,6 +23,10 @@ export class UsersService {
     return this.usersRepository.findByEmail(email);
   }
 
+  async findByAuthUserId(authUserId: string) {
+    return this.usersRepository.findByAuthUserId(authUserId);
+  }
+
   async findById(id: string) {
     return this.usersRepository.findById(id);
   }

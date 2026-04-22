@@ -1,6 +1,6 @@
 # DB Schema Namespace Plan
 
-Last updated: 2026-03-24
+Last updated: 2026-04-23
 
 Related status doc:
 
@@ -57,7 +57,7 @@ Target rule: keep `public` empty for business tables after migration; reserve it
 
 | Current table | Target schema.table | Decision | Notes |
 | --- | --- | --- | --- |
-| `users` | `identity.users` | Move as-is | Keep current table name while reserving provider-managed `auth` schemas for platforms such as Supabase Auth. |
+| `users` | `identity.users` | Move as-is | Keep current table name while reserving provider-managed `auth` schemas for platforms such as Supabase Auth, and add optional `auth_user_id` linkage for provider-managed identity ownership later. |
 | `password_reset_tokens` | `identity.password_reset_tokens` | Move as-is | No rename needed; token lifecycle stays app-identity-local. |
 | `roles` | `identity.roles` | Move as-is | RBAC catalog belongs with app-owned identity data, not admin settings. |
 | `user_roles` | `identity.user_roles` | Move as-is | Keep join table name unchanged for low migration risk. |
