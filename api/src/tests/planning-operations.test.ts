@@ -4,12 +4,24 @@ import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthService } from '../modules/auth/auth.service.js';
-import { AuthenticatedUserGuard } from '../modules/auth/authenticated-user.guard.js';
-import { PermissionsGuard } from '../modules/auth/permissions.guard.js';
-import { PlanningController } from '../modules/routes/planning.controller.js';
-import { PlanningService } from '../modules/routes/planning.service.js';
-import { UsersService } from '../modules/users/users.service.js';
+type AuthServiceModule = typeof import('../modules/auth/auth.service.js');
+type AuthenticatedUserGuardModule = typeof import('../modules/auth/authenticated-user.guard.js');
+type PermissionsGuardModule = typeof import('../modules/auth/permissions.guard.js');
+type PlanningControllerModule = typeof import('../modules/routes/planning.controller.js');
+type PlanningServiceModule = typeof import('../modules/routes/planning.service.js');
+type UsersServiceModule = typeof import('../modules/users/users.service.js');
+
+const originalPlanningSseEnabled = process.env.PLANNING_SSE_ENABLED;
+const originalPlanningReportsEnabled = process.env.PLANNING_REPORTS_ENABLED;
+
+const restoreEnv = (key: 'PLANNING_SSE_ENABLED' | 'PLANNING_REPORTS_ENABLED', value?: string) => {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = value;
+};
 
 describe('Planning operations', () => {
   const userId = 'ce320a88-fec0-4b2a-914a-242f8844f74f';
@@ -47,8 +59,24 @@ describe('Planning operations', () => {
   };
 
   let app: INestApplication;
+  let AuthService: AuthServiceModule['AuthService'];
+  let AuthenticatedUserGuard: AuthenticatedUserGuardModule['AuthenticatedUserGuard'];
+  let PermissionsGuard: PermissionsGuardModule['PermissionsGuard'];
+  let PlanningController: PlanningControllerModule['PlanningController'];
+  let PlanningService: PlanningServiceModule['PlanningService'];
+  let UsersService: UsersServiceModule['UsersService'];
 
   beforeAll(async () => {
+    vi.resetModules();
+    process.env.PLANNING_SSE_ENABLED = 'true';
+    process.env.PLANNING_REPORTS_ENABLED = 'true';
+    ({ AuthService } = await import('../modules/auth/auth.service.js'));
+    ({ AuthenticatedUserGuard } = await import('../modules/auth/authenticated-user.guard.js'));
+    ({ PermissionsGuard } = await import('../modules/auth/permissions.guard.js'));
+    ({ PlanningController } = await import('../modules/routes/planning.controller.js'));
+    ({ PlanningService } = await import('../modules/routes/planning.service.js'));
+    ({ UsersService } = await import('../modules/users/users.service.js'));
+
     const moduleRef = await Test.createTestingModule({
       controllers: [PlanningController],
       providers: [
@@ -129,7 +157,10 @@ describe('Planning operations', () => {
 
   afterAll(async () => {
     vi.restoreAllMocks();
+    restoreEnv('PLANNING_SSE_ENABLED', originalPlanningSseEnabled);
+    restoreEnv('PLANNING_REPORTS_ENABLED', originalPlanningReportsEnabled);
     await app?.close();
+    vi.resetModules();
   });
 
   it('optimizes tour candidates from zone/threshold payload', async () => {

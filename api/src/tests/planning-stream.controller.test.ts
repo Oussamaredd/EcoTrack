@@ -1,7 +1,19 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
-import { PlanningController } from '../modules/routes/planning.controller.js';
+type PlanningControllerModule = typeof import('../modules/routes/planning.controller.js');
+
+const originalPlanningSseEnabled = process.env.PLANNING_SSE_ENABLED;
+const originalPlanningRealtimeIntervalMs = process.env.PLANNING_REALTIME_INTERVAL_MS;
+
+const restoreEnv = (key: 'PLANNING_SSE_ENABLED' | 'PLANNING_REALTIME_INTERVAL_MS', value?: string) => {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = value;
+};
 
 describe('Planning stream controller', () => {
   const write = vi.fn();
@@ -23,11 +35,16 @@ describe('Planning stream controller', () => {
     issueWebSocketSession: vi.fn(),
   };
 
-  let controller: PlanningController;
+  let PlanningController: PlanningControllerModule['PlanningController'];
+  let controller: InstanceType<PlanningControllerModule['PlanningController']>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    vi.resetModules();
+
+    process.env.PLANNING_SSE_ENABLED = 'true';
+    process.env.PLANNING_REALTIME_INTERVAL_MS = '25000';
 
     planningServiceMock.getRealtimeDashboardSnapshotEvent.mockResolvedValue({
       id: 'evt-1',
@@ -66,11 +83,15 @@ describe('Planning stream controller', () => {
       lastEventName: null,
     });
 
+    ({ PlanningController } = await import('../modules/routes/planning.controller.js'));
     controller = new PlanningController(planningServiceMock as any);
   });
 
   afterEach(() => {
+    restoreEnv('PLANNING_SSE_ENABLED', originalPlanningSseEnabled);
+    restoreEnv('PLANNING_REALTIME_INTERVAL_MS', originalPlanningRealtimeIntervalMs);
     vi.useRealTimers();
+    vi.resetModules();
   });
 
   it('returns unauthorized when request has no user id', async () => {
