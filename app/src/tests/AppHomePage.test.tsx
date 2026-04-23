@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useCurrentUser } from '../hooks/useAuth';
@@ -33,6 +33,9 @@ describe('AppHomePage', () => {
 
   it('keeps the citizen role hub lightweight and points follow-up routes to on-demand pages', () => {
     renderWithProviders(<AppHomePage />, { route: '/app', withAuthProvider: false });
+    const citizenEntry = screen.getByRole('region', {
+      name: /Open citizen reporting when you are ready/i,
+    });
 
     expect(
       screen.getByRole('heading', { name: /Open citizen reporting when you are ready/i }),
@@ -44,7 +47,7 @@ describe('AppHomePage', () => {
     expect(
       screen.getByText(/sign-in can finish without waking the operational API/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Impact & History/i })).toHaveAttribute(
+    expect(within(citizenEntry).getByRole('link', { name: /Impact & History/i })).toHaveAttribute(
       'href',
       '/app/citizen/profile',
     );
