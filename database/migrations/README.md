@@ -12,6 +12,7 @@ Drizzle migration source of truth
 - The direct-connection guard now runs the child database command with the rewritten `DATABASE_URL`, so the WSL host-gateway fallback applies to the actual Drizzle or Postgres client process instead of only the preflight check.
 - Migration `0026_identity_schema_for_supabase.sql` renames the app-owned identity tables from `auth` to `identity` so provider-managed auth schemas, including Supabase Auth, can remain reserved for the provider.
 - Migration `0027_supabase_auth_user_link.sql` adds `identity.users.auth_user_id` plus the foreign-key bridge to provider-managed `auth.users(id)` for the Supabase Auth rollout.
+- On repo-managed CI/dev Postgres targets that do not already provide `auth.users`, migration `0027` bootstraps a minimal placeholder `auth.users(id)` table before the bridge is added so the numbered migration chain can still be replayed end to end.
 - The managed baseline generator appends repo-owned manual SQL supplements for historical structures that are not emitted by `drizzle-kit export`, such as `iot.measurements_default`.
 - Blank Supabase projects should not replay the historical pre-`0026` chain directly against the provider-managed `auth` schema. Use `database/migrations/baselines/managed-postgres-current.sql` for blank managed targets, then import data-only app schemas after the source database has applied `0026`.
 - Legacy/manual SQL files have been removed to avoid migration drift; only numbered Drizzle migrations in this directory should be applied.

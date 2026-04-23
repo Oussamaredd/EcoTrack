@@ -1,14 +1,33 @@
-import { screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import Dashboard from "../pages/Dashboard";
-import { renderWithProviders } from "./test-utils";
+import { screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-const jsonHeaders = new Headers({ "content-type": "application/json" });
+import { useCurrentUser } from '../hooks/useAuth';
+import { usePlanningDashboard } from '../hooks/usePlanning';
+import { usePlanningRealtimeSocket } from '../hooks/usePlanningRealtimeSocket';
+import { usePlanningRealtimeStream } from '../hooks/usePlanningRealtimeStream';
+import Dashboard from '../pages/Dashboard';
+import { useDashboard } from '../hooks/useTickets';
+import { renderWithProviders } from './test-utils';
 
-const authResponsePayload = {
-  authenticated: true,
-  user: { displayName: "Test User", email: "test@example.com" },
-};
+vi.mock('../hooks/useAuth', () => ({
+  useCurrentUser: vi.fn(),
+}));
+
+vi.mock('../hooks/usePlanning', () => ({
+  usePlanningDashboard: vi.fn(),
+}));
+
+vi.mock('../hooks/usePlanningRealtimeSocket', () => ({
+  usePlanningRealtimeSocket: vi.fn(),
+}));
+
+vi.mock('../hooks/usePlanningRealtimeStream', () => ({
+  usePlanningRealtimeStream: vi.fn(),
+}));
+
+vi.mock('../hooks/useTickets', () => ({
+  useDashboard: vi.fn(),
+}));
 
 const dashboardResponsePayload = {
   summary: {
@@ -39,29 +58,51 @@ const dashboardResponsePayload = {
   ],
 };
 
-const createJsonResponse = (payload: unknown) =>
-  ({
-    ok: true,
-    status: 200,
-    headers: jsonHeaders,
-    json: async () => payload,
-    text: async () => JSON.stringify(payload),
-  }) as Response;
-
 beforeEach(() => {
-  vi.spyOn(global, "fetch").mockImplementation(async (input) => {
-    const url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url;
+  vi.clearAllMocks();
 
-    if (url.includes("/api/dashboard")) {
-      return createJsonResponse(dashboardResponsePayload);
-    }
+  vi.mocked(useCurrentUser).mockReturnValue({
+    user: {
+      id: 'manager-1',
+      displayName: 'Test User',
+      email: 'test@example.com',
+      avatarUrl: null,
+      role: 'manager',
+      roles: [{ id: 'role-manager', name: 'manager' }],
+      isActive: true,
+      provider: 'local',
+    },
+    isAuthenticated: true,
+    isLoading: false,
+    authState: 'authenticated',
+    error: null,
+  });
 
-    return createJsonResponse(authResponsePayload);
+  vi.mocked(useDashboard).mockReturnValue({
+    data: dashboardResponsePayload,
+    isFetching: false,
+    isLoading: false,
+    isError: false,
+    error: null,
+    dataUpdatedAt: Date.now(),
+  } as ReturnType<typeof useDashboard>);
+
+  vi.mocked(usePlanningDashboard).mockReturnValue({
+    data: {},
+    isFetching: false,
+    dataUpdatedAt: Date.now(),
+  } as ReturnType<typeof usePlanningDashboard>);
+
+  vi.mocked(usePlanningRealtimeSocket).mockReturnValue({
+    connectionState: 'fallback',
+    lastEventAt: null,
+    isConnected: false,
+  });
+
+  vi.mocked(usePlanningRealtimeStream).mockReturnValue({
+    connectionState: 'disabled',
+    lastEventAt: null,
+    isConnected: false,
   });
 });
 
@@ -69,29 +110,29 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("Dashboard Component", () => {
-  test("renders an EcoTrack activity dashboard", async () => {
-    renderWithProviders(<Dashboard />);
+describe('Dashboard Component', () => {
+  test('renders an EcoTrack activity dashboard', async () => {
+    renderWithProviders(<Dashboard />, { withAuthProvider: false });
 
     expect(
-      await screen.findByRole("heading", { name: /Welcome back, Test/i }),
+      await screen.findByRole('heading', { name: /Welcome back, Test/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Total tickets/i)).toBeInTheDocument();
-    expect(await screen.findByText("42")).toBeInTheDocument();
+    expect(await screen.findByText('42')).toBeInTheDocument();
     expect(screen.getByText(/Recent ticket activity/i)).toBeInTheDocument();
     expect(await screen.findByText(/Lobby AC issue/i)).toBeInTheDocument();
   });
 
-  test("does not render dashboard quick links that redirect to other pages", async () => {
-    renderWithProviders(<Dashboard />);
+  test('does not render dashboard quick links that redirect to other pages', async () => {
+    renderWithProviders(<Dashboard />, { withAuthProvider: false });
 
-    await screen.findByRole("heading", { name: /Welcome back, Test/i });
+    await screen.findByRole('heading', { name: /Welcome back, Test/i });
 
     expect(
-      screen.queryByRole("link", { name: /View Tickets/i }),
+      screen.queryByRole('link', { name: /View Tickets/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: /Create Ticket/i }),
+      screen.queryByRole('link', { name: /Create Ticket/i }),
     ).not.toBeInTheDocument();
   });
 });

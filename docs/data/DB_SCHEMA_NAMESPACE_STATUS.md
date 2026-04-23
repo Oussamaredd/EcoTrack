@@ -60,6 +60,7 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 2026-04-23 Supabase Auth linkage note:
 
 - `database/migrations/0027_supabase_auth_user_link.sql` adds `identity.users.auth_user_id` as the application-owned bridge to `auth.users(id)`.
+- The same migration now bootstraps a minimal local `auth.users(id)` placeholder on repo-managed CI/dev Postgres targets that do not already expose a provider-owned auth schema, so the numbered migration chain remains replayable outside Supabase.
 - The app keeps `identity.users.id` as the stable profile/RBAC primary key so existing business foreign keys do not need to be rewritten for the Supabase Auth rollout.
 - `database/scripts/import-supabase-auth-users.mjs` now provides the one-off trusted import/link path that creates missing Supabase Auth users, preserves legacy password hashes where available, and backfills `identity.users.auth_user_id`.
 - The API now accepts Supabase bearer tokens when `SUPABASE_URL` is configured and resolves app authorization through the linked `identity.users` record.
