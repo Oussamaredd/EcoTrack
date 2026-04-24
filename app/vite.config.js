@@ -305,6 +305,7 @@ export default defineConfig(({ mode }) => {
         ],
         include: [
           "src/App.tsx",
+          "src/config/runtimeFeatures.ts",
           "src/components/landing/sections/HeroSection.tsx",
           "src/components/landing/Navbar.tsx",
           "src/pages/Dashboard.tsx",
