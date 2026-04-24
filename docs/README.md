@@ -144,6 +144,7 @@ Validation workflow:
 - Use `npm run validate:affected` to apply the AGENTS path matrix to the current git diff without paying for unrelated workspaces.
 - Use `npm run validate:full` for root scripts, infrastructure, env templates, CI, or other cross-layer changes.
 - Keep `npm run quality:product-hardening` as the slow release-style gate rather than a normal edit-compile-test loop.
+- `node infrastructure/scripts/ci/run-lighthouse-gate.mjs` injects a local mock API base plus safe placeholder Supabase browser env so the preview build can boot in CI without deploy-only frontend secrets.
 
 Build:
 ```bash

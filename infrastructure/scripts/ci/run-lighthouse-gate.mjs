@@ -22,6 +22,9 @@ const previewPort = process.env.LIGHTHOUSE_PREVIEW_PORT || "4173";
 const previewBaseUrl = process.env.LIGHTHOUSE_BASE_URL || `http://127.0.0.1:${previewPort}`;
 const mockApiPort = 3001;
 const mockApiBaseUrl = `http://127.0.0.1:${mockApiPort}`;
+const mockSupabaseUrl = process.env.LIGHTHOUSE_SUPABASE_URL?.trim() || "https://ecotrack.test.supabase.co";
+const mockSupabasePublishableKey =
+  process.env.LIGHTHOUSE_SUPABASE_PUBLISHABLE_KEY?.trim() || "sb_publishable_test_key";
 
 if (shouldSkip) {
   console.log("[ci] Lighthouse gate skipped because ECOTRACK_SKIP_LIGHTHOUSE_GATE=1 or ENABLE_LIGHTHOUSE_GATE=0.");
@@ -100,9 +103,14 @@ const startLighthouseMockApi = () =>
 const env = {
   ...process.env,
   ECOTRACK_QUALITY_OUTPUT_ROOT: qualityOutputRoot,
-  VITE_API_BASE_URL: previewBaseUrl,
+  VITE_API_BASE_URL: mockApiBaseUrl,
+  VITE_API_TELEMETRY_ENABLED: process.env.VITE_API_TELEMETRY_ENABLED ?? "false",
+  VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL?.trim() || mockSupabaseUrl,
+  VITE_SUPABASE_PUBLISHABLE_KEY:
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() || mockSupabasePublishableKey,
 };
 
+await mkdir(qualityOutputRoot, { recursive: true });
 await mkdir(path.join(qualityOutputRoot, "lighthouse"), { recursive: true });
 
 const runCommand = (command, args) =>
