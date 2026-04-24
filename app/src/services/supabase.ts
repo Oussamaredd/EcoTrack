@@ -44,10 +44,30 @@ const normalizeBasePath = (value: string | undefined) => {
   return normalized.endsWith('/') ? normalized : `${normalized}/`;
 };
 
+let testStorageKeyCounter = 0;
+
+const createTestStorageKey = () => {
+  const cryptoObject = globalThis.crypto;
+  if (!cryptoObject) {
+    testStorageKeyCounter += 1;
+    return `ecotrack.web.test.auth.${testStorageKeyCounter}`;
+  }
+
+  if (typeof cryptoObject.randomUUID === 'function') {
+    return `ecotrack.web.test.auth.${cryptoObject.randomUUID()}`;
+  }
+
+  const bytes = new Uint8Array(16);
+  cryptoObject.getRandomValues(bytes);
+
+  const suffix = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `ecotrack.web.test.auth.${suffix}`;
+};
+
 const { supabaseUrl, supabasePublishableKey } = resolveSupabaseConfig();
 const supabaseStorageKey =
   import.meta.env.MODE === 'test'
-    ? `ecotrack.web.test.auth.${Math.random().toString(36).slice(2)}`
+    ? createTestStorageKey()
     : undefined;
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
