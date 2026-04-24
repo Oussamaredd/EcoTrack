@@ -21,7 +21,15 @@ type SupabaseJwtPayload = JWTPayload & {
 let cachedSupabaseUrl: string | null = null;
 let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
-const trimTrailingSlashes = (value: string) => value.replace(/\/+$/, '');
+const trimTrailingSlashes = (value: string) => {
+  let endIndex = value.length;
+
+  while (endIndex > 0 && value.charCodeAt(endIndex - 1) === 47) {
+    endIndex -= 1;
+  }
+
+  return endIndex === value.length ? value : value.slice(0, endIndex);
+};
 
 const getSupabaseUrl = () => {
   const configuredUrl = getEnvValue('SUPABASE_URL');
