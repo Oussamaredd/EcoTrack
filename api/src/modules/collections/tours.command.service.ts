@@ -1,6 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
-import { readCurrentActiveStopId, type CreateCollectionTourCommandInput } from './collection-domain.contracts.js';
+import { ContainersService } from '../iot/containers.service.js';
+import { CACHE_NAMESPACES } from '../performance/cache.constants.js';
+import { CacheService } from '../performance/cache.service.js';
+
+import {
+  readCurrentActiveStopId,
+  type CollectionAggregateState,
+  type CreateCollectionTourCommandInput,
+} from './collection-domain.contracts.js';
 import { CollectionsDomainRepository } from './collections-domain.repository.js';
 import type { CreateTourDto } from './dto/create-tour.dto.js';
 import type { ReportAnomalyDto } from './dto/report-anomaly.dto.js';
@@ -10,9 +18,13 @@ import { ToursRepository } from './tours.repository.js';
 
 @Injectable()
 export class ToursCommandService {
+  private readonly logger = new Logger(ToursCommandService.name);
+
   constructor(
     private readonly domainRepository: CollectionsDomainRepository,
     private readonly toursRepository: ToursRepository,
+    private readonly containersService: ContainersService,
+    private readonly cacheService: CacheService,
   ) {}
 
   async create(dto: CreateTourDto, actorUserId?: string | null) {
@@ -115,6 +127,8 @@ export class ToursCommandService {
     });
 
     if (result.createdEventIds.length === 0) {
+      await this.resetCompletedStopContainer(result.aggregate, stopId);
+
       return {
         event: null,
         validatedStopId: stopId,
@@ -122,6 +136,8 @@ export class ToursCommandService {
         alreadyValidated: true,
       };
     }
+
+    await this.resetCompletedStopContainer(result.aggregate, stopId);
 
     return {
       event: await this.toursRepository.getLatestCollectionEventForStop(stopId),
@@ -133,6 +149,29 @@ export class ToursCommandService {
 
   async reportAnomaly(tourId: string, actorUserId: string, dto: ReportAnomalyDto) {
     return this.toursRepository.reportAnomaly(tourId, actorUserId, dto);
+  }
+
+  private async resetCompletedStopContainer(
+    aggregate: CollectionAggregateState,
+    stopId: string,
+  ) {
+    const completedStop = aggregate.stops.find(s => s.id === stopId);
+    if (completedStop && completedStop.status === 'completed') {
+      const measuredAt = completedStop.completedAt ?? new Date().toISOString();
+      this.logger.log(
+        `Resetting container ${completedStop.containerId} to 0% after collection`,
+      );
+      await this.containersService.recordMeasurement(completedStop.containerId, {
+        fillLevelPercent: 0,
+        deviceUid: 'collection-reset',
+        measuredAt,
+        measurementQuality: 'valid',
+      });
+      await this.cacheService.invalidateNamespaces([
+        CACHE_NAMESPACES.planning,
+        CACHE_NAMESPACES.analytics,
+      ]);
+    }
   }
 
   private toCreateCollectionTourCommand(dto: CreateTourDto): CreateCollectionTourCommandInput {

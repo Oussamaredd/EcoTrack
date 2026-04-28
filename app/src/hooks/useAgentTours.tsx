@@ -293,6 +293,9 @@ export const useValidateTourStop = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agent-tour'] });
       queryClient.invalidateQueries({ queryKey: ['tour-activity'] });
+      queryClient.invalidateQueries({ queryKey: ['zone-containers'] });
+      queryClient.invalidateQueries({ queryKey: ['planning-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['planning-heatmap'] });
     },
   });
 };

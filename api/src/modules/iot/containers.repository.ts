@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, isNull, sql } from 'drizzle-orm';
 import {
   containerTypes,
   containers,
@@ -11,6 +11,7 @@ import {
 
 import { DRIZZLE } from '../../database/database.constants.js';
 
+import { ContainerFillSimulationService } from './container-fill-simulation.service.js';
 import type { CreateContainerDto } from './dto/create-container.dto.js';
 import type { RecordContainerMeasurementDto } from './dto/record-container-measurement.dto.js';
 import type { UpdateContainerDto } from './dto/update-container.dto.js';
@@ -30,19 +31,26 @@ export class ContainersRepository {
 
   async list(filters: ContainerFilters) {
     const where = this.buildWhere(filters);
+    const statusFilter = filters.status?.trim().toLowerCase();
+    const now = new Date();
 
-    const listQuery = this.db
+    const createListQuery = () => this.db
       .select({
         id: containers.id,
         code: containers.code,
         label: containers.label,
         status: containers.status,
         fillLevelPercent: containers.fillLevelPercent,
+        fillRatePerHour: containers.fillRatePerHour,
+        lastMeasurementAt: containers.lastMeasurementAt,
+        lastCollectedAt: containers.lastCollectedAt,
         latitude: containers.latitude,
         longitude: containers.longitude,
         containerTypeId: containers.containerTypeId,
         containerTypeCode: containerTypes.code,
         containerTypeLabel: containerTypes.label,
+        warningFillPercent: containerTypes.defaultFillAlertPercent,
+        criticalFillPercent: containerTypes.defaultCriticalAlertPercent,
         zoneId: containers.zoneId,
         zoneName: zones.name,
         createdAt: containers.createdAt,
@@ -51,19 +59,30 @@ export class ContainersRepository {
       .from(containers)
       .leftJoin(containerTypes, eq(containers.containerTypeId, containerTypes.id))
       .leftJoin(zones, eq(containers.zoneId, zones.id))
-      .orderBy(asc(containers.code))
-      .limit(filters.limit)
-      .offset(filters.offset);
+      .orderBy(asc(containers.code));
 
     const totalQuery = this.db.select({ value: count() }).from(containers);
 
+    if (statusFilter) {
+      const unfilteredItems = await (where ? createListQuery().where(where) : createListQuery());
+      const filteredItems = this.mapListItems(unfilteredItems, now).filter(
+        (item) => item.status.trim().toLowerCase() === statusFilter,
+      );
+
+      return {
+        items: filteredItems.slice(filters.offset, filters.offset + filters.limit),
+        total: filteredItems.length,
+      };
+    }
+
+    const listQuery = createListQuery().limit(filters.limit).offset(filters.offset);
     const [items, totalRows] = await Promise.all([
       where ? listQuery.where(where) : listQuery,
       where ? totalQuery.where(where) : totalQuery,
     ]);
 
     return {
-      items,
+      items: this.mapListItems(items, now),
       total: totalRows[0]?.value ?? items.length,
     };
   }
@@ -93,7 +112,9 @@ export class ContainersRepository {
         ...(dto.code !== undefined ? { code: dto.code.trim() } : {}),
         ...(dto.label !== undefined ? { label: dto.label.trim() } : {}),
         ...(dto.status !== undefined ? { status: dto.status.trim() } : {}),
-        ...(dto.fillLevelPercent !== undefined ? { fillLevelPercent: dto.fillLevelPercent } : {}),
+        ...(dto.fillLevelPercent !== undefined
+          ? { fillLevelPercent: dto.fillLevelPercent, lastMeasurementAt: new Date() }
+          : {}),
         ...(dto.zoneId !== undefined ? { zoneId: dto.zoneId } : {}),
         ...(dto.containerTypeId !== undefined ? { containerTypeId: dto.containerTypeId } : {}),
         ...(dto.latitude !== undefined ? { latitude: dto.latitude.trim() } : {}),
@@ -136,6 +157,9 @@ export class ContainersRepository {
         label: containers.label,
         status: containers.status,
         fillLevelPercent: containers.fillLevelPercent,
+        fillRatePerHour: containers.fillRatePerHour,
+        lastMeasurementAt: containers.lastMeasurementAt,
+        lastCollectedAt: containers.lastCollectedAt,
         latitude: containers.latitude,
         longitude: containers.longitude,
         zoneId: containers.zoneId,
@@ -195,9 +219,25 @@ export class ContainersRepository {
     ]);
 
     const latestMeasurement = recentMeasurements[0] ?? null;
+    const effectiveFillLevel = ContainerFillSimulationService.calculateEffectiveFillLevel({
+      fillLevelPercent: container.fillLevelPercent,
+      fillRatePerHour: container.fillRatePerHour,
+      lastMeasurementAt: container.lastMeasurementAt,
+    });
+    const warningThreshold = container.warningFillPercent ?? 80;
+    const criticalThreshold = container.criticalFillPercent ?? 95;
+    const effectiveStatus = ContainerFillSimulationService.deriveOperationalStatus(effectiveFillLevel, {
+      warningThreshold,
+      criticalThreshold,
+    });
 
     return {
-      container,
+      container: {
+        ...container,
+        fillLevelPercent: effectiveFillLevel,
+        lastMeasuredFillLevelPercent: container.fillLevelPercent,
+        status: effectiveStatus,
+      },
       sensors,
       latestMeasurement,
       measurements: recentMeasurements,
@@ -309,36 +349,69 @@ export class ContainersRepository {
           .where(eq(sensorDevices.id, resolvedSensorId));
       }
 
-      const [createdMeasurement] = await tx
-        .insert(measurements)
-        .values({
-          sensorDeviceId: resolvedSensorId,
-          containerId,
-          measuredAt,
-          fillLevelPercent: dto.fillLevelPercent,
-          temperatureC: dto.temperatureC ?? null,
-          batteryPercent: dto.batteryPercent ?? null,
-          signalStrength: dto.signalStrength ?? null,
-          measurementQuality: dto.measurementQuality?.trim() ?? 'valid',
-          sourcePayload: {
-            source: 'api',
-            deviceUid: dto.deviceUid?.trim() ?? null,
-          },
-          receivedAt: new Date(),
-        })
-        .returning();
+      const duplicateConditions = [
+        eq(measurements.containerId, containerId),
+        eq(measurements.measuredAt, measuredAt),
+        eq(measurements.fillLevelPercent, dto.fillLevelPercent),
+        resolvedSensorId ? eq(measurements.sensorDeviceId, resolvedSensorId) : isNull(measurements.sensorDeviceId),
+      ];
+      const [existingMeasurement] = await tx
+        .select()
+        .from(measurements)
+        .where(and(...duplicateConditions))
+        .limit(1);
+
+      const [createdMeasurement] = existingMeasurement
+        ? [existingMeasurement]
+        : await tx
+            .insert(measurements)
+            .values({
+              sensorDeviceId: resolvedSensorId,
+              containerId,
+              measuredAt,
+              fillLevelPercent: dto.fillLevelPercent,
+              temperatureC: dto.temperatureC ?? null,
+              batteryPercent: dto.batteryPercent ?? null,
+              signalStrength: dto.signalStrength ?? null,
+              measurementQuality: dto.measurementQuality?.trim() ?? 'valid',
+              sourcePayload: {
+                source: 'api',
+                deviceUid: dto.deviceUid?.trim() ?? null,
+              },
+              receivedAt: new Date(),
+            })
+            .returning();
 
       const warningThreshold = container.warningFillPercent ?? 80;
       const criticalThreshold = container.criticalFillPercent ?? 95;
-
-      await tx
-        .update(containers)
-        .set({
-          fillLevelPercent: dto.fillLevelPercent,
-          status: this.resolveOperationalStatus(dto.fillLevelPercent, warningThreshold, criticalThreshold),
-          updatedAt: new Date(),
+      const [newerMeasurement] = await tx
+        .select({
+          id: measurements.id,
         })
-        .where(eq(containers.id, containerId));
+        .from(measurements)
+        .where(
+          and(
+            eq(measurements.containerId, containerId),
+            gt(measurements.measuredAt, measuredAt),
+          ),
+        )
+        .limit(1);
+
+      if (!newerMeasurement) {
+        await tx
+          .update(containers)
+          .set({
+            fillLevelPercent: dto.fillLevelPercent,
+            lastMeasurementAt: measuredAt,
+            lastCollectedAt: dto.fillLevelPercent === 0 ? measuredAt : sql`${containers.lastCollectedAt}`,
+            status: ContainerFillSimulationService.deriveOperationalStatus(dto.fillLevelPercent, {
+              warningThreshold,
+              criticalThreshold,
+            }),
+            updatedAt: new Date(),
+          })
+          .where(eq(containers.id, containerId));
+      }
 
       if (!createdMeasurement) {
         throw new Error('Failed to record container measurement');
@@ -372,11 +445,38 @@ export class ContainersRepository {
       conditions.push(eq(containers.zoneId, filters.zoneId));
     }
 
-    if (filters.status) {
-      conditions.push(eq(containers.status, filters.status));
-    }
-
     return conditions.length > 0 ? and(...conditions) : undefined;
+  }
+
+  private mapListItems<T extends {
+    fillLevelPercent: number;
+    fillRatePerHour: number;
+    lastMeasurementAt: Date | string | null;
+    warningFillPercent: number | null;
+    criticalFillPercent: number | null;
+  }>(items: T[], now: Date) {
+    return items.map((item) => {
+      const warningThreshold = item.warningFillPercent ?? 80;
+      const criticalThreshold = item.criticalFillPercent ?? 95;
+      const effectiveFillLevel = ContainerFillSimulationService.calculateEffectiveFillLevel(
+        {
+          fillLevelPercent: item.fillLevelPercent,
+          fillRatePerHour: item.fillRatePerHour,
+          lastMeasurementAt: item.lastMeasurementAt,
+        },
+        now,
+      );
+
+      return {
+        ...item,
+        fillLevelPercent: effectiveFillLevel,
+        lastMeasuredFillLevelPercent: item.fillLevelPercent,
+        status: ContainerFillSimulationService.deriveOperationalStatus(effectiveFillLevel, {
+          warningThreshold,
+          criticalThreshold,
+        }),
+      };
+    });
   }
 
   private async ensureContainerExists(containerId: string) {
@@ -393,17 +493,6 @@ export class ContainersRepository {
     return container;
   }
 
-  private resolveOperationalStatus(fillLevelPercent: number, warningThreshold: number, criticalThreshold: number) {
-    if (fillLevelPercent >= criticalThreshold) {
-      return 'critical';
-    }
-
-    if (fillLevelPercent >= warningThreshold) {
-      return 'attention_required';
-    }
-
-    return 'available';
-  }
 }
 
 

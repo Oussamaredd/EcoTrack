@@ -43,7 +43,9 @@ describe('PlanningRepository invariants', () => {
 
     const selectCandidates = {
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(allCandidates),
+        leftJoin: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(allCandidates),
+        }),
       }),
     };
     const selectScheduledStops = {
@@ -154,7 +156,9 @@ describe('PlanningRepository invariants', () => {
     ];
     const selectCandidates = {
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(allCandidates),
+        leftJoin: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(allCandidates),
+        }),
       }),
     };
     const selectScheduledStops = {
@@ -610,22 +614,21 @@ describe('PlanningRepository invariants', () => {
         .mockReturnValueOnce({
           from: vi.fn().mockReturnValue({
             leftJoin: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                orderBy: vi.fn().mockReturnValue({
-                  limit: vi.fn().mockResolvedValue([
-                    {
-                      id: 'container-1',
-                      code: 'CTR-001',
-                      label: 'North Hub',
-                      fillLevelPercent: 92,
-                      status: 'attention_required',
-                      latitude: '36.8100',
-                      longitude: '10.1900',
-                      zoneName: 'North',
-                    },
-                  ]),
-                }),
-              }),
+              leftJoin: vi.fn().mockResolvedValue([
+                {
+                  id: 'container-1',
+                  code: 'CTR-001',
+                  label: 'North Hub',
+                  fillLevelPercent: 92,
+                  
+                  status: 'attention_required',
+                  latitude: '36.8100',
+                  longitude: '10.1900',
+                  zoneName: 'North',
+                  warningFillPercent: 80,
+                  criticalFillPercent: 95,
+                },
+              ]),
             }),
           }),
         })

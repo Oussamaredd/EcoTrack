@@ -83,6 +83,7 @@ PUT /zones/:id
 ```
 
 `GET /api/containers` returns mapped container summaries used by mobile reporting and agent zone maps, including `code`, `label`, `zoneName`, coordinates, operational `status`, and optional `fillLevelPercent`.
+Container reads use lazy prototype fill simulation: `fillLevelPercent` is the effective value derived from the last persisted measurement, `lastMeasurementAt`, and `fillRatePerHour`; `lastMeasuredFillLevelPercent` exposes the stored base value when returned.
 `GET /api/containers` supports `zoneId`, `page`, and `pageSize` query parameters; the agent web app follows the `pagination.hasNext` contract to load every mapped container for the authenticated agent's assigned zone.
 `POST /api/containers` requires `code`, `label`, `latitude`, and `longitude`; containers are no longer accepted without coordinates.
 `PUT /api/containers/:id` preserves non-null coordinates and trims coordinate strings when updates are supplied.
@@ -157,6 +158,7 @@ Agent tour execution notes:
 - `GET /api/tours/agent/me` returns the current actionable non-terminal tour for the authenticated agent, plus ordered `stops`, itinerary coordinates, a `routeSummary` block, the assigned zone `depot`, and persisted `routeGeometry`.
 - `POST /api/tours/:tourId/start` is safe to repeat while the tour is already `in_progress`; completed tours are rejected.
 - `POST /api/tours/:tourId/stops/:stopId/validate` accepts only the active stop for new validations. Repeating the same completed-stop validation returns the latest route state without creating a duplicate collection event.
+- Successful stop validation persists a zero-fill collection reset measurement for that stop's container, updating the container base fill, `lastMeasurementAt`, `lastCollectedAt`, and downstream planning/dashboard cache state.
 - Tour writes now run through an internal command side backed by `ops.collection_domain_events` and `ops.collection_domain_snapshots`, while reads stay on the query-side projection tables used by the existing tour APIs.
 - Planning-created tours seed the same scheduled-tour domain event stream so planning, agent start, stop validation, completion, and cancellation all share one replayable collection history.
 - The current web workflow uses manual container confirmation plus optional browser geolocation. The optional `qrCode` field remains available for future mobile clients, but it is not required for the platform UI.
@@ -217,9 +219,10 @@ GPS fields (`latitude`, `longitude`) in citizen reporting, container setup, and 
 `GET /api/containers/types` returns the active `container_types` catalog from the `core` schema.
 `GET /api/containers/:id/telemetry` returns sensor inventory, the latest measurement, and recent `iot.measurements` history for that container.
 `POST /api/containers/:id/sensors` upserts a `sensor_devices` record by `deviceUid`.
-`POST /api/containers/:id/measurements` persists a new measurement, refreshes sensor heartbeat data, and updates the container's operational fill state.
+`POST /api/containers/:id/measurements` persists a new measurement, refreshes sensor heartbeat data, and updates the container's operational fill state when the measurement is not older than the current container state; zero-fill measurements also update `lastCollectedAt`.
 `manualContainerIds` in `POST /planning/optimize-tour` must be an array of UUID strings.
 `POST /planning/optimize-tour` excludes containers already assigned to non-terminal tours in the same zone within `+/- 120 minutes` of `scheduledFor`; explicitly supplied `manualContainerIds` still override that schedule deferral.
+`POST /planning/optimize-tour` applies the fill threshold to lazy effective fill levels so containers can become route candidates over elapsed time without a background job.
 `GET /api/planning/agents` returns each active agent with additive zone-assignment data (`zoneId`, `zoneCode`, `zoneName`); the manager planning UI uses the selected zone to keep assignment choices zone-safe and labels the zone with `zoneName` rather than `zoneCode`.
 `POST /api/planning/optimize-tour` returns `startLocation` when the selected zone has a configured depot, uses that depot as the route anchor for candidate ordering and route metrics, and caps the optimized route to four selected containers per zone request.
 `POST /api/planning/optimize-tour` reports the applied optimization stages (`nearest_neighbor`, `two_opt`), selected stop count, and whether the 2-opt pass stopped at the server-side optimization time budget.

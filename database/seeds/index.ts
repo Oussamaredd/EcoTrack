@@ -79,13 +79,16 @@ type ContainerSeed = {
   label: string;
   status: string;
   fillLevelPercent: number;
+  fillRatePerHour: number;
+  lastMeasurementAt: Date;
+  lastCollectedAt: Date | null;
   zoneCode: string;
   containerTypeCode: string;
   latitude?: string;
   longitude?: string;
 };
 
-type ContainerSeedBlueprint = Omit<ContainerSeed, 'label' | 'status'> & {
+type ContainerSeedBlueprint = Omit<ContainerSeed, 'label' | 'status' | 'fillRatePerHour' | 'lastMeasurementAt' | 'lastCollectedAt'> & {
   address: string;
 };
 
@@ -477,6 +480,15 @@ const buildSeedContainerLabel = (address: string, containerTypeCode: string) =>
 
 const resolveSeedContainerStatus = (fillLevelPercent: number) =>
   fillLevelPercent >= 75 ? 'attention_required' : 'available';
+
+const resolveSeedFillRatePerHour = (code: string) =>
+  4 + [...code].reduce((total, char) => total + char.charCodeAt(0), 0) % 9;
+
+const resolveSeedLastMeasurementAt = (code: string) => {
+  const now = Date.now();
+  const minuteOffset = [...code].reduce((total, char) => total + char.charCodeAt(0), 0) % (6 * 60);
+  return new Date(now - minuteOffset * 60 * 1000);
+};
 
 // Curated sample from Paris open-data collection points. Keep the footprint small for demo and Neon plans.
 const ZONE_SEEDS: ZoneSeed[] = [
@@ -1168,6 +1180,9 @@ const CONTAINER_SEEDS: ContainerSeed[] = CONTAINER_SEED_BLUEPRINTS.map(({ addres
   ...seed,
   label: buildSeedContainerLabel(address, seed.containerTypeCode),
   status: resolveSeedContainerStatus(seed.fillLevelPercent),
+  fillRatePerHour: resolveSeedFillRatePerHour(seed.code),
+  lastMeasurementAt: resolveSeedLastMeasurementAt(seed.code),
+  lastCollectedAt: seed.fillLevelPercent === 0 ? resolveSeedLastMeasurementAt(seed.code) : null,
 }));
 
 const formatDepotCoordinate = (value: number) => value.toFixed(6);
@@ -2025,6 +2040,9 @@ export async function seedDatabase() {
             label: seed.label,
             status: seed.status,
             fillLevelPercent: seed.fillLevelPercent,
+            fillRatePerHour: seed.fillRatePerHour,
+            lastMeasurementAt: seed.lastMeasurementAt,
+            lastCollectedAt: seed.lastCollectedAt,
             zoneId,
             containerTypeId,
             latitude: seed.latitude,
@@ -2036,6 +2054,9 @@ export async function seedDatabase() {
               label: seed.label,
               status: seed.status,
               fillLevelPercent: seed.fillLevelPercent,
+              fillRatePerHour: seed.fillRatePerHour,
+              lastMeasurementAt: seed.lastMeasurementAt,
+              lastCollectedAt: seed.lastCollectedAt,
               zoneId,
               containerTypeId,
               latitude: seed.latitude,

@@ -9,6 +9,7 @@ import {
 } from 'ecotrack-database';
 
 import { DRIZZLE } from '../../../database/database.constants.js';
+import { ContainerFillSimulationService } from '../container-fill-simulation.service.js';
 
 import {
   VALIDATED_EVENT_CONSUMER_MAX_RETRIES,
@@ -216,11 +217,15 @@ export class ValidatedConsumerRepository {
             .update(containers)
             .set({
               fillLevelPercent: delivery.fillLevelPercent,
-              status: this.resolveOperationalStatus(
-                delivery.fillLevelPercent,
-                delivery.warningThreshold,
-                delivery.criticalThreshold,
-              ),
+              lastMeasurementAt: delivery.measuredAt,
+              lastCollectedAt:
+                delivery.fillLevelPercent === 0
+                  ? delivery.measuredAt
+                  : sql`${containers.lastCollectedAt}`,
+              status: ContainerFillSimulationService.deriveOperationalStatus(delivery.fillLevelPercent, {
+                warningThreshold: delivery.warningThreshold,
+                criticalThreshold: delivery.criticalThreshold,
+              }),
               updatedAt: new Date(),
             })
             .where(eq(containers.id, delivery.containerId));
@@ -334,19 +339,4 @@ export class ValidatedConsumerRepository {
     return result?.value ?? null;
   }
 
-  private resolveOperationalStatus(
-    fillLevelPercent: number,
-    warningThreshold: number,
-    criticalThreshold: number,
-  ) {
-    if (fillLevelPercent >= criticalThreshold) {
-      return 'critical';
-    }
-
-    if (fillLevelPercent >= warningThreshold) {
-      return 'attention_required';
-    }
-
-    return 'available';
-  }
 }

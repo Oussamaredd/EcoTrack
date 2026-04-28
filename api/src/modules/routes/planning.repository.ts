@@ -9,6 +9,7 @@ import {
   collectionDomainEvents,
   collectionDomainSnapshots,
   collectionEvents,
+  containerTypes,
   containers,
   type DatabaseClient,
   eventConnectorExports,
@@ -33,6 +34,7 @@ import {
   COLLECTIONS_TOUR_SCHEDULED_EVENT,
   INTERNAL_EVENT_SCHEMA_VERSION_V1,
 } from '../events/internal-events.catalog.js';
+import { ContainerFillSimulationService } from '../iot/container-fill-simulation.service.js';
 
 import type { CreatePlannedTourDto } from './dto/create-planned-tour.dto.js';
 import type { GenerateReportDto } from './dto/generate-report.dto.js';
@@ -208,15 +210,43 @@ export class PlanningRepository {
         code: containers.code,
         label: containers.label,
         fillLevelPercent: containers.fillLevelPercent,
+        fillRatePerHour: containers.fillRatePerHour,
+        lastMeasurementAt: containers.lastMeasurementAt,
+        lastCollectedAt: containers.lastCollectedAt,
         status: containers.status,
         latitude: containers.latitude,
         longitude: containers.longitude,
         zoneId: containers.zoneId,
+        warningFillPercent: containerTypes.defaultFillAlertPercent,
+        criticalFillPercent: containerTypes.defaultCriticalAlertPercent,
       })
       .from(containers)
-      .where(and(eq(containers.zoneId, dto.zoneId), gte(containers.fillLevelPercent, dto.fillThresholdPercent)));
+      .leftJoin(containerTypes, eq(containers.containerTypeId, containerTypes.id))
+      .where(eq(containers.zoneId, dto.zoneId));
 
-    if (allCandidates.length === 0) {
+    const allCandidatesWithEffectiveFill = allCandidates
+      .map((candidate) => {
+        const warningThreshold = candidate.warningFillPercent ?? 80;
+        const criticalThreshold = candidate.criticalFillPercent ?? 95;
+        const effectiveFillLevel = ContainerFillSimulationService.calculateEffectiveFillLevel({
+          fillLevelPercent: candidate.fillLevelPercent,
+          fillRatePerHour: candidate.fillRatePerHour,
+          lastMeasurementAt: candidate.lastMeasurementAt,
+        });
+
+        return {
+          ...candidate,
+          fillLevelPercent: effectiveFillLevel,
+          lastMeasuredFillLevelPercent: candidate.fillLevelPercent,
+          status: ContainerFillSimulationService.deriveOperationalStatus(effectiveFillLevel, {
+            warningThreshold,
+            criticalThreshold,
+          }),
+        };
+      })
+      .filter((candidate) => candidate.fillLevelPercent >= dto.fillThresholdPercent);
+
+    if (allCandidatesWithEffectiveFill.length === 0) {
       return {
         candidates: [],
         route: [],
@@ -234,10 +264,10 @@ export class PlanningRepository {
 
     const scheduledFor = new Date(dto.scheduledFor);
     const blockedContainerIds = await this.getBlockedContainerIdsForSchedule(dto.zoneId, scheduledFor);
-    const deferredForNearbyTours = allCandidates.filter(
+    const deferredForNearbyTours = allCandidatesWithEffectiveFill.filter(
       (item) => blockedContainerIds.has(item.id) && !manualIdSet.has(item.id),
     ).length;
-    const eligibleCandidates = allCandidates.filter(
+    const eligibleCandidates = allCandidatesWithEffectiveFill.filter(
       (item) => !blockedContainerIds.has(item.id) || manualIdSet.has(item.id),
     );
     const selectedCandidates =
@@ -408,7 +438,7 @@ export class PlanningRepository {
   async getManagerDashboard() {
     const telemetryWindowStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const [ecoSummary, criticalContainers, openAlertRows, latestAlerts, telemetryStats] = await Promise.all([
+    const [ecoSummary, criticalContainerRows, openAlertRows, latestAlerts, telemetryStats] = await Promise.all([
       Promise.all([
         this.db.select({ value: sql`count(*)`.mapWith(Number) }).from(containers),
         this.db.select({ value: sql`count(*)`.mapWith(Number) }).from(zones),
@@ -420,16 +450,19 @@ export class PlanningRepository {
           code: containers.code,
           label: containers.label,
           fillLevelPercent: containers.fillLevelPercent,
+          fillRatePerHour: containers.fillRatePerHour,
+          lastMeasurementAt: containers.lastMeasurementAt,
+          lastCollectedAt: containers.lastCollectedAt,
           status: containers.status,
           latitude: containers.latitude,
           longitude: containers.longitude,
           zoneName: zones.name,
+          warningFillPercent: containerTypes.defaultFillAlertPercent,
+          criticalFillPercent: containerTypes.defaultCriticalAlertPercent,
         })
         .from(containers)
         .leftJoin(zones, eq(containers.zoneId, zones.id))
-        .where(or(gte(containers.fillLevelPercent, 80), eq(containers.status, 'attention_required')))
-        .orderBy(desc(containers.fillLevelPercent))
-        .limit(20),
+        .leftJoin(containerTypes, eq(containers.containerTypeId, containerTypes.id)),
       this.db
         .select({
           severity: alertEvents.severity,
@@ -475,6 +508,30 @@ export class PlanningRepository {
           .from(measurements),
       ]),
     ]);
+
+    const criticalContainers = criticalContainerRows
+      .map((container) => {
+        const warningThreshold = container.warningFillPercent ?? 80;
+        const criticalThreshold = container.criticalFillPercent ?? 95;
+        const effectiveFillLevel = ContainerFillSimulationService.calculateEffectiveFillLevel({
+          fillLevelPercent: container.fillLevelPercent,
+          fillRatePerHour: container.fillRatePerHour,
+          lastMeasurementAt: container.lastMeasurementAt,
+        });
+
+        return {
+          ...container,
+          fillLevelPercent: effectiveFillLevel,
+          lastMeasuredFillLevelPercent: container.fillLevelPercent,
+          status: ContainerFillSimulationService.deriveOperationalStatus(effectiveFillLevel, {
+            warningThreshold,
+            criticalThreshold,
+          }),
+        };
+      })
+      .filter((container) => container.fillLevelPercent >= 80 || container.status === 'attention_required')
+      .sort((left, right) => right.fillLevelPercent - left.fillLevelPercent)
+      .slice(0, 20);
 
     const activeAlertsBySeverity = openAlertRows.reduce<Record<string, number>>((acc, row) => {
       const key = row.severity?.trim().toLowerCase() || 'unknown';

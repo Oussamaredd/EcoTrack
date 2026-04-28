@@ -42,6 +42,7 @@ describe('ContainersRepository', () => {
             },
           ]),
         )
+        .mockReturnValueOnce(createLimitSelectionChain([]))
         .mockReturnValueOnce(createLimitSelectionChain([])),
       insert: vi
         .fn()

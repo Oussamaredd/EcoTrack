@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 
 import { AuthModule } from '../auth/auth.module.js';
 import { InternalEventsModule } from '../events/internal-events.module.js';
+import { ContainersModule } from '../iot/containers.module.js';
 
 import { CollectionsDomainRepository } from './collections-domain.repository.js';
 import { RoutingClient } from './routing/routing.client.js';
@@ -14,7 +15,7 @@ import { ToursRepository } from './tours.repository.js';
 import { ToursService } from './tours.service.js';
 
 @Module({
-  imports: [AuthModule, ConfigModule, InternalEventsModule],
+  imports: [AuthModule, ConfigModule, InternalEventsModule, ContainersModule],
   controllers: [ToursController],
   providers: [
     ToursRepository,
