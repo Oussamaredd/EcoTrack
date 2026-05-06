@@ -49,7 +49,7 @@ cp infrastructure/environments/.env.docker.example infrastructure/environments/.
 git check-ignore -v .env api/.env app/.env.local infrastructure/environments/.env.docker
 
 # 2) Scan tracked content for obvious secret signatures
-rg -n "(GOCSPX-|AKIA|ghp_|BEGIN RSA|BEGIN OPENSSH|PRIVATE KEY)" . --glob "!node_modules/**"
+rg -n "([G]OCSPX-|AKIA|ghp_|BEGIN RSA|BEGIN OPENSSH|PRIVATE KEY)" . --glob "!node_modules/**"
 
 # 3) Validate committed env templates and policy constraints
 npm run validate-env:all

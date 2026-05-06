@@ -181,3 +181,7 @@ npm run infra:down
 - Keep incident-specific execution plans in `docs/operations/runbooks/`.
 - Keep local-only raw source artifacts only at their canonical `docs/specs/inputs/` paths and out of Git.
 - Keep disposable local and CI artifacts under `tmp/`; avoid root-level timestamped temp folders and root `temp-*.log` files.
+
+## Workflow OAuth placeholders
+
+CI/CD workflow defaults intentionally use blank Google OAuth client IDs. Jobs that require Google OAuth must receive real values from the appropriate secret store or runtime environment, not from committed workflow YAML.

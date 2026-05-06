@@ -430,4 +430,8 @@ docker compose --env-file infrastructure/environments/.env.docker -f infrastruct
 - Conflicts: `docs/environment/reference/ENV_CONFLICTS.md`
 - Decisions: `docs/environment/reference/ENV_CANONICAL_DECISIONS.md`
 
+## Google OAuth values in committed templates
 
+Committed environment templates intentionally leave `GOOGLE_CLIENT_ID` blank and keep `GOOGLE_CLIENT_SECRET` as a placeholder. Real Google OAuth values must be supplied only through local `.env` files or deployment secret stores.
+
+Do not commit real Google OAuth client IDs or client secrets to example files, workflow files, tests, or documentation.

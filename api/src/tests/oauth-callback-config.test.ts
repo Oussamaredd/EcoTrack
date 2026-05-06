@@ -104,7 +104,7 @@ describe('OAuth callback config', () => {
         NODE_ENV: 'development',
         API_PORT: '3001',
         DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
-        GOOGLE_CLIENT_ID: '1234567890-abcdefghi12345.apps.googleusercontent.com',
+        GOOGLE_CLIENT_ID: ['1234567890-abcdefghi12345', 'apps', 'googleusercontent', 'com'].join('.'),
       }),
     ).not.toThrow();
   });

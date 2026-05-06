@@ -61,7 +61,7 @@ jobs:
       JWT_EXPIRES_IN: 7d
       JWT_ACCESS_SECRET: cd-jwt-access-secret
       JWT_ACCESS_EXPIRES_IN: 15m
-      GOOGLE_CLIENT_ID: 1234567890-cd.apps.googleusercontent.com
+      GOOGLE_CLIENT_ID: ""
       GOOGLE_CLIENT_SECRET: cd-google-client-secret
       GOOGLE_CALLBACK_URL: http://localhost:5173/api/auth/google/callback
       CORS_ORIGINS: http://localhost:5173
