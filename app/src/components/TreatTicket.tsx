@@ -99,9 +99,17 @@ export default function TreatTicket() {
           <h2>Treatment Workflow</h2>
         </header>
         <p>
-          Use comments and activity history to coordinate handling and closure
-          decisions with the support team.
+          API actions are not available in this frontend pass, so treatment is currently review-only.
+          Use the ticket details page to inspect comments, activity history, and current status before
+          progressing this item once the backend is stable.
         </p>
+
+        <div className="ticket-treat-review-list">
+          <span>Review ticket context</span>
+          <span>Check activity history</span>
+          <span>Add or inspect comments from details</span>
+        </div>
+
         <Link to={`/app/tickets/${id}/details`} className="ticket-details-inline-link">
           Open ticket details
         </Link>

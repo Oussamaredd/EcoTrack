@@ -56,6 +56,53 @@ describe('HealthService', () => {
       ],
     });
     expect(dbMock.select).toHaveBeenCalledTimes(11);
+    expect(
+      dbMock.select.mock.calls.some(([projection]) =>
+        projection &&
+        typeof projection === 'object' &&
+        'fillRatePerHour' in projection &&
+        'lastMeasurementAt' in projection &&
+        'lastCollectedAt' in projection &&
+        'defaultFillAlertPercent' in projection &&
+        'defaultCriticalAlertPercent' in projection,
+      ),
+    ).toBe(true);
+  });
+
+  it('fails planning readiness when the dashboard container projection is not queryable', async () => {
+    const dbMock = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain(new Error('column core.containers.fill_rate_per_hour does not exist')))
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain())
+        .mockReturnValueOnce(createSelectionChain()),
+    };
+    const configServiceMock = {
+      get: vi.fn().mockReturnValue(true),
+    };
+
+    const service = new HealthService(dbMock as never, configServiceMock as never);
+    const result = await service.checkDatabase();
+
+    expect(result.status).toBe('error');
+    expect(result.message).toContain('planning.dashboard.schema');
+    expect(result.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'planning.dashboard.schema',
+          status: 'error',
+          message: 'column core.containers.fill_rate_per_hour does not exist',
+        }),
+      ]),
+    );
   });
 
   it('returns an error payload when an identity schema probe fails', async () => {

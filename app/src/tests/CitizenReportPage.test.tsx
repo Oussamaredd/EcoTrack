@@ -35,6 +35,23 @@ describe("CitizenReportPage", () => {
     });
   });
 
+  it("uses the shared EcoTrack loading state while report workspace data loads", async () => {
+    vi.spyOn(apiClient, "get").mockImplementationOnce(
+      () => new Promise(() => undefined),
+    );
+
+    renderWithProviders(<CitizenReportPage />);
+
+    expect(await screen.findByRole("heading", { name: /Loading EcoTrack/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Starting server and preparing the next page/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Submit Report/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/You don't have permission to access citizen tools/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a browser geolocation warning and clears it after manual coordinate edits", async () => {
     const user = userEvent.setup();
     renderWithProviders(<CitizenReportPage />);

@@ -1,11 +1,17 @@
 import { useDeferredValue, useMemo, useState } from "react";
 
+import { useCurrentUser } from "../hooks/useAuth";
 import {
   useGenerateManagerReport,
   usePlanningReportHistory,
   useRegenerateManagerReport,
 } from "../hooks/usePlanning";
-import { buildApiUrl, createApiHeaders, createApiRequestError } from "../services/api";
+import {
+  buildApiUrl,
+  createApiHeaders,
+  createApiRequestError,
+  getApiCredentialsMode,
+} from "../services/api";
 import "../styles/OperationsPages.css";
 
 const KPI_OPTIONS = ["tours", "collections", "anomalies"] as const;
@@ -273,6 +279,8 @@ const getDeliveryMessage = (result: ReportMutationResult, format: ReportFormat, 
 };
 
 export default function ManagerReportsPage() {
+  const { authState } = useCurrentUser();
+  const isAuthReady = authState === "authenticated";
   const [dateRange, setDateRange] = useState<DateRange>(() => createDatePresetRange("previousMonth"));
   const [selectedPreset, setSelectedPreset] = useState<DatePresetId>("previousMonth");
   const [selectedKpis, setSelectedKpis] = useState<string[]>([...KPI_OPTIONS]);
@@ -290,7 +298,7 @@ export default function ManagerReportsPage() {
 
   const generateMutation = useGenerateManagerReport();
   const regenerateMutation = useRegenerateManagerReport();
-  const historyQuery = usePlanningReportHistory();
+  const historyQuery = usePlanningReportHistory(isAuthReady);
 
   const reportHistory = (((historyQuery.data as { reports?: ReportRow[] } | undefined)?.reports ??
     []) as ReportRow[]);
@@ -483,8 +491,9 @@ export default function ManagerReportsPage() {
     setActiveDownloadId(reportId);
 
     try {
-      const response = await fetch(buildApiUrl(`/api/planning/reports/${reportId}/download`), {
-        credentials: "include",
+      const requestUrl = buildApiUrl(`/api/planning/reports/${reportId}/download`);
+      const response = await fetch(requestUrl, {
+        credentials: getApiCredentialsMode(requestUrl),
         headers: createApiHeaders(),
       });
 

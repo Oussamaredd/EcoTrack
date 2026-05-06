@@ -1,7 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 
 import { ApiRequestError, authorizedFetch, invalidateClientSession, parseJsonResponse } from './api';
-import { clearAccessToken, setAccessToken } from './authToken';
+import { clearAccessToken, isAccessTokenHeaderSafe, setAccessToken } from './authToken';
 import { buildSupabaseBrowserRedirectUrl, supabase } from './supabase';
 
 type AuthUser = {
@@ -33,6 +33,14 @@ type AuthCodeResponse = {
   user?: AuthUser;
 };
 
+type RepairedSupabaseSessionResponse = {
+  accessToken?: string | null;
+  refreshToken?: string | null;
+  expiresAt?: number | null;
+  expiresIn?: number | null;
+  tokenType?: string | null;
+};
+
 type ResetPasswordParams = {
   password: string;
   code?: string | null;
@@ -40,6 +48,9 @@ type ResetPasswordParams = {
 };
 
 const DEFAULT_ROLE = 'citizen';
+const MAX_JWT_AVATAR_METADATA_LENGTH = 2_048;
+const PROFILE_IMAGE_METADATA_KEYS = ['avatar_url', 'picture'] as const;
+const DATA_IMAGE_URL_PATTERN = /^data:image\/(?:png|jpeg|jpg|webp);base64,/i;
 
 const resolveAuthRequestPath = (path: string) => (path.startsWith('/api') ? path : `/api${path}`);
 
@@ -90,6 +101,22 @@ const createSupabaseError = (error: unknown, fallback: string) =>
 
 const normalizeMetadataString = (value: unknown) =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+
+const normalizeProfileAvatarMetadataString = (value: unknown) => {
+  const normalized = normalizeMetadataString(value);
+  if (!normalized) {
+    return null;
+  }
+
+  if (
+    DATA_IMAGE_URL_PATTERN.test(normalized) ||
+    normalized.length > MAX_JWT_AVATAR_METADATA_LENGTH
+  ) {
+    return null;
+  }
+
+  return normalized;
+};
 
 const normalizeMetadataBoolean = (value: unknown, fallback: boolean) =>
   typeof value === 'boolean' ? value : fallback;
@@ -156,6 +183,155 @@ const resolveMetadataRoleEntries = (...sources: Array<unknown>) => {
   return entries;
 };
 
+const decodeBase64UrlJson = (value: string) => {
+  try {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedBase64 = `${base64}${'='.repeat((4 - (base64.length % 4)) % 4)}`;
+    const binaryValue = globalThis.atob(paddedBase64);
+    const jsonValue = decodeURIComponent(
+      Array.from(binaryValue)
+        .map((character) => `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`)
+        .join(''),
+    );
+
+    return JSON.parse(jsonValue) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
+
+const decodeJwtPayload = (accessToken: string) => {
+  const [, payload] = accessToken.split('.');
+  return payload ? decodeBase64UrlJson(payload) : null;
+};
+
+const resolveJwtUserMetadata = (accessToken: string) => {
+  const payload = decodeJwtPayload(accessToken);
+  const userMetadata = payload?.user_metadata;
+  return userMetadata && typeof userMetadata === 'object'
+    ? (userMetadata as Record<string, unknown>)
+    : {};
+};
+
+const hasProfileImageMetadataValue = (metadata: Record<string, unknown>) =>
+  PROFILE_IMAGE_METADATA_KEYS.some((key) => {
+    const value = metadata[key];
+    return typeof value === 'string' && value.trim().length > 0;
+  });
+
+const hasBulkyProfileImageMetadataValue = (metadata: Record<string, unknown>) =>
+  PROFILE_IMAGE_METADATA_KEYS.some((key) => {
+    const value = metadata[key];
+    return (
+      typeof value === 'string' &&
+      (DATA_IMAGE_URL_PATTERN.test(value.trim()) || value.trim().length > MAX_JWT_AVATAR_METADATA_LENGTH)
+    );
+  });
+
+const shouldRepairProfileImageMetadata = (session: Session, accessToken: string) => {
+  const sessionMetadata = resolveSupabaseUserMetadata(session.user);
+  const jwtMetadata = resolveJwtUserMetadata(accessToken);
+
+  return (
+    hasBulkyProfileImageMetadataValue(sessionMetadata) ||
+    hasBulkyProfileImageMetadataValue(jwtMetadata) ||
+    (!isAccessTokenHeaderSafe(accessToken) &&
+      (hasProfileImageMetadataValue(sessionMetadata) || hasProfileImageMetadataValue(jwtMetadata)))
+  );
+};
+
+let activeProfileMetadataRepair: Promise<Session | null> | null = null;
+
+const refreshCurrentSupabaseSession = async () => {
+  const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
+
+  if (refreshError) {
+    throw createSupabaseError(refreshError, 'Unable to refresh your Supabase session.');
+  }
+
+  if (refreshedData.session) {
+    return refreshedData.session;
+  }
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    throw createSupabaseError(error, 'Unable to read your refreshed Supabase session.');
+  }
+
+  return data.session;
+};
+
+const applyRepairedSupabaseSession = async (repair: RepairedSupabaseSessionResponse) => {
+  const accessToken = repair.accessToken?.trim() ?? '';
+  const refreshToken = repair.refreshToken?.trim() ?? '';
+
+  if (!accessToken || !refreshToken || !isAccessTokenHeaderSafe(accessToken)) {
+    throw new Error('EcoTrack could not create a compact Supabase session.');
+  }
+
+  const { data, error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+
+  if (error) {
+    throw createSupabaseError(error, 'Unable to store repaired Supabase session.');
+  }
+
+  return data.session ?? refreshCurrentSupabaseSession();
+};
+
+const repairSupabaseProfileImageMetadata = (session: Session) => {
+  activeProfileMetadataRepair ??= (async () => {
+    const refreshToken = session.refresh_token?.trim() ?? '';
+    if (!refreshToken) {
+      throw new Error(
+        'Your Supabase session cannot be repaired because the refresh token is missing. Sign in again.',
+      );
+    }
+
+    const repair = (await authRequest('/auth/supabase/session/repair-profile-metadata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    })) as RepairedSupabaseSessionResponse;
+
+    return applyRepairedSupabaseSession(repair);
+  })().finally(() => {
+    activeProfileMetadataRepair = null;
+  });
+
+  return activeProfileMetadataRepair;
+};
+
+const resolveSafeSupabaseSession = async (
+  session: Session | null,
+  missingSessionMessage: string,
+) => {
+  const accessToken = session?.access_token?.trim() ?? '';
+  if (!session || !accessToken) {
+    throw new Error(missingSessionMessage);
+  }
+
+  if (isAccessTokenHeaderSafe(accessToken)) {
+    return session;
+  }
+
+  if (shouldRepairProfileImageMetadata(session, accessToken)) {
+    const repairedSession = await repairSupabaseProfileImageMetadata(session);
+    const repairedAccessToken = repairedSession?.access_token?.trim() ?? '';
+
+    if (repairedSession && repairedAccessToken && isAccessTokenHeaderSafe(repairedAccessToken)) {
+      return repairedSession;
+    }
+  }
+
+  clearAccessToken();
+  throw new Error(
+    'Your Supabase session token is too large to send to the EcoTrack API. Remove bulky profile metadata and sign in again.',
+  );
+};
+
 const resolveSupabaseUserProvider = (user: User | null | undefined): AuthUser['provider'] => {
   const appMetadata = resolveSupabaseAppMetadata(user);
   const providerCandidates = [
@@ -206,10 +382,10 @@ export const resolveSupabaseSessionUser = (session: Session | null): AuthUser | 
   const userMetadata = resolveSupabaseUserMetadata(supabaseUser);
   const appMetadata = resolveSupabaseAppMetadata(supabaseUser);
   const role =
-    normalizeMetadataString(userMetadata.role) ??
     normalizeMetadataString(appMetadata.role) ??
+    normalizeMetadataString(userMetadata.role) ??
     DEFAULT_ROLE;
-  const roles = resolveMetadataRoleEntries(userMetadata.roles, appMetadata.roles);
+  const roles = resolveMetadataRoleEntries(appMetadata.roles, userMetadata.roles);
   const resolvedRoles =
     roles.length > 0
       ? roles
@@ -229,8 +405,8 @@ export const resolveSupabaseSessionUser = (session: Session | null): AuthUser | 
       normalizeMetadataString(userMetadata.name) ??
       resolveSupabaseDisplayName(supabaseUser),
     avatarUrl:
-      normalizeMetadataString(userMetadata.avatar_url) ??
-      normalizeMetadataString(userMetadata.picture),
+      normalizeProfileAvatarMetadataString(userMetadata.avatar_url) ??
+      normalizeProfileAvatarMetadataString(userMetadata.picture),
     role,
     roles: resolvedRoles,
     zoneId:
@@ -265,28 +441,30 @@ const resolveAuthenticatedSession = async (
     throw createSupabaseError(error, 'Unable to read the current Supabase session.');
   }
 
-  const accessToken = data.session?.access_token?.trim() ?? '';
-  if (!accessToken) {
-    throw new Error(missingSessionMessage);
-  }
+  const session = await resolveSafeSupabaseSession(data.session ?? null, missingSessionMessage);
+  const accessToken = session.access_token.trim();
 
-  const user = resolveSupabaseSessionUser(data.session ?? null);
+  const user = resolveSupabaseSessionUser(session);
   if (!user) {
     throw new Error('Unable to resolve your EcoTrack session user.');
   }
 
-  setAccessToken(accessToken);
+  if (!setAccessToken(accessToken)) {
+    throw new Error('Your Supabase session token is too large to send to the EcoTrack API.');
+  }
+
   return { accessToken, user };
 };
 
 const syncSupabaseProfileMetadata = async (displayName: string, avatarUrl?: string | null) => {
+  const normalizedAvatarUrl = normalizeProfileAvatarMetadataString(avatarUrl);
   const { error } = await supabase.auth.updateUser({
     data: {
-      avatar_url: avatarUrl ?? null,
+      avatar_url: normalizedAvatarUrl,
       display_name: displayName,
       full_name: displayName,
       name: displayName,
-      picture: avatarUrl ?? null,
+      picture: normalizedAvatarUrl,
     },
   });
 
@@ -294,8 +472,8 @@ const syncSupabaseProfileMetadata = async (displayName: string, avatarUrl?: stri
     throw createSupabaseError(error, 'Unable to update your Supabase profile.');
   }
 
-  const { data } = await supabase.auth.getSession();
-  const accessToken = data.session?.access_token?.trim();
+  const session = await refreshCurrentSupabaseSession();
+  const accessToken = session?.access_token?.trim();
   if (accessToken) {
     setAccessToken(accessToken);
   }
@@ -380,6 +558,8 @@ export const authApi = {
   },
 
   resolveSessionUser: resolveSupabaseSessionUser,
+
+  resolveCurrentSession: resolveAuthenticatedSession,
 
   me: () =>
     authRequest('/me', {}, { invalidateSessionOnUnauthorized: true }) as Promise<{ user: AuthUser }>,

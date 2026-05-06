@@ -6,6 +6,7 @@ import {
   usePlanningZones,
   useRebuildTourRoute,
 } from "../hooks/usePlanning";
+import { useCurrentUser } from "../hooks/useAuth";
 import { usePlanningDraftState } from "../state/PlanningDraftContext";
 import type { RoutePoint } from "../state/planningDraft";
 import "../styles/OperationsPages.css";
@@ -49,6 +50,8 @@ const formatOptimizationAlgorithm = (algorithm: string) => {
 };
 
 export default function ManagerPlanningPage() {
+  const { authState } = useCurrentUser();
+  const isAuthReady = authState === "authenticated";
   const {
     draft,
     setName,
@@ -65,8 +68,8 @@ export default function ManagerPlanningPage() {
     resetOptimization,
     setOptimizationMetrics,
   } = usePlanningDraftState();
-  const zonesQuery = usePlanningZones();
-  const agentsQuery = usePlanningAgents();
+  const zonesQuery = usePlanningZones(isAuthReady);
+  const agentsQuery = usePlanningAgents(isAuthReady);
   const optimizeMutation = useOptimizeTourPlan();
   const createMutation = useCreatePlannedTour();
   const rebuildRouteMutation = useRebuildTourRoute();

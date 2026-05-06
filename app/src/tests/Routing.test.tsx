@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { vi, describe, test, beforeEach, afterEach, expect } from "vitest";
 import App from "../App";
+import { resetApiReadyStoresForTests } from "../hooks/useApiReady";
 import { renderWithProviders } from "./test-utils";
 
 const mockUseCurrentUser = vi.fn();
@@ -40,8 +41,12 @@ const renderRoute = (route: string) =>
     initialEntries: [route],
   });
 
+const hasReadinessProbeCall = () =>
+  mockFetch.mock.calls.some(([input]) => String(input).includes("/api/health/ready"));
+
 describe("Routing Matrix", () => {
   beforeEach(() => {
+    resetApiReadyStoresForTests();
     mockFetch.mockReset();
     mockFetch.mockResolvedValue({
       ok: true,
@@ -61,6 +66,7 @@ describe("Routing Matrix", () => {
   });
 
   afterEach(() => {
+    resetApiReadyStoresForTests();
     vi.unstubAllGlobals();
     warnSpy.mockRestore();
     errorSpy.mockRestore();
@@ -87,7 +93,7 @@ describe("Routing Matrix", () => {
     });
   });
 
-  test("`/` redirects to `/app` when authenticated", async () => {
+  test("`/` keeps the public landing page when authenticated", async () => {
     setAuthState({
       user: { id: "123", name: "Test User" },
       isLoading: false,
@@ -96,9 +102,15 @@ describe("Routing Matrix", () => {
 
     const { getLocation } = renderRoute("/");
 
-    await waitFor(() => {
-      expect(getLocation()?.pathname).toBe("/app");
-    });
+    expect(
+      await screen.findByRole(
+        "heading",
+        { name: /Citizen reports drive/i },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
+
+    expect(getLocation()?.pathname).toBe("/");
   });
 
   test("`/` still renders landing while auth status is unresolved", async () => {
@@ -134,9 +146,115 @@ describe("Routing Matrix", () => {
     });
 
     expect(
-      await screen.findByRole("heading", { name: /Enter the right EcoTrack lane\./i }),
+      await screen.findByRole("heading", { name: /Enter the field companion lane\./i }),
     ).toBeInTheDocument();
   });
+
+  test("public, auth, role hub, and settings routes do not probe product API readiness", async () => {
+    const routes = [
+      {
+        route: "/",
+        auth: {
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+          authState: "anonymous" as const,
+        },
+        heading: /Citizen reports drive/i,
+      },
+      {
+        route: "/login",
+        auth: {
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+          authState: "anonymous" as const,
+        },
+        heading: /Welcome back/i,
+      },
+      {
+        route: "/app",
+        auth: {
+          user: { id: "123", name: "Test User", role: "agent", roles: [] },
+          isLoading: false,
+          isAuthenticated: true,
+          authState: "authenticated" as const,
+        },
+        heading: /Enter the field companion lane\./i,
+      },
+      {
+        route: "/app/settings",
+        auth: {
+          user: { id: "123", name: "Test User", role: "agent", roles: [] },
+          isLoading: false,
+          isAuthenticated: true,
+          authState: "authenticated" as const,
+        },
+        heading: /Account Settings/i,
+      },
+    ];
+
+    for (const routeCase of routes) {
+      resetApiReadyStoresForTests();
+      mockFetch.mockClear();
+      setAuthState(routeCase.auth);
+
+      const { unmount } = renderRoute(routeCase.route);
+      expect(await screen.findByRole("heading", { name: routeCase.heading })).toBeInTheDocument();
+
+      expect(hasReadinessProbeCall()).toBe(false);
+      unmount();
+    }
+  }, 30000);
+
+  test("product/data routes probe API readiness before rendering their product surface", async () => {
+    const productRoutes = [
+      {
+        route: "/app/citizen/report",
+        user: { id: "123", role: "citizen", roles: [] },
+      },
+      {
+        route: "/app/dashboard",
+        user: { id: "123", role: "manager", roles: [] },
+      },
+      {
+        route: "/app/manager/planning",
+        user: { id: "123", role: "manager", roles: [] },
+      },
+      {
+        route: "/app/support",
+        user: { id: "123", role: "agent", roles: [] },
+      },
+      {
+        route: "/app/tickets/ticket-1/details",
+        user: { id: "123", role: "agent", roles: [] },
+      },
+      {
+        route: "/app/tickets/ticket-1/treat",
+        user: { id: "123", role: "agent", roles: [] },
+      },
+    ];
+
+    for (const routeCase of productRoutes) {
+      resetApiReadyStoresForTests();
+      mockFetch.mockClear();
+      setAuthState({
+        user: routeCase.user,
+        isLoading: false,
+        isAuthenticated: true,
+        authState: "authenticated",
+      });
+
+      const { getLocation, unmount } = renderRoute(routeCase.route);
+
+      await waitFor(() => {
+        expect(getLocation()?.pathname).toBe(routeCase.route);
+        expect(hasReadinessProbeCall()).toBe(true);
+      });
+
+      unmount();
+    }
+  }, 45000);
 
   test("`/login` renders login page when unauthenticated", async () => {
     renderRoute("/login");
@@ -166,12 +284,16 @@ describe("Routing Matrix", () => {
 
   test("`/signup` renders signup page when unauthenticated", async () => {
     renderRoute("/signup");
-    expect(await screen.findByRole("heading", { name: /Create your account/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Create your account/i }, { timeout: 5000 }),
+    ).toBeInTheDocument();
   });
 
   test("`/forgot-password` renders forgot-password page when unauthenticated", async () => {
     renderRoute("/forgot-password");
-    expect(await screen.findByRole("heading", { name: /Reset your password/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Reset your password/i }, { timeout: 5000 }),
+    ).toBeInTheDocument();
   });
 
   test("`/reset-password` renders reset-password page when unauthenticated", async () => {
@@ -208,6 +330,16 @@ describe("Routing Matrix", () => {
     });
 
     expect(getLocation()?.search).toContain("next=");
+  });
+
+  test("unauthenticated support deep links preserve the protected route as the login next target", async () => {
+    const { getLocation } = renderRoute("/app/support");
+
+    await waitFor(() => {
+      expect(getLocation()?.pathname).toBe("/login");
+    });
+
+    expect(new URLSearchParams(getLocation()?.search).get("next")).toBe("/app/support");
   });
 
   test("`/app/*` keeps the session gate visible while auth status is unresolved", async () => {

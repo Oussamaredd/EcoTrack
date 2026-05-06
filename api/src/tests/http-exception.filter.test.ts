@@ -35,8 +35,17 @@ describe('HttpExceptionFilter', () => {
     expect(response.status).not.toHaveBeenCalled();
     expect(response.json).not.toHaveBeenCalled();
     expect(loggerErrorSpy).toHaveBeenCalledWith(
-      'GET /api/planning/dashboard 500 (req-123)',
+      expect.stringContaining('"message":"GET /api/planning/dashboard 500 (req-123)"'),
       expect.stringContaining('Error: boom'),
+    );
+    expect(JSON.parse(loggerErrorSpy.mock.calls[0][0] as string)).toEqual(
+      expect.objectContaining({
+        error: 'boom',
+        method: 'GET',
+        path: '/api/planning/dashboard',
+        requestId: 'req-123',
+        statusCode: 500,
+      }),
     );
   });
 });

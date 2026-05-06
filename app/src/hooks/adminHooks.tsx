@@ -1,13 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './useAuth';
 import { useToast } from '../context/ToastContext';
-import { API_BASE, createApiHeaders, createApiRequestError } from '../services/api';
+import {
+  API_BASE,
+  createApiHeaders,
+  createApiRequestError,
+  getApiCredentialsMode,
+  resolveRequestInputUrl,
+} from '../services/api';
 
 const authFetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const { headers, credentials: _credentials, ...restInit } = init;
+  const requestUrl = resolveRequestInputUrl(input);
   const response = await fetch(input, {
-    credentials: 'include',
-    ...init,
-    headers: createApiHeaders(init.headers),
+    ...restInit,
+    credentials: getApiCredentialsMode(requestUrl),
+    headers: createApiHeaders(headers),
   });
 
   if (!response.ok) {
@@ -34,8 +42,7 @@ export function useUsers(filters = {}) {
     queryKey: ['admin-users', filters],
     queryFn: async () => {
       const response = await authFetch(
-        `${API_BASE}/api/admin/users?${params}`,
-        { credentials: 'include' }
+        `${API_BASE}/api/admin/users?${params}`, {}
       );
 
       if (!response.ok) {
@@ -58,8 +65,7 @@ export function useUser(userId) {
     queryKey: ['admin-user', userId],
     queryFn: async () => {
       const response = await authFetch(
-        `${API_BASE}/api/admin/users/${userId}`,
-        { credentials: 'include' }
+        `${API_BASE}/api/admin/users/${userId}`, {}
       );
 
       if (!response.ok) {
@@ -84,8 +90,7 @@ export function useUpdateUserRoles() {
       const response = await authFetch(
         `${API_BASE}/api/admin/users/${userId}/roles`,
         {
-          method: 'PUT',
-          credentials: 'include',
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -129,8 +134,7 @@ export function useUpdateUserStatus() {
       const response = await authFetch(
         `${API_BASE}/api/admin/users/${userId}/status`,
         {
-          method: 'PUT',
-          credentials: 'include',
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -178,8 +182,7 @@ export function useCreateUser() {
       isActive: boolean;
     }) => {
       const response = await authFetch(`${API_BASE}/api/admin/users`, {
-        method: 'POST',
-        credentials: 'include',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -220,8 +223,7 @@ export function useRoles() {
     queryKey: ['admin-roles'],
     queryFn: async () => {
       const response = await authFetch(
-        `${API_BASE}/api/admin/roles`,
-        { credentials: 'include' }
+        `${API_BASE}/api/admin/roles`, {}
       );
 
       if (!response.ok) {
@@ -243,8 +245,7 @@ export function useAvailablePermissions() {
     queryKey: ['admin-permissions'],
     queryFn: async () => {
       const response = await authFetch(
-        `${API_BASE}/api/admin/roles/permissions`,
-        { credentials: 'include' }
+        `${API_BASE}/api/admin/roles/permissions`, {}
       );
 
       if (!response.ok) {
@@ -269,8 +270,7 @@ export function useCreateRole() {
       const response = await authFetch(
         `${API_BASE}/api/admin/roles`,
         {
-          method: 'POST',
-          credentials: 'include',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -314,8 +314,7 @@ export function useUpdateRole() {
       const response = await authFetch(
         `${API_BASE}/api/admin/roles/${roleId}`,
         {
-          method: 'PUT',
-          credentials: 'include',
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -360,8 +359,7 @@ export function useDeleteRole() {
       const response = await authFetch(
         `${API_BASE}/api/admin/roles/${roleId}`,
         {
-          method: 'DELETE',
-          credentials: 'include'
+          method: 'DELETE',
         }
       );
 
@@ -409,8 +407,7 @@ export function useAuditLogs(filters = {}) {
     queryKey: ['admin-audit-logs', filters],
     queryFn: async () => {
       const response = await authFetch(
-        `${API_BASE}/api/admin/audit-logs?${params}`,
-        { credentials: 'include' }
+        `${API_BASE}/api/admin/audit-logs?${params}`, {}
       );
 
       if (!response.ok) {
@@ -432,8 +429,7 @@ export function useAuditStats() {
     queryKey: ['admin-audit-stats'],
     queryFn: async () => {
       const response = await authFetch(
-        `${API_BASE}/api/admin/audit-logs/stats`,
-        { credentials: 'include' }
+        `${API_BASE}/api/admin/audit-logs/stats`, {}
       );
 
       if (!response.ok) {
@@ -456,8 +452,7 @@ export function useSystemSettings() {
     queryKey: ['admin-system-settings'],
     queryFn: async () => {
       const response = await authFetch(
-        `${API_BASE}/api/admin/settings`,
-        { credentials: 'include' }
+        `${API_BASE}/api/admin/settings`, {}
       );
 
       if (!response.ok) {
@@ -481,8 +476,7 @@ export function useUpdateSystemSettings() {
       const response = await authFetch(
         `${API_BASE}/api/admin/settings`,
         {
-          method: 'PUT',
-          credentials: 'include',
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -527,8 +521,7 @@ export function useDispatchTestNotification() {
       recipient?: string;
     }) => {
       const response = await authFetch(`${API_BASE}/api/admin/settings/notifications/test`, {
-        method: 'POST',
-        credentials: 'include',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -569,8 +562,7 @@ export async function getUsers(filters = {}) {
 
   const response = await authFetch(
     `${API_BASE}/api/admin/users?${params}`,
-    {
-      credentials: 'include',
+    {
       headers: {
         'Content-Type': 'application/json'
       },

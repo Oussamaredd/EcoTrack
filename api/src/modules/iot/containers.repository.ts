@@ -25,6 +25,30 @@ type ContainerFilters = {
   offset: number;
 };
 
+const LEGACY_CONTAINER_SIMULATION_COLUMNS = [
+  'fill_rate_per_hour',
+  'last_measurement_at',
+  'last_collected_at',
+];
+
+const isLegacyContainerSimulationColumnError = (error: unknown) => {
+  const candidates = [
+    error instanceof Error ? error.message : null,
+    error && typeof error === 'object' && 'cause' in error && (error as { cause?: unknown }).cause instanceof Error
+      ? (error as { cause: Error }).cause.message
+      : null,
+  ]
+    .filter((value): value is string => typeof value === 'string')
+    .map((value) => value.toLowerCase());
+
+  return candidates.some((message) =>
+    LEGACY_CONTAINER_SIMULATION_COLUMNS.some((column) => message.includes(column)),
+  );
+};
+
+const isLegacyContainerSchemaFallbackEnabled = () =>
+  process.env.ALLOW_LEGACY_CONTAINER_SCHEMA_FALLBACK?.trim().toLowerCase() === 'true';
+
 @Injectable()
 export class ContainersRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DatabaseClient) {}
@@ -34,16 +58,20 @@ export class ContainersRepository {
     const statusFilter = filters.status?.trim().toLowerCase();
     const now = new Date();
 
-    const createListQuery = () => this.db
+    const createListQuery = (includeSimulationColumns: boolean) => this.db
       .select({
         id: containers.id,
         code: containers.code,
         label: containers.label,
         status: containers.status,
         fillLevelPercent: containers.fillLevelPercent,
-        fillRatePerHour: containers.fillRatePerHour,
-        lastMeasurementAt: containers.lastMeasurementAt,
-        lastCollectedAt: containers.lastCollectedAt,
+        ...(includeSimulationColumns
+          ? {
+              fillRatePerHour: containers.fillRatePerHour,
+              lastMeasurementAt: containers.lastMeasurementAt,
+              lastCollectedAt: containers.lastCollectedAt,
+            }
+          : {}),
         latitude: containers.latitude,
         longitude: containers.longitude,
         containerTypeId: containers.containerTypeId,
@@ -62,29 +90,45 @@ export class ContainersRepository {
       .orderBy(asc(containers.code));
 
     const totalQuery = this.db.select({ value: count() }).from(containers);
+    const executeList = async (includeSimulationColumns: boolean): Promise<{ items: any[]; total: number }> => {
+      if (statusFilter) {
+        const unfilteredItems = await (where
+          ? createListQuery(includeSimulationColumns).where(where)
+          : createListQuery(includeSimulationColumns));
+        const filteredItems = this.mapListItems(unfilteredItems, now).filter(
+          (item) => item.status.trim().toLowerCase() === statusFilter,
+        );
 
-    if (statusFilter) {
-      const unfilteredItems = await (where ? createListQuery().where(where) : createListQuery());
-      const filteredItems = this.mapListItems(unfilteredItems, now).filter(
-        (item) => item.status.trim().toLowerCase() === statusFilter,
-      );
+        return {
+          items: filteredItems.slice(filters.offset, filters.offset + filters.limit),
+          total: filteredItems.length,
+        };
+      }
+
+      const listQuery = createListQuery(includeSimulationColumns).limit(filters.limit).offset(filters.offset);
+      const [items, totalRows] = await Promise.all([
+        where ? listQuery.where(where) : listQuery,
+        where ? totalQuery.where(where) : totalQuery,
+      ]);
 
       return {
-        items: filteredItems.slice(filters.offset, filters.offset + filters.limit),
-        total: filteredItems.length,
+        items: this.mapListItems(items, now),
+        total: totalRows[0]?.value ?? items.length,
       };
-    }
-
-    const listQuery = createListQuery().limit(filters.limit).offset(filters.offset);
-    const [items, totalRows] = await Promise.all([
-      where ? listQuery.where(where) : listQuery,
-      where ? totalQuery.where(where) : totalQuery,
-    ]);
-
-    return {
-      items: this.mapListItems(items, now),
-      total: totalRows[0]?.value ?? items.length,
     };
+
+    try {
+      return await executeList(true);
+    } catch (error) {
+      if (
+        !isLegacyContainerSimulationColumnError(error) ||
+        !isLegacyContainerSchemaFallbackEnabled()
+      ) {
+        throw error;
+      }
+
+      return executeList(false);
+    }
   }
 
   async create(dto: CreateContainerDto) {
@@ -450,8 +494,8 @@ export class ContainersRepository {
 
   private mapListItems<T extends {
     fillLevelPercent: number;
-    fillRatePerHour: number;
-    lastMeasurementAt: Date | string | null;
+    fillRatePerHour?: number | null;
+    lastMeasurementAt?: Date | string | null;
     warningFillPercent: number | null;
     criticalFillPercent: number | null;
   }>(items: T[], now: Date) {
@@ -461,8 +505,8 @@ export class ContainersRepository {
       const effectiveFillLevel = ContainerFillSimulationService.calculateEffectiveFillLevel(
         {
           fillLevelPercent: item.fillLevelPercent,
-          fillRatePerHour: item.fillRatePerHour,
-          lastMeasurementAt: item.lastMeasurementAt,
+          fillRatePerHour: item.fillRatePerHour ?? 0,
+          lastMeasurementAt: item.lastMeasurementAt ?? now,
         },
         now,
       );

@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { UserCreateModal } from '../components/admin/UserCreateModal';
 import { renderWithProviders } from './test-utils';
 
-const mockMutateAsync = vi.fn();
+const { mockMutateAsync } = vi.hoisted(() => ({
+  mockMutateAsync: vi.fn(),
+}));
 
 vi.mock('../hooks/adminHooks', () => ({
   useCreateUser: () => ({

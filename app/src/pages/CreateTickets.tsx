@@ -3,6 +3,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import CreateTicket from "../components/CreateTicket";
 import "../styles/CreateTickets.css";
+import "../styles/TicketTheme.css";
 
 export default function CreateTickets() {
   const navigate = useNavigate();

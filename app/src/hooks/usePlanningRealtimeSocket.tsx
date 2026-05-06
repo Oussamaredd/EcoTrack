@@ -9,6 +9,7 @@ import {
   buildApiUrl,
   createApiHeaders,
   createApiRequestError,
+  getApiCredentialsMode,
 } from '../services/api';
 import { queryKeys } from '../state/queryKeys';
 import { reportRealtimeTransportError } from '../utils/errorHandlers';
@@ -39,9 +40,10 @@ class WebSocketSessionRequestError extends Error {
 
 const requestWebSocketSessionToken = async () => {
   for (const endpoint of WEBSOCKET_SESSION_ENDPOINTS) {
-    const response = await fetch(buildApiUrl(endpoint), {
+    const requestUrl = buildApiUrl(endpoint);
+    const response = await fetch(requestUrl, {
       method: 'POST',
-      credentials: 'include',
+      credentials: getApiCredentialsMode(requestUrl),
       headers: createApiHeaders(),
     });
 
@@ -162,7 +164,7 @@ export const usePlanningRealtimeSocket = (enabled: boolean) => {
         socket = io(API_BASE, {
           path: '/api/planning/ws',
           transports: ['websocket'],
-          withCredentials: true,
+          withCredentials: getApiCredentialsMode(API_BASE) === 'include',
           forceNew: true,
           reconnection: false,
           auth: {

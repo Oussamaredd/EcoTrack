@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { eq, gte, isNull, lt, or } from 'drizzle-orm';
 import {
   alertEvents,
+  containerTypes,
   containers,
   eventConnectorExports,
   ingestionEvents,
@@ -76,13 +77,22 @@ export class HealthService {
           this.db
             .select({
               id: containers.id,
+              code: containers.code,
+              label: containers.label,
               fillLevelPercent: containers.fillLevelPercent,
+              fillRatePerHour: containers.fillRatePerHour,
+              lastMeasurementAt: containers.lastMeasurementAt,
+              lastCollectedAt: containers.lastCollectedAt,
               status: containers.status,
               zoneId: containers.zoneId,
               zoneName: zones.name,
+              containerTypeId: containers.containerTypeId,
+              defaultFillAlertPercent: containerTypes.defaultFillAlertPercent,
+              defaultCriticalAlertPercent: containerTypes.defaultCriticalAlertPercent,
             })
             .from(containers)
             .leftJoin(zones, eq(containers.zoneId, zones.id))
+            .leftJoin(containerTypes, eq(containers.containerTypeId, containerTypes.id))
             .limit(1),
           this.db
             .select({

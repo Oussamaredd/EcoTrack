@@ -16,6 +16,7 @@ import {
   buildRedirectUrl,
   getAuthCookieName,
   getCookieSecureFlag,
+  getEnvValue,
   getJwtExpiresIn,
   getJwtSecret,
   getLocalAccessJwtExpiresIn,
@@ -51,6 +52,8 @@ const WEBSOCKET_SESSION_TOKEN_TYPE = 'planning_ws_session';
 const EXCHANGE_CODE_BYTES = 24;
 const EXCHANGE_CODE_TTL_MS = 60_000;
 const STREAM_SESSION_TTL_MS = 120_000;
+const MAX_AUTHORIZATION_HEADER_BYTES = 12_000;
+const SUPABASE_PROFILE_IMAGE_METADATA_KEYS = ['avatar_url', 'picture'] as const;
 
 const stripQueryString = (value: string) => {
   const queryIndex = value.indexOf('?');
@@ -97,6 +100,21 @@ type SerializedZoneAssignment = {
   depotLongitude: string | null;
 };
 
+type SupabaseAuthUserResponse = {
+  id?: string | null;
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+};
+
+type SupabaseSessionResponse = {
+  access_token?: string | null;
+  refresh_token?: string | null;
+  expires_at?: number | null;
+  expires_in?: number | null;
+  token_type?: string | null;
+  user?: SupabaseAuthUserResponse | null;
+};
+
 @Injectable()
 export class AuthService {
   private readonly jwtSecret: Secret | undefined = getJwtSecret() as Secret | undefined;
@@ -113,6 +131,54 @@ export class AuthService {
 
   getSupportedProviders() {
     return ['google', 'local'];
+  }
+
+  async repairOversizedSupabaseProfileMetadata(params: { refreshToken: string }) {
+    const refreshToken = params.refreshToken.trim();
+    if (!refreshToken) {
+      throw new UnauthorizedException('Supabase refresh token is required.');
+    }
+
+    const initialSession = await this.refreshSupabaseSession(refreshToken);
+    const userId = this.resolveSupabaseSessionUserId(initialSession);
+
+    if (!userId) {
+      throw new UnauthorizedException('Unable to resolve Supabase user from refresh token.');
+    }
+
+    const currentMetadata = this.resolveSupabaseUserMetadata(initialSession.user);
+    await this.updateSupabaseUserMetadata(userId, {
+      ...currentMetadata,
+      avatar_url: null,
+      picture: null,
+    });
+
+    const rotatedRefreshToken = initialSession.refresh_token?.trim();
+    if (!rotatedRefreshToken) {
+      throw new UnauthorizedException('Supabase did not return a rotated refresh token.');
+    }
+
+    const repairedSession = await this.refreshSupabaseSession(rotatedRefreshToken);
+    const repairedAccessToken = repairedSession.access_token?.trim() ?? '';
+    const repairedRefreshToken = repairedSession.refresh_token?.trim() ?? '';
+
+    if (!repairedAccessToken || !repairedRefreshToken) {
+      throw new UnauthorizedException('Unable to create a repaired Supabase session.');
+    }
+
+    if (!this.isAccessTokenHeaderSafe(repairedAccessToken)) {
+      throw new BadRequestException(
+        'Supabase session is still too large after profile metadata repair.',
+      );
+    }
+
+    return {
+      accessToken: repairedAccessToken,
+      refreshToken: repairedRefreshToken,
+      expiresAt: repairedSession.expires_at ?? null,
+      expiresIn: repairedSession.expires_in ?? null,
+      tokenType: repairedSession.token_type ?? 'bearer',
+    };
   }
 
   getAuthCookieName() {
@@ -706,6 +772,92 @@ export class AuthService {
     await this.usersService.consumeAllPasswordResetTokensForUser(user.id);
 
     return { success: true };
+  }
+
+  private resolveSupabaseAuthConfig() {
+    const supabaseUrl = getEnvValue('SUPABASE_URL');
+    const serviceRoleKey = getEnvValue('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error(
+        'SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to repair Supabase profile metadata.',
+      );
+    }
+
+    return {
+      supabaseUrl: trimTrailingSlashes(supabaseUrl),
+      serviceRoleKey,
+    };
+  }
+
+  private async refreshSupabaseSession(refreshToken: string): Promise<SupabaseSessionResponse> {
+    const { supabaseUrl, serviceRoleKey } = this.resolveSupabaseAuthConfig();
+    const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: {
+        apikey: serviceRoleKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new UnauthorizedException('Unable to refresh Supabase session for metadata repair.');
+    }
+
+    const payload = (await response.json()) as SupabaseSessionResponse;
+    if (!payload || typeof payload !== 'object') {
+      throw new UnauthorizedException('Supabase returned an invalid session repair response.');
+    }
+
+    return payload;
+  }
+
+  private async updateSupabaseUserMetadata(userId: string, userMetadata: Record<string, unknown>) {
+    const { supabaseUrl, serviceRoleKey } = this.resolveSupabaseAuthConfig();
+    const response = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
+      {
+        method: 'PUT',
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_metadata: userMetadata,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error('Unable to update Supabase profile metadata.');
+    }
+  }
+
+  private resolveSupabaseSessionUserId(session: SupabaseSessionResponse) {
+    const userId = session.user?.id;
+    return typeof userId === 'string' && userId.trim().length > 0 ? userId.trim() : null;
+  }
+
+  private resolveSupabaseUserMetadata(user: SupabaseAuthUserResponse | null | undefined) {
+    const metadata = user?.user_metadata;
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return {};
+    }
+
+    const resolvedMetadata = { ...metadata };
+    for (const key of SUPABASE_PROFILE_IMAGE_METADATA_KEYS) {
+      resolvedMetadata[key] = null;
+    }
+
+    return resolvedMetadata;
+  }
+
+  private isAccessTokenHeaderSafe(accessToken: string) {
+    return Buffer.byteLength(`Bearer ${accessToken}`, 'utf8') <= MAX_AUTHORIZATION_HEADER_BYTES;
   }
 
   private serializeUser(

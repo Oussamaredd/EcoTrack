@@ -30,4 +30,8 @@ export const attachRootHealthRoutes = (
   expressApp.get('/readyz', async (_request: Request, response: Response) => {
     await writeReadinessResponse(response, healthService);
   });
+
+  expressApp.get('/health/ready', async (_request: Request, response: Response) => {
+    await writeReadinessResponse(response, healthService);
+  });
 };

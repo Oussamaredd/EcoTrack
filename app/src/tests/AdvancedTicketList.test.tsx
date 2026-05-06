@@ -54,7 +54,7 @@ vi.mock('../hooks/useTickets', () => {
   return { useTickets: useTicketsMock };
 });
 
-const renderAdvancedList = (initialEntries = ['/app/tickets/advanced?page=1&pageSize=20']) =>
+const renderAdvancedList = (initialEntries = ['/app/tickets/advanced']) =>
   renderWithProviders(<AdvancedTicketList />, {
     path: '/app/tickets/advanced',
     initialEntries,
@@ -69,14 +69,16 @@ describe('AdvancedTicketList Component', () => {
     renderAdvancedList();
 
     expect(screen.getByText('Advanced Tickets')).toBeInTheDocument();
-    expect(screen.getByText('Search, filter, and manage your tickets')).toBeInTheDocument();
+    expect(
+      screen.getByText('Search, filter, and manage support tickets from one queue.'),
+    ).toBeInTheDocument();
   });
 
   test('renders search and filters section', () => {
     renderAdvancedList();
 
     expect(screen.getByLabelText('Search Tickets')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Search by ticket name...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search by ticket name...')).toBeInTheDocument();
     expect(screen.getByText('Show Filters')).toBeInTheDocument();
     expect(screen.getByText('Clear Filters')).toBeInTheDocument();
   });
@@ -100,7 +102,7 @@ describe('AdvancedTicketList Component', () => {
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('Results per page')).toBeInTheDocument();
 
-    expect(screen.getByText('All Status')).toBeInTheDocument();
+    expect(screen.getByText('All statuses')).toBeInTheDocument();
     expect(screen.getByText('Open')).toBeInTheDocument();
     expect(screen.getByText('Completed')).toBeInTheDocument();
   });
@@ -116,7 +118,7 @@ describe('AdvancedTicketList Component', () => {
     expect(screen.getByText('COMPLETED')).toBeInTheDocument();
     expect(screen.getByText('General Help')).toBeInTheDocument();
     expect(screen.getByText('Container Overflow')).toBeInTheDocument();
-    expect(screen.getByText('Treat')).toBeInTheDocument();
+    expect(screen.getAllByText('Treat Ticket')).toHaveLength(2);
   });
 
   test('search functionality works', async () => {
@@ -138,7 +140,7 @@ describe('AdvancedTicketList Component', () => {
 
     fireEvent.click(screen.getByText('Show Filters'));
 
-    const statusSelect = screen.getByDisplayValue('All Status');
+    const statusSelect = screen.getByDisplayValue('All statuses');
     fireEvent.change(statusSelect, { target: { value: 'OPEN' } });
 
     await waitFor(() => {
@@ -163,14 +165,16 @@ describe('AdvancedTicketList Component', () => {
     const { getLocation } = renderAdvancedList();
 
     fireEvent.click(screen.getByText('Show Filters'));
-    const statusSelect = screen.getByDisplayValue('All Status');
+    fireEvent.change(screen.getByLabelText('Search Tickets'), { target: { value: 'Draft query' } });
+    const statusSelect = screen.getByDisplayValue('All statuses');
     fireEvent.change(statusSelect, { target: { value: 'OPEN' } });
 
     fireEvent.click(screen.getByText('Clear Filters'));
 
     await waitFor(() => {
       expect(getLocation()?.search ?? '').not.toContain('status=OPEN');
-      expect(screen.getByDisplayValue('All Status')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('All statuses')).toBeInTheDocument();
+      expect(screen.getByLabelText('Search Tickets')).toHaveValue('');
     });
   });
 
@@ -228,7 +232,7 @@ describe('AdvancedTicketList Component', () => {
     renderAdvancedList();
 
     expect(screen.getByText('No tickets found')).toBeInTheDocument();
-    expect(screen.getByText('??')).toBeInTheDocument();
+    expect(screen.getByText('Create your first ticket.')).toBeInTheDocument();
   });
 
   test('error state displays correctly', () => {
@@ -238,7 +242,7 @@ describe('AdvancedTicketList Component', () => {
         total: 0,
       },
       isLoading: false,
-      error: { message: 'Network error' },
+      error: new Error('Network error'),
     });
 
     renderAdvancedList();

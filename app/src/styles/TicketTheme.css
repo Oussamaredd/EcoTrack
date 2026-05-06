@@ -1,0 +1,441 @@
+/* ticket-theme-unification
+   Centralized visual polish for Support, Ticket Queue, Ticket Creation,
+   Ticket Details, and Ticket Treatment pages.
+   Keep this imported AFTER the legacy ticket/support CSS files.
+*/
+
+.support-workspace-page,
+.advanced-ticket-page,
+.ticket-details-page,
+.ticket-treat-page,
+.list-page,
+.create-page {
+  color: var(--text);
+}
+
+/* Shared shell/card language */
+
+.support-workspace-hero,
+.support-workspace-tabs,
+.support-workspace-card,
+.advanced-ticket-header,
+.advanced-ticket-card,
+.ticket-feedback-state,
+.ticket-items,
+.create-form,
+.ticket-flow-feedback,
+.ticket-details-hero,
+.ticket-treat-page-header,
+.ticket-details-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--gradient-card);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+}
+
+.support-workspace-hero,
+.advanced-ticket-header,
+.ticket-details-hero,
+.ticket-treat-page-header {
+  background:
+    radial-gradient(circle at 92% 8%, hsl(var(--primary) / 0.22), transparent 30%),
+    radial-gradient(circle at 10% 0%, hsl(var(--success-hsl) / 0.12), transparent 34%),
+    var(--gradient-card);
+}
+
+/* Typography */
+
+.support-workspace-hero h1,
+.support-workspace-card h2,
+.advanced-ticket-header h1,
+.advanced-ticket-empty-title,
+.advanced-ticket-name-link,
+.advanced-ticket-category-cell,
+.list-page h1,
+.ticket-item-title,
+.create-page h1,
+.ticket-details-hero h1,
+.ticket-treat-page-header h1,
+.ticket-details-section-header h2,
+.ticket-details-stat-value,
+.ticket-details-activity-label,
+.ticket-details-comment-author {
+  color: var(--text);
+}
+
+.support-workspace-hero p,
+.support-workspace-card > p,
+.support-workspace-tab small,
+.advanced-ticket-header p,
+.advanced-ticket-label,
+.advanced-ticket-total,
+.advanced-ticket-loading-inner,
+.advanced-ticket-table th,
+.advanced-ticket-pagination-summary,
+.advanced-ticket-empty-copy,
+.advanced-ticket-unassigned,
+.ticket-category,
+.create-label,
+.create-hint,
+.ticket-details-hero > p,
+.ticket-treat-page-header > p,
+.ticket-details-stat-label,
+.ticket-details-stat-meta,
+.ticket-details-empty-state,
+.ticket-details-label,
+.ticket-details-comment-role,
+.ticket-details-comment-time,
+.ticket-treat-workflow p {
+  color: var(--text-muted);
+}
+
+.support-workspace-eyebrow,
+.ticket-details-eyebrow {
+  color: hsl(var(--success-hsl));
+}
+
+/* Support workspace tabs */
+
+.support-workspace-tabs {
+  padding: 0.55rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.support-workspace-tab {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.support-workspace-tab:hover {
+  border-color: hsl(var(--primary) / 0.42);
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+.support-workspace-tab:focus-visible {
+  outline: none;
+  border-color: hsl(var(--primary) / 0.68);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.22);
+}
+
+.support-workspace-tab-active {
+  border-color: hsl(var(--primary) / 0.52);
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--primary) / 0.18), transparent 42%),
+    var(--gradient-card);
+  color: var(--text);
+  box-shadow: var(--shadow-glow);
+}
+
+/* Forms */
+
+.advanced-ticket-input,
+.advanced-ticket-select,
+.create-input,
+.ticket-details-input {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.advanced-ticket-input:focus,
+.advanced-ticket-input:focus-visible,
+.advanced-ticket-select:focus,
+.advanced-ticket-select:focus-visible,
+.create-input:focus,
+.create-input:focus-visible,
+.ticket-details-input:focus,
+.ticket-details-input:focus-visible {
+  outline: none;
+  border-color: hsl(var(--primary) / 0.68);
+  background: var(--surface-strong);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+}
+
+.advanced-ticket-input::placeholder,
+.create-input::placeholder,
+.ticket-details-input::placeholder {
+  color: var(--text-muted);
+}
+
+.support-workspace-card .create-form {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* Buttons */
+
+.advanced-ticket-primary-btn,
+.advanced-ticket-treat-link,
+.advanced-ticket-page-btn-active,
+.ticket-action-link,
+.create-submit,
+.ticket-details-primary-btn {
+  border-color: transparent;
+  background: var(--gradient-primary);
+  color: hsl(var(--primary-foreground));
+  box-shadow: var(--shadow-glow);
+}
+
+.advanced-ticket-secondary-btn,
+.advanced-ticket-page-btn,
+.ticket-details-back-link,
+.ticket-details-secondary-btn {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.advanced-ticket-secondary-btn:hover:not(:disabled),
+.advanced-ticket-page-btn:hover:not(:disabled),
+.ticket-details-back-link:hover,
+.ticket-details-secondary-btn:hover {
+  border-color: hsl(var(--primary) / 0.42);
+  background: var(--gradient-card);
+  box-shadow: var(--shadow-glow);
+}
+
+.advanced-ticket-link-btn,
+.advanced-ticket-inline-btn,
+.advanced-ticket-name-link:hover,
+.ticket-feedback-state a,
+.ticket-details-inline-link {
+  color: var(--accent-soft);
+}
+
+.advanced-ticket-link-btn:hover,
+.advanced-ticket-inline-btn:hover,
+.ticket-details-inline-link:hover {
+  color: var(--text);
+}
+
+.advanced-ticket-primary-btn:focus-visible,
+.advanced-ticket-secondary-btn:focus-visible,
+.advanced-ticket-link-btn:focus-visible,
+.advanced-ticket-page-btn:focus-visible,
+.advanced-ticket-inline-btn:focus-visible,
+.ticket-action-link:focus-visible,
+.ticket-delete-btn:focus-visible,
+.create-submit:focus-visible,
+.ticket-details-primary-btn:focus-visible,
+.ticket-details-back-link:focus-visible,
+.ticket-details-secondary-btn:focus-visible,
+.ticket-details-action-btn:focus-visible,
+.ticket-details-inline-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.22);
+}
+
+/* Advanced queue */
+
+.advanced-ticket-expanded-filters,
+.ticket-details-stat,
+.ticket-details-activity-item,
+.ticket-details-comment-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.advanced-ticket-table thead tr {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.advanced-ticket-table td {
+  border-top: 1px solid var(--border);
+}
+
+.advanced-ticket-row {
+  background: transparent;
+}
+
+.advanced-ticket-row:hover,
+.ticket-item:hover {
+  background: hsl(var(--primary) / 0.08);
+}
+
+.advanced-ticket-spinner {
+  border-color: hsl(var(--foreground) / 0.16);
+  border-top-color: hsl(var(--primary));
+}
+
+/* Simple queue */
+
+.ticket-items {
+  overflow: hidden;
+}
+
+.ticket-item {
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+}
+
+.ticket-delete-btn {
+  border-color: hsl(var(--danger-hsl) / 0.34);
+  background: hsl(var(--danger-hsl) / 0.12);
+  color: hsl(var(--danger-foreground));
+}
+
+/* Ticket details */
+
+.ticket-details-card {
+  overflow: hidden;
+}
+
+.ticket-details-section-header,
+.ticket-details-comment-form {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.ticket-details-activity-list,
+.ticket-details-comments-wrap {
+  background: transparent;
+}
+
+.ticket-details-activity-item-owned {
+  border-color: hsl(var(--primary) / 0.38);
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--primary) / 0.14), transparent 44%),
+    var(--surface);
+}
+
+.ticket-details-activity-copy,
+.ticket-details-comment-body {
+  color: var(--text);
+}
+
+/* Semantic badges and statuses */
+
+.advanced-ticket-status,
+.ticket-priority,
+.ticket-status,
+.ticket-details-badge,
+.ticket-details-activity-badge,
+.ticket-details-action-btn {
+  border: 1px solid var(--border);
+}
+
+.advanced-ticket-status-open,
+.ticket-status-open,
+.ticket-details-badge-warning,
+.ticket-details-activity-badge-warning,
+.ticket-details-action-btn-edit {
+  border-color: hsl(var(--warning-hsl) / 0.36);
+  background: hsl(var(--warning-hsl) / 0.14);
+  color: hsl(var(--warning-hsl));
+}
+
+.advanced-ticket-status-completed,
+.ticket-status-closed,
+.ticket-details-badge-success,
+.ticket-details-activity-badge-success,
+.ticket-details-action-btn-save {
+  border-color: hsl(var(--success-hsl) / 0.34);
+  background: hsl(var(--success-hsl) / 0.13);
+  color: hsl(var(--success-hsl));
+}
+
+.ticket-priority-high,
+.advanced-ticket-priority-high,
+.ticket-details-badge-danger,
+.ticket-details-activity-badge-danger,
+.ticket-details-action-btn-delete {
+  border-color: hsl(var(--danger-hsl) / 0.36);
+  background: hsl(var(--danger-hsl) / 0.13);
+  color: hsl(var(--danger-hsl));
+}
+
+.ticket-priority-medium,
+.advanced-ticket-priority-medium,
+.ticket-details-badge-info,
+.ticket-details-activity-badge-info {
+  border-color: hsl(var(--info-hsl) / 0.34);
+  background: hsl(var(--info-hsl) / 0.12);
+  color: hsl(var(--info-hsl));
+}
+
+.ticket-priority-low,
+.advanced-ticket-priority-low,
+.ticket-details-badge-neutral,
+.ticket-details-activity-badge-neutral,
+.ticket-details-action-btn-cancel {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+/* Error states */
+
+.advanced-ticket-feedback,
+.ticket-feedback-state-error,
+.ticket-delete-error,
+.create-error,
+.ticket-flow-feedback-error {
+  border: 1px solid hsl(var(--danger-hsl) / 0.42);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--danger-hsl) / 0.14), transparent 44%),
+    var(--surface);
+  color: hsl(var(--danger-foreground));
+  box-shadow: var(--shadow-soft);
+}
+
+.advanced-ticket-error-text {
+  color: hsl(var(--danger-foreground));
+}
+
+/* Loading states */
+
+.ticket-flow-feedback-loading {
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+/* ticket-flat-surfaces: remove local glow from support/ticket sections */
+
+.support-workspace-hero,
+.support-workspace-tabs,
+.support-workspace-card,
+.advanced-ticket-header,
+.advanced-ticket-card,
+.ticket-details-hero,
+.ticket-treat-page-header,
+.ticket-details-card,
+.ticket-flow-feedback,
+.ticket-details-stat,
+.ticket-details-activity-item,
+.ticket-details-comment-item,
+.advanced-ticket-expanded-filters,
+.ticket-items,
+.ticket-item {
+  background: var(--section-surface) !important;
+  box-shadow: var(--section-shadow) !important;
+}
+
+.ticket-details-section-header,
+.ticket-details-comment-form,
+.advanced-ticket-table thead tr,
+.advanced-ticket-row,
+.support-workspace-tab,
+.advanced-ticket-page-btn,
+.ticket-feedback-state {
+  background: var(--section-surface-strong) !important;
+}
+
+.support-workspace-eyebrow,
+.ticket-details-eyebrow {
+  color: var(--text-muted) !important;
+}

@@ -12,10 +12,20 @@ const resolveModuleDirectory = () => {
   return process.cwd();
 };
 
+const resolveRepoRootEnvPath = () => {
+  const moduleDirectory = resolveModuleDirectory();
+  return path.resolve(moduleDirectory, '..', '..', '..', '.env');
+};
+
 const resolveApiEnvPath = () => {
   const explicitEnvPath = process.env.ECOTRACK_API_ENV_FILE?.trim();
   if (explicitEnvPath) {
     return explicitEnvPath;
+  }
+
+  const repoRootEnvPath = resolveRepoRootEnvPath();
+  if (fs.existsSync(repoRootEnvPath)) {
+    return repoRootEnvPath;
   }
 
   const currentWorkingDirectory = process.cwd();
@@ -24,8 +34,7 @@ const resolveApiEnvPath = () => {
     return workingDirectoryEnvPath;
   }
 
-  const moduleDirectory = resolveModuleDirectory();
-  return path.resolve(moduleDirectory, '..', '..', '..', '.env');
+  return repoRootEnvPath;
 };
 
 const resolvedApiEnvPath = resolveApiEnvPath();

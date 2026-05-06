@@ -15,11 +15,12 @@ EcoTrack is mobile-first for citizens. The web citizen flow remains available as
 
 ## Typical flow
 
-1. After sign-in, open `/app`. If this is your first citizen report, EcoTrack prioritizes a focused onboarding card with one primary action: `Report an issue`.
-2. Open `Citizen Reporting`, locate an existing mapped container, review the latest known status or fill context, and submit the matching typed issue. On web, GPS is optional; if location is unavailable, continue with manual mapped-container selection.
-3. Confirm the success message after submission. If the same typed issue was already reported by another citizen recently, EcoTrack records your confirmation against the existing signal instead of creating a duplicate manager alert.
-4. Return to `/app` for the lighter citizen lane, then open `Impact & History` to review report status, resolved-report totals, and current follow-up visibility.
-5. Open `Citizen Challenges` to enroll and track progress.
+1. After sign-in, open `/app`. EcoTrack shows the shared role hub with citizen-specific onboarding copy, then routes the `Citizen Reporting` action to the report flow.
+2. Open `Citizen Reporting`. If the reporting backend or mapped-container context is still starting, EcoTrack shows the shared `Loading EcoTrack` screen first; this means the feature is loading, not that reporting is forbidden.
+3. Locate an existing mapped container, review the latest known status or fill context, and submit the matching typed issue. On web, GPS is optional; if location is unavailable, continue with manual mapped-container selection.
+4. Confirm the success message after submission. If the same typed issue was already reported by another citizen recently, EcoTrack records your confirmation against the existing signal instead of creating a duplicate manager alert.
+5. Return to `/app` for the role-aware citizen lane, then open `Impact & History` to review report status, resolved-report totals, and current follow-up visibility.
+6. Open `Citizen Challenges` to enroll and track progress.
 
 ## Current feedback-loop truth
 

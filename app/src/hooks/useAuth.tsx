@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { AUTH_SESSION_INVALIDATED_EVENT } from '../services/api';
 import { authApi, type AuthSuccess, type AuthUser } from '../services/authApi';
+import { clearPendingAuthRedirect } from '../services/authRedirect';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../services/authToken';
 import { supabase } from '../services/supabase';
 
@@ -35,41 +36,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   });
   const isMountedRef = useRef(true);
   const isLoading = authState === 'unknown';
-  const isAuthenticated = authState === 'authenticated' || Boolean(user);
+  const isAuthenticated = authState === 'authenticated' && Boolean(user);
 
   const applyAuthenticatedState = useCallback((nextUser: AuthUser | null) => {
     setUser(nextUser);
   }, []);
 
-  const refreshAuth = useCallback(async function refreshAuthInternal() {
-    setAuthState('unknown');
-    const { data, error } = await supabase.auth.getSession();
-
-    if (!isMountedRef.current) {
-      return;
-    }
-
-    if (error) {
-      clearAccessToken();
-      applyAuthenticatedState(null);
-      setAuthState('anonymous');
-      return;
-    }
-
-    const accessToken = data.session?.access_token?.trim() ?? '';
-    const nextUser = authApi.resolveSessionUser(data.session ?? null);
-
-    if (accessToken && nextUser) {
-      setAccessToken(accessToken);
-      applyAuthenticatedState(nextUser);
-      setAuthState('authenticated');
-      return;
-    }
-
+  const applyAnonymousState = useCallback(() => {
     clearAccessToken();
     applyAuthenticatedState(null);
     setAuthState('anonymous');
   }, [applyAuthenticatedState]);
+
+  const refreshAuth = useCallback(async function refreshAuthInternal() {
+    setAuthState('unknown');
+    try {
+      const session = await authApi.resolveCurrentSession();
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      setAccessToken(session.accessToken);
+      applyAuthenticatedState(session.user);
+      setAuthState('authenticated');
+    } catch {
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      applyAnonymousState();
+    }
+  }, [applyAnonymousState, applyAuthenticatedState]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -77,9 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const handleSessionInvalidated = () => {
-      clearAccessToken();
-      applyAuthenticatedState(null);
-      setAuthState('anonymous');
+      applyAnonymousState();
       void supabase.auth.signOut({ scope: 'local' });
     };
 
@@ -87,38 +83,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       window.removeEventListener(AUTH_SESSION_INVALIDATED_EVENT, handleSessionInvalidated);
     };
-  }, [applyAuthenticatedState]);
+  }, [applyAnonymousState]);
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
-        clearAccessToken();
-        applyAuthenticatedState(null);
-        setAuthState('anonymous');
+        applyAnonymousState();
         return;
       }
 
-      const accessToken = session?.access_token?.trim() ?? '';
-      const nextUser = authApi.resolveSessionUser(session);
+      if (session?.access_token) {
+        setAuthState('unknown');
+        void (async () => {
+          try {
+            const nextSession = await authApi.resolveCurrentSession();
+            if (!isMountedRef.current) {
+              return;
+            }
 
-      if (accessToken && nextUser) {
-        setAccessToken(accessToken);
-        applyAuthenticatedState(nextUser);
-        setAuthState('authenticated');
+            setAccessToken(nextSession.accessToken);
+            applyAuthenticatedState(nextSession.user);
+            setAuthState('authenticated');
+          } catch {
+            if (!isMountedRef.current) {
+              return;
+            }
+
+            applyAnonymousState();
+          }
+        })();
         return;
       }
 
-      clearAccessToken();
-      applyAuthenticatedState(null);
-      setAuthState('anonymous');
+      applyAnonymousState();
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [applyAuthenticatedState]);
+  }, [applyAnonymousState, applyAuthenticatedState]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -150,11 +155,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch {
       // No-op: local session is always cleared client-side.
     } finally {
-      clearAccessToken();
-      applyAuthenticatedState(null);
-      setAuthState('anonymous');
+      clearPendingAuthRedirect();
+      applyAnonymousState();
     }
-  }, [applyAuthenticatedState]);
+  }, [applyAnonymousState]);
 
   const getAuthHeaders = useCallback((): Record<string, string> => {
     const token = getAccessToken();

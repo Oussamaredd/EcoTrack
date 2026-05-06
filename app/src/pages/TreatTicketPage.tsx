@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useParams } from "react-router-dom";
 import TreatTicket from "../components/TreatTicket";
 import "../styles/TicketWorkflow.css";
+import "../styles/TicketTheme.css";
 
 export default function TreatTicketPage() {
   const { id } = useParams<{ id: string }>();

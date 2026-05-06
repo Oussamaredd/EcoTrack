@@ -23,6 +23,17 @@ type StandardErrorBody = {
   details?: unknown;
 };
 
+type ErrorDiagnostics = {
+  cause?: string;
+  code?: unknown;
+  severity?: unknown;
+  detail?: unknown;
+  hint?: unknown;
+  schema_name?: unknown;
+  table_name?: unknown;
+  column_name?: unknown;
+};
+
 @Injectable()
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -48,10 +59,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (response.headersSent) {
       if (normalizedError.statusCode >= 500) {
-        this.logger.error(
-          `${request.method} ${request.originalUrl ?? request.url} ${normalizedError.statusCode} (${requestId})`,
-          normalizedError.logStack,
-        );
+        this.logServerError(request, normalizedError, requestId);
       }
 
       return;
@@ -61,11 +69,33 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(normalizedError.statusCode).json(body);
 
     if (normalizedError.statusCode >= 500) {
-      this.logger.error(
-        `${request.method} ${request.originalUrl ?? request.url} ${normalizedError.statusCode} (${requestId})`,
-        normalizedError.logStack,
-      );
+      this.logServerError(request, normalizedError, requestId);
     }
+  }
+
+  private logServerError(
+    request: Request,
+    normalizedError: {
+      statusCode: number;
+      message: string;
+      details?: unknown;
+      logStack?: string;
+      diagnostics?: ErrorDiagnostics;
+    },
+    requestId: string,
+  ) {
+    this.logger.error(
+      JSON.stringify({
+        message: `${request.method} ${request.originalUrl ?? request.url} ${normalizedError.statusCode} (${requestId})`,
+        requestId,
+        method: request.method,
+        path: request.originalUrl ?? request.url,
+        statusCode: normalizedError.statusCode,
+        error: normalizedError.message,
+        ...(normalizedError.diagnostics ?? {}),
+      }),
+      normalizedError.logStack,
+    );
   }
 
   private normalizeException(exception: unknown): {
@@ -73,6 +103,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     message: string;
     details?: unknown;
     logStack?: string;
+    diagnostics?: ErrorDiagnostics;
   } {
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
@@ -118,6 +149,60 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: fallbackMessage,
       logStack: exception instanceof Error ? exception.stack : undefined,
+      diagnostics: this.extractErrorDiagnostics(exception),
     };
+  }
+
+  private extractErrorDiagnostics(exception: unknown): ErrorDiagnostics | undefined {
+    const exceptionRecord = this.asErrorRecord(exception);
+    const causeRecord = this.asErrorRecord(
+      exception instanceof Error ? exception.cause : exceptionRecord?.cause,
+    );
+    const source = causeRecord ?? exceptionRecord;
+
+    if (!source) {
+      return undefined;
+    }
+
+    const diagnostics: ErrorDiagnostics = {};
+    const causeMessage = this.readErrorMessage(exception instanceof Error ? exception.cause : source.cause);
+    if (causeMessage) {
+      diagnostics.cause = causeMessage;
+    }
+
+    for (const key of [
+      'code',
+      'severity',
+      'detail',
+      'hint',
+      'schema_name',
+      'table_name',
+      'column_name',
+    ] as const) {
+      const value = source[key] ?? exceptionRecord?.[key];
+      if (value !== undefined) {
+        diagnostics[key] = value;
+      }
+    }
+
+    return Object.keys(diagnostics).length > 0 ? diagnostics : undefined;
+  }
+
+  private asErrorRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+  }
+
+  private readErrorMessage(value: unknown): string | undefined {
+    if (value instanceof Error && value.message.trim().length > 0) {
+      return value.message;
+    }
+
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+
+    const record = this.asErrorRecord(value);
+    const message = record?.message;
+    return typeof message === 'string' && message.trim().length > 0 ? message : undefined;
   }
 }

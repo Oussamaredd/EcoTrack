@@ -8,8 +8,9 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const apiRoot = path.resolve(currentDir, "..");
 const apiEntryPoint = path.join(apiRoot, "dist/main.js");
 const apiListeningPattern = /API listening on /;
-const watchSuccessPattern = /^Found (\d+) errors?\. Watching for file changes\.$/;
-const watchRebuildPattern = /^File change detected\. Starting incremental compilation\.\.\.$/;
+const apiReadyPath = "/api/health/ready";
+const watchSuccessPattern = /Found (\d+) errors?\. Watching for file changes\.$/;
+const watchRebuildPattern = /File change detected\. Starting incremental compilation\.\.\.$/;
 const tscEntrypoints = [
   path.resolve(apiRoot, "node_modules/typescript/bin/tsc"),
   path.resolve(apiRoot, "../node_modules/typescript/bin/tsc"),
@@ -43,6 +44,51 @@ const logWithPrefix = (prefix, line, method = "log") => {
   }
 
   console[method](`[${prefix}] ${line}`);
+};
+
+const resolveApiPort = () => {
+  const parsed = Number.parseInt(process.env.API_PORT ?? process.env.PORT ?? "", 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 3001;
+};
+
+const resolveApiHost = () => {
+  const configuredHost = process.env.API_HOST?.trim();
+  return configuredHost && configuredHost !== "0.0.0.0" ? configuredHost : "127.0.0.1";
+};
+
+const wait = (durationMs) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, durationMs);
+  });
+
+const waitForApiReadiness = async () => {
+  const readyUrl = `http://${resolveApiHost()}:${resolveApiPort()}${apiReadyPath}`;
+  const startedAt = Date.now();
+
+  while (!isShuttingDown && apiProcess && Date.now() - startedAt < 120_000) {
+    try {
+      const response = await fetch(readyUrl, {
+        method: "GET",
+        cache: "no-store",
+        signal: AbortSignal.timeout(2000),
+      });
+
+      if (response.ok) {
+        console.log(`[api-dev] API readiness confirmed at ${readyUrl}.`);
+        resolveApiReady?.();
+        return;
+      }
+    } catch {
+      // The runtime may still be initializing Nest modules or database providers.
+    }
+
+    await wait(1500);
+  }
+
+  if (!isShuttingDown && apiProcess) {
+    console.warn(`[api-dev] API readiness has not passed yet at ${readyUrl}; keeping the runtime alive.`);
+    resolveApiReady?.();
+  }
 };
 
 const attachLineReaders = (child, prefix, onStdoutLine) => {
@@ -81,13 +127,14 @@ const startApiProcess = (reason) => {
   apiProcess = child;
   attachLineReaders(child, "api", (line) => {
     if (apiListeningPattern.test(line)) {
-      resolveApiReady?.();
+      void waitForApiReadiness();
     }
   });
 
   child.on("exit", (code, signal) => {
     const wasRestart = restartRequested;
     apiProcess = null;
+    resolveApiReady?.();
 
     if (isShuttingDown) {
       return;
@@ -248,34 +295,21 @@ if (!hasExistingBuild) {
   console.log("[api-dev] No existing dist build was found. The initial TypeScript build will create it.");
 }
 
-if (hasExistingBuild) {
-  startApiProcess("existing dist");
-  console.log(
-    "[api-dev] Waiting for the current dist build to become healthy before refreshing it.",
-  );
-  await apiReadyPromise;
+const initialBuildSucceeded = await runTypeScriptBuild();
 
-  const refreshBuildSucceeded = await runTypeScriptBuild();
-  if (refreshBuildSucceeded) {
-    console.log(
-      "[api-dev] Fresh dist is ready. The current runtime stays online for startup speed; the next successful rebuild will reload the API.",
-    );
-  } else {
-    console.error(
-      "[api-dev] Fresh dist build failed. Keeping the current runtime online and starting TypeScript watch for recovery.",
-    );
-  }
-} else {
-  const initialBuildSucceeded = await runTypeScriptBuild();
-
-  if (!initialBuildSucceeded) {
-    console.error("[api-dev] Cannot start the API because the initial TypeScript build did not succeed.");
-    process.exitCode = 1;
-    process.exit();
-  }
-
-  startApiProcess("fresh dist after the initial TypeScript build");
-  await apiReadyPromise;
+if (!initialBuildSucceeded && !hasExistingBuild) {
+  console.error("[api-dev] Cannot start the API because the initial TypeScript build did not succeed.");
+  process.exitCode = 1;
+  process.exit();
 }
+
+if (!initialBuildSucceeded) {
+  console.error(
+    "[api-dev] Fresh dist build failed. Starting the existing runtime and TypeScript watch for recovery.",
+  );
+}
+
+startApiProcess(initialBuildSucceeded ? "fresh dist after the initial TypeScript build" : "existing dist fallback");
+await apiReadyPromise;
 
 startTypeScriptWatch();

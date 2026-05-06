@@ -7,6 +7,7 @@ import {
   buildApiUrl,
   createApiHeaders,
   createApiRequestError,
+  getApiCredentialsMode,
 } from '../services/api';
 import { queryKeys } from '../state/queryKeys';
 import { reportRealtimeTransportError } from '../utils/errorHandlers';
@@ -43,9 +44,10 @@ const toStreamUrl = (sessionToken: string, lastEventId: string | null) => {
 
 const requestStreamSessionToken = async () => {
   for (const endpoint of STREAM_SESSION_ENDPOINTS) {
-    const response = await fetch(buildApiUrl(endpoint), {
+    const requestUrl = buildApiUrl(endpoint);
+    const response = await fetch(requestUrl, {
       method: 'POST',
-      credentials: 'include',
+      credentials: getApiCredentialsMode(requestUrl),
       headers: createApiHeaders(),
     });
 
@@ -180,8 +182,9 @@ export const usePlanningRealtimeStream = (enabled: boolean) => {
           return;
         }
 
-        eventSource = new window.EventSource(toStreamUrl(streamSessionToken, lastEventId), {
-          withCredentials: true,
+        const streamUrl = toStreamUrl(streamSessionToken, lastEventId);
+        eventSource = new window.EventSource(streamUrl, {
+          withCredentials: getApiCredentialsMode(streamUrl) === 'include',
         });
       } catch (error) {
         reportRealtimeTransportError(error, 'planning.realtime.stream.session');

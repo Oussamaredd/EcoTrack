@@ -40,7 +40,7 @@ Managed Postgres baseline note:
 - `DATABASE_POOL_MAX` for the application-side postgres client pool ceiling
 - `SUPABASE_URL` for API-side verification of Supabase Auth JWTs and other server-to-Supabase auth lookups that do not require admin scope
 - `API_PORT` for API listen port (canonical; hosted runtimes may fall back to injected `PORT` only when `API_PORT` is unset)
-- `API_BASE_URL` for backend-generated public API URLs (for example OAuth callback URLs at the frontend edge)
+- `API_BASE_URL` for backend-generated API URLs (for example legacy OAuth callback URLs on the backend API origin)
 - `ROUTING_API_BASE_URL` for backend road-routing service lookups
 - `ROUTING_TIMEOUT_MS` for routing-call timeout before the circuit breaker records a failure
 - `ROUTING_FAILURE_THRESHOLD` for consecutive routing failures required to open the circuit breaker
@@ -54,6 +54,7 @@ Managed Postgres baseline note:
 - `IOT_VALIDATED_CONSUMER_BATCH_SIZE` for the maximum validated-event deliveries drained per consumer batch
 - `IOT_INGESTION_SHARD_COUNT` for the number of virtual partitions used by the staged-ingestion worker
 - `IOT_VALIDATED_CONSUMER_SHARD_COUNT` for the number of virtual partitions used by the validated-event consumer
+- `ALLOW_LEGACY_CONTAINER_SCHEMA_FALLBACK` to explicitly allow legacy container-list reads while a non-current development database is being repaired
 - `PLANNING_SSE_ENABLED` to enable or disable the planning SSE transport
 - `PLANNING_WEBSOCKET_ENABLED` to enable or disable the planning websocket transport
 - `PLANNING_REALTIME_INTERVAL_MS` for the planning websocket snapshot interval and SSE keepalive/snapshot interval
@@ -80,7 +81,7 @@ Managed Postgres baseline note:
 - `ENABLE_LOGSTASH` to mirror structured API and worker logs to the TCP log shipper
 - `LOGSTASH_HOST` for the log shipping target hostname
 - `LOGSTASH_PORT` for the log shipping target TCP port
-- `VITE_API_BASE_URL` for the browser-facing API base URL (normally the frontend origin in proxied runtimes)
+- `VITE_API_BASE_URL` for the browser-facing API base URL (the backend API origin in host dev; the frontend origin only when the edge proxy is explicitly enabled)
 - `VITE_SUPABASE_URL` for the browser Supabase project URL used by client-side auth flows
 - `VITE_SUPABASE_PUBLISHABLE_KEY` for the browser-safe Supabase publishable key used by client-side auth flows
 - `VITE_API_TELEMETRY_ENABLED` to allow or suppress frontend telemetry posts back into the API
@@ -112,16 +113,16 @@ Agent tour mapping note:
 - `JWT_ACCESS_SECRET` for local access-token signing (Bearer JWT)
 - `JWT_ACCESS_EXPIRES_IN` for local access-token TTL (for example `15m`)
 - `GOOGLE_CLIENT_ID` must be a Google OAuth Web client ID (`<numeric-project-id>-<client>.apps.googleusercontent.com`)
-- `GOOGLE_CALLBACK_URL` for OAuth redirect callback (required in deploy templates; canonical path is fixed and should match `API_BASE_URL + /api/auth/google/callback`)
-- `SUPABASE_SERVICE_ROLE_KEY` is server-only and should be used only for trusted admin or migration scripts such as the Supabase Auth user import, never for browser/mobile clients
+- `GOOGLE_CALLBACK_URL` for the legacy backend OAuth redirect callback (canonical path is fixed and should match `API_BASE_URL + /api/auth/google/callback`; browser Google sign-in uses Supabase Auth directly)
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only and should be used only by trusted backend/admin workflows, including API-side Supabase Auth token introspection when JWKS verification is unavailable and migration scripts such as the Supabase Auth user import; never expose it to browser/mobile clients
+- Supabase authorization claims for elevated access should live in trusted `app_metadata.role` or `app_metadata.roles`; the web shell and API role linker prefer those app metadata claims before falling back to compatibility defaults.
 - `API_BASE_URL` accepts only absolute `http`/`https` URLs with no credentials, query string, or hash, and its path must normalize to `/` or `/api`.
 
 ## Port Contract
 
 - Local/native dev:
   - Browser entrypoint: `http://localhost:5173`
-  - Public edge API/health: `http://localhost:5173/api` and `http://localhost:5173/health`
-  - API process listen port for direct local diagnostics: `http://localhost:3001`
+  - Backend API/readiness origin: `http://localhost:3001/api` and `http://localhost:3001/api/health/ready`
 - Docker dev:
   - Sole browser entrypoint: `http://localhost:3000`
   - Public edge API/health: `http://localhost:3000/api` and `http://localhost:3000/health`
@@ -131,7 +132,7 @@ Agent tour mapping note:
   - `EXPO_PUBLIC_API_BASE_URL` must resolve to an API origin reachable from the active emulator, simulator, or physical device.
 - `API_PORT` is the backend listen port, not the browser entrypoint.
 - Hosted runtimes may inject `PORT`; the API runtime treats it as a platform fallback only when `API_PORT` is not set.
-- `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public edge origin, not the direct API listen port.
+- `API_BASE_URL` must resolve to the backend API origin. `VITE_API_BASE_URL` normally uses that same backend origin in host dev and may resolve to the public edge origin only when the frontend edge proxy is enabled.
 - `EXPO_PUBLIC_API_BASE_URL` must resolve to the public API origin used by the native client, not to database/internal service hosts.
 - `VITE_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_URL` must point at the same Supabase project that backs `SUPABASE_URL` on the API side.
 - `VITE_SUPABASE_PUBLISHABLE_KEY` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are public-client keys only; never place `SUPABASE_SERVICE_ROLE_KEY` in browser or mobile env files.
@@ -183,6 +184,7 @@ Agent tour mapping note:
 - `IOT_VALIDATED_CONSUMER_BATCH_SIZE` for the maximum validated-event deliveries drained per worker batch (default `250`)
 - `IOT_INGESTION_SHARD_COUNT` for the number of virtual shards used by the staged-ingestion queue and recovery loop (default `12`)
 - `IOT_VALIDATED_CONSUMER_SHARD_COUNT` for the number of virtual shards used by the validated-delivery queue and recovery loop (default `12`)
+- `ALLOW_LEGACY_CONTAINER_SCHEMA_FALLBACK` allows `/api/containers` to omit fill-simulation columns for a deliberately legacy database only when set to `true` (default `false`)
 
 ## Optional Planning Realtime And Feature Flags
 
@@ -280,6 +282,7 @@ Agent tour mapping note:
 - Wildcard (`*`) is forbidden because API/WS CORS is credentialed.
 - Deploy workflows (`deploy-dev`, `deploy-staging`, `deploy-prod`) should use HTTPS origins only (localhost exceptions are for controlled local checks).
 - `APP_URL` should use one of the origins listed in `CORS_ORIGINS`.
+- Non-production development runtimes keep `CORS_ORIGINS` as the canonical allowlist but also accept loopback browser origins (`localhost`, `127.0.0.1`, or `[::1]`) on alternate Vite ports. This prevents cold-start readiness from succeeding while the next authenticated API preflight fails because Vite selected a fallback local port. Production remains explicit-only.
 
 ### Environment Defaults
 
@@ -295,18 +298,25 @@ Use `docs/operations/runbooks/CORS_ORIGIN_MANAGEMENT.md` for origin ownership, c
 - Fast liveness probe: `GET /health` (returns HTTP `200` when the API process is listening)
 - Kubernetes-style liveness alias: `GET /healthz`
 - Startup alias: `GET /startupz`
-- Root readiness alias: `GET /readyz`
+- Root readiness aliases: `GET /readyz` and `GET /health/ready`
 - API liveness alias: `GET /api/health` and `GET /api/health/live`
 - Readiness probe (load-balancer/container ready-state): `GET /api/health/ready`
   - returns HTTP `200` when auth, ticketing, planning, and enabled async-worker schema dependencies are ready
   - returns HTTP `503` when readiness dependencies fail or a required schema surface is not queryable
 - Diagnostics alias: `GET /api/health/database`
 - `GET /health`, `GET /healthz`, and `GET /startupz` stay dependency-free so process-start and edge-proxy probes do not flap on downstream outages.
-- `GET /readyz`, `GET /api/health/ready`, and `GET /api/health/database` are the dependency-aware readiness checks.
+- `GET /readyz`, `GET /health/ready`, `GET /api/health/ready`, and `GET /api/health/database` are the dependency-aware readiness checks.
 - Dependency-aware health payloads now include `release.version`, which is used by the hosted release smoke gate.
-- Frontend health probes, when used for diagnostics, should target the frontend edge health path, typically `VITE_API_BASE_URL + /health`
+- Frontend product-readiness probes target `VITE_API_BASE_URL + /api/health/ready` and should run only for protected API-backed product surfaces so public pages and auth do not keep a cold backend awake.
+- The API installs bootstrap CORS middleware and root readiness routes before Nest fallback handlers, then opens the listen socket only after Nest route initialization completes. This prevents cold-start product requests from receiving plain Express fallback responses without CORS headers while keeping `GET /health/ready` available once the port opens.
+- Browser API calls authenticate with Supabase bearer tokens. The app intentionally omits browser cookies from API, SSE, and WebSocket session requests in both direct-backend and same-origin edge-proxy modes to avoid oversized Supabase cookie headers and HTTP `431` failures.
+- Browser Supabase auth persistence uses the explicit localStorage key `ecotrack.supabase.auth`; startup migration moves valid legacy Supabase session JSON from bad `undefined` or `token` keys into that stable key and removes those legacy keys without deleting the separate `ecotrack_access_token` cache.
+- Supabase access tokens must stay small enough for ordinary HTTP `Authorization` headers. The frontend refuses to cache oversized bearer tokens. When a token is already bloated by `avatar_url`/`picture` profile-image metadata, the frontend sends only the Supabase refresh token in a JSON body to `POST /api/auth/supabase/session/repair-profile-metadata`; the API uses server-only `SUPABASE_SERVICE_ROLE_KEY` to clear those metadata keys, refreshes the Supabase session, and returns compact session tokens before protected API queries run. Inline base64 avatar uploads are blocked from being written back into Supabase auth metadata.
+- HTTP parser failures such as oversized headers happen before Nest middleware and are logged by the raw Node server `clientError` handler with a JSON record and `X-Request-Id`; malformed request-line fragments are not logged to avoid leaking cookie/token material.
 - Frontend `/login` must stay interactive and send auth requests directly; `/health` is advisory only and must not gate sign-in submission.
-- Local `npm run dev` gives the local direct API liveness URL from the Port Contract a best-effort warm-up window before launching the app dev server. If the liveness probe still has not returned `200` after `30000ms`, the frontend dev server still starts and the app relies on its built-in API degraded/retry handling while the API continues warming. Use `GET /api/health/ready`, `GET /api/health/database`, or `npm run dev:doctor` for dependency-aware startup diagnostics.
+- The API runtime loads the monorepo root `/.env` before workspace-local env files in host development. Set `ECOTRACK_API_ENV_FILE` only when an API-specific env file is intentional.
+- Local `npm run dev` starts Vite immediately and lets protected product routes show the shared cold-start loading state until `GET /api/health/ready` returns `200`. The API workspace dev supervisor still waits on dependency-aware readiness before it reports the API runtime as ready.
+- The API workspace dev supervisor restarts `dist/main.js` after successful TypeScript watch rebuilds so browser sessions do not keep calling a stale API runtime after bootstrap or CORS fixes.
 
 ## Request Correlation
 
@@ -361,8 +371,8 @@ Deprecated runtime aliases:
 - `mobile/.env.local`, `mobile/.env.example`, and mode env files must include only `EXPO_PUBLIC_*` keys.
 - API/database/infrastructure secrets must never appear in app or mobile env files.
 - `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_RELEASE` are private build/deploy inputs; expose only the public DSNs (`VITE_SENTRY_DSN`, `EXPO_PUBLIC_SENTRY_DSN`) to clients.
-- In local and Docker browser-facing runtimes, `VITE_API_BASE_URL` should target the frontend origin so the edge layer owns `/api` and `/health` routing.
-- During loopback browser runs, if `VITE_API_BASE_URL` still points at a different loopback origin than the active page, the web client falls back to `window.location.origin` so dev/preview sessions stay same-origin and avoid credentialed CORS preflights.
+- In host dev, `VITE_API_BASE_URL` should target the backend API origin so API traffic does not depend on the Vite dev proxy.
+- In Docker/browser edge runtimes, `VITE_API_BASE_URL` may target the frontend origin when that edge layer owns `/api` and `/health` routing.
 - In native mobile runtimes, `EXPO_PUBLIC_API_BASE_URL` should target the public API origin directly because Expo clients do not inherit the Vite edge proxy.
 - For Cloudflare Pages deploys, set `VITE_USE_EDGE_API_PROXY=true` and `EDGE_PROXY_TARGET_ORIGIN=<backend-public-origin>` at build time so Vite emits a `_redirects` file that proxies `/api/*` and `/health` through the frontend edge.
 - `APP_URL`/`CLIENT_ORIGIN` values, when used, must target the frontend origin root (for example `https://app.example.com`), not removed legacy paths such as `/auth` or `/dashboard`.
@@ -377,7 +387,7 @@ Deprecated runtime aliases:
 
 ## OAuth Callback Contract
 
-- Canonical local-dev callback URI: `http://localhost:5173/api/auth/google/callback`
+- Canonical local-dev backend callback URI: `http://localhost:3001/api/auth/google/callback`
 - Canonical docker-dev callback URI: `http://localhost:3000/api/auth/google/callback`
 - Callback path is fixed: `/api/auth/google/callback`
 - When `API_BASE_URL` is set, `GOOGLE_CALLBACK_URL` should match the callback derived from that public API base exactly.

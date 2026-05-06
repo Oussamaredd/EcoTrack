@@ -5,27 +5,29 @@ import { apiClient } from '../services/api';
 import { invalidatePlanningQueries } from '../state/invalidation';
 import { queryKeys } from '../state/queryKeys';
 
-export const usePlanningZones = () => {
+export const usePlanningZones = (enabled = true) => {
   const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
 
   return useQuery({
     queryKey: queryKeys.planningZones,
     queryFn: async () => apiClient.get('/api/planning/zones'),
+    enabled,
     staleTime: planningRefreshIntervalMs,
-    refetchInterval: planningRefreshIntervalMs,
+    refetchInterval: enabled ? planningRefreshIntervalMs : false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
 };
 
-export const usePlanningAgents = () => {
+export const usePlanningAgents = (enabled = true) => {
   const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
 
   return useQuery({
     queryKey: queryKeys.planningAgents,
     queryFn: async () => apiClient.get('/api/planning/agents'),
+    enabled,
     staleTime: planningRefreshIntervalMs,
-    refetchInterval: planningRefreshIntervalMs,
+    refetchInterval: enabled ? planningRefreshIntervalMs : false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
   });
@@ -170,12 +172,13 @@ export const useGenerateManagerReport = () => {
   });
 };
 
-export const usePlanningReportHistory = () => {
+export const usePlanningReportHistory = (enabled = true) => {
   const { planningRefreshIntervalMs } = loadAppRuntimeConfig();
 
   return useQuery({
     queryKey: queryKeys.planningReportHistory,
     queryFn: async () => apiClient.get('/api/planning/reports/history'),
+    enabled,
     staleTime: planningRefreshIntervalMs,
     refetchOnWindowFocus: false,
   });

@@ -2,6 +2,7 @@
 import React from "react";
 import TicketList from "../components/TicketList";
 import "../styles/TicketList.css";
+import "../styles/TicketTheme.css";
 
 export default function TicketListPage() {
   return (

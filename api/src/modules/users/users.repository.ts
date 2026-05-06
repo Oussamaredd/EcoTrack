@@ -43,6 +43,11 @@ type PersistedUserRecord = {
   authUserId?: string | null;
 };
 
+type ResolvedRole = {
+  id: string;
+  name: string;
+};
+
 @Injectable()
 export class UsersRepository {
   constructor(@Inject(DRIZZLE) private readonly db: DatabaseClient) {}
@@ -216,6 +221,7 @@ export class UsersRepository {
       displayName: authUser.name ?? undefined,
       avatarUrl: authUser.avatarUrl ?? null,
       provider: authUser.provider,
+      roleNames: authUser.roleNames,
     });
   }
 
@@ -330,7 +336,9 @@ export class UsersRepository {
       .where(eq(users.id, existingUser.id))
       .returning();
 
-    return updated ?? existingUser;
+    const resolvedUser = updated ?? existingUser;
+    await this.syncSupabaseClaimedRoles(resolvedUser.id, authUser);
+    return (await this.findById(resolvedUser.id)) ?? resolvedUser;
   }
 
   private async linkExistingUserToSupabaseAuth(
@@ -363,7 +371,9 @@ export class UsersRepository {
       .where(eq(users.id, existingUser.id))
       .returning();
 
-    return updated ?? existingUser;
+    const resolvedUser = updated ?? existingUser;
+    await this.syncSupabaseClaimedRoles(resolvedUser.id, authUser);
+    return (await this.findById(resolvedUser.id)) ?? resolvedUser;
   }
 
   private async createSupabaseUserProfile(params: {
@@ -372,9 +382,11 @@ export class UsersRepository {
     displayName?: string;
     avatarUrl?: string | null;
     provider: AuthUser['provider'];
+    roleNames?: string[];
   }) {
     const displayName = params.displayName?.trim() || params.email.split('@')[0] || 'User';
-    const defaultRole = await this.resolveRoleByName(LOCAL_DEFAULT_ROLE);
+    const resolvedRoles = await this.resolveRoleNames(params.roleNames);
+    const primaryRole = this.pickPrimaryRole(resolvedRoles.map((role) => role.name));
 
     await this.db.transaction(async (tx) => {
       const [created] = await tx
@@ -387,16 +399,18 @@ export class UsersRepository {
           googleId: null,
           displayName,
           avatarUrl: params.avatarUrl ?? null,
-          role: defaultRole.name,
+          role: primaryRole,
           isActive: true,
         })
         .returning();
 
       if (created?.id) {
-        await tx.insert(userRoles).values({
-          userId: created.id,
-          roleId: defaultRole.id,
-        });
+        await tx.insert(userRoles).values(
+          resolvedRoles.map((role) => ({
+            userId: created.id,
+            roleId: role.id,
+          })),
+        );
       }
     });
 
@@ -713,6 +727,63 @@ export class UsersRepository {
     }
 
     return map;
+  }
+
+  private normalizeRoleNames(roleNames?: string[]) {
+    const normalizedRoleNames: string[] = [];
+    const seenRoleNames = new Set<string>();
+
+    for (const roleName of roleNames ?? []) {
+      if (typeof roleName !== 'string') {
+        continue;
+      }
+
+      const normalizedRoleName = roleName.trim().toLowerCase();
+      if (!normalizedRoleName || seenRoleNames.has(normalizedRoleName)) {
+        continue;
+      }
+
+      seenRoleNames.add(normalizedRoleName);
+      normalizedRoleNames.push(normalizedRoleName);
+    }
+
+    return normalizedRoleNames.length > 0 ? normalizedRoleNames : [LOCAL_DEFAULT_ROLE];
+  }
+
+  private async resolveRoleNames(roleNames?: string[]): Promise<ResolvedRole[]> {
+    const resolvedRoles: ResolvedRole[] = [];
+
+    for (const roleName of this.normalizeRoleNames(roleNames)) {
+      resolvedRoles.push(await this.resolveRoleByName(roleName));
+    }
+
+    return resolvedRoles;
+  }
+
+  private async syncSupabaseClaimedRoles(userId: string, authUser: AuthUser) {
+    if (!Array.isArray(authUser.roleNames) || authUser.roleNames.length === 0) {
+      return;
+    }
+
+    const resolvedRoles = await this.resolveRoleNames(authUser.roleNames);
+    const primaryRole = this.pickPrimaryRole(resolvedRoles.map((role) => role.name));
+
+    await this.db.transaction(async (tx) => {
+      await tx.delete(userRoles).where(eq(userRoles.userId, userId));
+      await tx.insert(userRoles).values(
+        resolvedRoles.map((role) => ({
+          userId,
+          roleId: role.id,
+        })),
+      );
+      await tx
+        .update(users)
+        .set({
+          role: primaryRole,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+    });
   }
 
   private pickPrimaryRole(roleNames: string[]) {

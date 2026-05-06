@@ -25,6 +25,7 @@ Local auth endpoints:
 POST /login
 POST /signup
 POST /auth/exchange
+POST /auth/supabase/session/repair-profile-metadata
 POST /logout
 GET /auth/status
 GET /auth/me
@@ -40,8 +41,9 @@ Local signup note:
 - `GET /auth/status` returns `authenticated: false` when the request has no valid active session, including users that were deactivated after signing in.
 - `GET /auth/me` and `GET /me` require an active authenticated account.
 - `GET /auth/me` and `GET /me` now include additive zone-assignment metadata when available (`zoneId`, `zoneName`, `zoneCode`, `depotLabel`, `depotLatitude`, `depotLongitude`) so agent clients can bootstrap zone-aware execution without an extra profile lookup.
+- `POST /auth/supabase/session/repair-profile-metadata` accepts a Supabase `refreshToken` in the JSON body, removes oversized `avatar_url`/`picture` metadata server-side with the service-role key, refreshes the Supabase session, and returns compact `{ accessToken, refreshToken }` values. It exists only to recover sessions whose access token is too large to send in an `Authorization` header.
 
-`PUT /me` supports profile updates for `displayName` and optional `avatarUrl` (`http`/`https` URL or image data URL for PNG/JPEG/WEBP`). Clients may also send `null` to clear an existing avatar without triggering a server error.
+`PUT /me` supports profile updates for `displayName` and optional hosted `avatarUrl` (`http`/`https` URL, max 2048 chars). Clients may also send `null` to clear an existing avatar without triggering a server error. Inline image data URLs are rejected so avatar data cannot bloat bearer tokens.
 `PUT /me/password` requires `currentPassword` and strong `newPassword` (12+ chars with uppercase, lowercase, number, and symbol) and is available for local accounts only.
 
 OAuth endpoints:

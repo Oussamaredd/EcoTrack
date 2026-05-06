@@ -8,6 +8,7 @@ import { SystemSettings as SystemSettingsComponent } from "../components/admin/S
 import { UserManagement } from "../components/admin/UserManagement";
 import { useAuth } from "../hooks/useAuth";
 import { useUsers } from "../hooks/adminHooks";
+import { clearPendingAuthRedirect } from "../services/authRedirect";
 import "../styles/OperationsPages.css";
 
 export function AdminDashboard() {
@@ -29,8 +30,9 @@ export function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
+      clearPendingAuthRedirect();
+      navigate("/", { replace: true });
       await logout();
-      navigate("/");
     } catch (error) {
       console.error("Logout failed:", error);
     }

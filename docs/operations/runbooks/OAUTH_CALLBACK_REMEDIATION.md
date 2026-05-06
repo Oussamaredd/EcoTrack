@@ -8,7 +8,7 @@ Google OAuth login initiation works, but callback completion fails in local/dev 
 This plan is focused on diagnosing and fixing callback routing/config mismatch without business-logic changes.
 
 Current contract note:
-- Local dev public callback URI: `http://localhost:5173/api/auth/google/callback`
+- Local dev backend callback URI: `http://localhost:3001/api/auth/google/callback`
 - Docker dev public callback URI: `http://localhost:3000/api/auth/google/callback`
 - Direct API callback route on `http://localhost:3001/api/auth/google/callback` remains available only in local-native diagnostics; in Docker dev, the backend `3001` port is internal-only and browser traffic must use `http://localhost:3000`.
 - Docker verification now runs through `npm run smoke-test`, which checks the `3000` edge callback contract and confirms local machine port `3001` stays closed.
@@ -29,7 +29,7 @@ Current contract note:
   - `PORT=<legacy-api-port>` alias in local env (deprecated and no longer read).
 
 ### Root-Cause Statement
-OAuth callback fails because runtime callback URL resolves to `http://localhost:<legacy-api-port>/auth/google/callback`, while the active public edge callback must resolve to the frontend origin (`http://localhost:5173/api/auth/google/callback` in local dev or `http://localhost:3000/api/auth/google/callback` in Docker dev) and the API route itself remains mounted at `/api/auth/google/callback`.
+OAuth callback fails when runtime callback URL resolves to the wrong origin or path. In host dev, the legacy backend callback must resolve to the backend API origin (`http://localhost:3001/api/auth/google/callback`); in Docker edge dev it resolves through the frontend edge (`http://localhost:3000/api/auth/google/callback`). Browser Google sign-in should use the Supabase-hosted OAuth callback instead of this backend route.
 
 ## Hard Constraints (Non-Negotiable)
 - [x] No business logic changes beyond auth env/config resolution and validation.
@@ -39,7 +39,7 @@ OAuth callback fails because runtime callback URL resolves to `http://localhost:
 - [x] Keep local and Docker workflows consistent.
 
 ## Target End State
-- [x] Local callback URI is canonical and reachable through the frontend edge (`http://localhost:5173/api/auth/google/callback` unless explicitly reconfigured).
+- [x] Local callback URI is canonical and reachable on the backend API origin (`http://localhost:3001/api/auth/google/callback` unless explicitly reconfigured).
 - [x] Docker callback URI is canonical and reachable for docker workflow.
 - [ ] Google OAuth authorized redirect URI list matches runtime callback exactly.
 - [x] No ambiguous legacy callback references remain in active runtime env sources.
@@ -77,7 +77,7 @@ Observed evidence:
 
 Decision:
 - Chosen strategy: **B** (derive fallback from canonical API base/path when explicit value is absent), while allowing explicit `GOOGLE_CALLBACK_URL` overrides.
-- Canonical local callback URI: `http://localhost:5173/api/auth/google/callback`.
+- Canonical local backend callback URI: `http://localhost:3001/api/auth/google/callback`.
 - Canonical Docker callback URI: `http://localhost:3000/api/auth/google/callback`.
 - Legacy treatment:
   - `PORT=<legacy-api-port>` remains deprecated as a repo-managed key; the API runtime only accepts provider-injected `PORT` as a hosted fallback when `API_PORT` is absent.
@@ -159,7 +159,7 @@ npm run infra:up
 - [ ] Done-when: OAuth callback succeeds without manual URL hacks.
 
 Execution notes:
-- Local runtime probe confirms redirect URI now resolves to `http://localhost:5173/api/auth/google/callback`.
+- Local runtime probe confirms redirect URI now resolves to `http://localhost:3001/api/auth/google/callback`.
 - Recheck on February 11, 2026: while Docker services were healthy, runtime still emitted legacy `redirect_uri=http://localhost:<legacy-api-port>/auth/google/callback`.
 - Root cause for persisted issue: stale Docker runtime/image state (services restarted without a clean recreate using current code/env).
 - Applied operational fix: `npm run infra:down` then `npm run infra:up` (with rebuild/recreate).

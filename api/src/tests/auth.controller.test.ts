@@ -34,6 +34,7 @@ describe('AuthController', () => {
     getAuthCallbackUrl: vi.fn(() => 'http://localhost:5173/auth/callback?error=failed'),
     issueExchangeCode: vi.fn(() => 'exchange-code-1'),
     exchangeCode: vi.fn(),
+    repairOversizedSupabaseProfileMetadata: vi.fn(),
     ensureGoogleSignInAllowed: vi.fn(),
   };
 
@@ -197,6 +198,25 @@ describe('AuthController', () => {
       user: { id: 'u-1' },
     });
     expect(authServiceMock.exchangeCode).toHaveBeenCalledWith('exchange-code-1');
+  });
+
+  it('repairSupabaseProfileMetadata forwards refresh token repair to auth service', async () => {
+    authServiceMock.repairOversizedSupabaseProfileMetadata.mockResolvedValueOnce({
+      accessToken: 'compact-token',
+      refreshToken: 'rotated-refresh-token',
+    });
+
+    await expect(
+      controller.repairSupabaseProfileMetadata({
+        refreshToken: 'refresh-token-1',
+      }),
+    ).resolves.toEqual({
+      accessToken: 'compact-token',
+      refreshToken: 'rotated-refresh-token',
+    });
+    expect(authServiceMock.repairOversizedSupabaseProfileMetadata).toHaveBeenCalledWith({
+      refreshToken: 'refresh-token-1',
+    });
   });
 });
 

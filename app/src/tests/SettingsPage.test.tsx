@@ -91,14 +91,16 @@ describe("SettingsPage", () => {
     expect(screen.getByText("Profile updated successfully.")).toBeInTheDocument();
   });
 
-  test("shows validation message for unsupported avatar file", async () => {
+  test("blocks inline avatar uploads that would bloat auth tokens", async () => {
     renderWithRouter(<SettingsPage />, { route: "/app/settings", withAuthProvider: false });
 
     const fileInput = document.querySelector(".app-settings-avatar-input") as HTMLInputElement;
-    const invalidFile = new File(["bad"], "avatar.txt", { type: "text/plain" });
-    fireEvent.change(fileInput, { target: { files: [invalidFile] } });
+    const avatarFile = new File(["avatar"], "avatar.png", { type: "image/png" });
+    fireEvent.change(fileInput, { target: { files: [avatarFile] } });
 
-    expect(await screen.findByText("Please choose a PNG, JPEG, or WEBP image.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/profile image uploads are disabled while auth tokens are kept small/i),
+    ).toBeInTheDocument();
     expect(updateProfileMock).not.toHaveBeenCalled();
   });
 

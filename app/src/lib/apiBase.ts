@@ -1,7 +1,5 @@
 const FALLBACK_API_BASE = 'http://localhost:3001';
 
-const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
-
 const trimTrailingSlashes = (value: string) => {
   let endIndex = value.length;
 
@@ -37,19 +35,6 @@ const resolveWindowOrigin = (windowOrigin?: string | null) => {
   return null;
 };
 
-const isLoopbackOrigin = (value: string | null) => {
-  if (!value) {
-    return false;
-  }
-
-  try {
-    const { hostname } = new URL(value);
-    return LOOPBACK_HOSTS.has(hostname) || hostname.endsWith('.localhost');
-  } catch {
-    return false;
-  }
-};
-
 export const resolveApiBase = ({
   configuredApiBase,
   edgeProxyEnabled = false,
@@ -71,14 +56,6 @@ export const resolveApiBase = ({
 
   if (!normalizedConfiguredApiBase) {
     return currentOrigin ?? normalizedFallbackApiBase;
-  }
-
-  if (
-    currentOrigin &&
-    currentOrigin !== normalizedConfiguredApiBase &&
-    isLoopbackOrigin(normalizedConfiguredApiBase)
-  ) {
-    return currentOrigin;
   }
 
   return normalizedConfiguredApiBase;

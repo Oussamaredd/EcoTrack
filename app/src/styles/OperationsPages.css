@@ -976,3 +976,566 @@
     align-items: stretch;
   }
 }
+
+/* ops-theme-final-polish: unify operational, citizen, manager, agent, and admin screens with the app shell */
+
+.ops-page {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  min-width: 0;
+  gap: 1rem;
+  color: var(--text);
+}
+
+.ops-page > *,
+.ops-admin-shell > *,
+.ops-admin-layout > main {
+  min-width: 0;
+}
+
+/* Hero */
+
+.ops-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 92% 8%, hsl(var(--primary) / 0.24), transparent 30%),
+    radial-gradient(circle at 10% 0%, hsl(var(--success-hsl) / 0.13), transparent 34%),
+    var(--gradient-card);
+  box-shadow: var(--shadow-card);
+  padding: clamp(1.1rem, 2.4vw, 1.55rem);
+  backdrop-filter: blur(14px);
+}
+
+.ops-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 78%);
+  pointer-events: none;
+}
+
+.ops-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ops-hero h1 {
+  margin: 0;
+  color: #f7fbff;
+  font-size: clamp(1.55rem, 3vw, 2.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.ops-hero p {
+  margin: 0.5rem 0 0;
+  max-width: 72ch;
+  color: rgba(231, 241, 255, 0.86);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Cards */
+
+.ops-card,
+.ops-kpi-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 100% -20%, hsl(var(--primary) / 0.11), transparent 48%),
+    var(--gradient-card);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(14px);
+}
+
+.ops-card {
+  padding: clamp(1rem, 1.8vw, 1.2rem);
+}
+
+.ops-card .ops-card {
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.ops-card h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.08rem;
+  letter-spacing: -0.015em;
+}
+
+.ops-card-intro,
+.ops-helper,
+.ops-list-meta,
+.ops-subtle,
+.ops-kpi-label {
+  color: var(--text-muted);
+}
+
+.ops-grid {
+  gap: 0.85rem;
+}
+
+.ops-form {
+  gap: 0.95rem;
+}
+
+/* KPI cards */
+
+.ops-kpi-card {
+  min-height: 104px;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.28rem;
+}
+
+.ops-kpi-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ops-kpi-value {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+/* Lists */
+
+.ops-list {
+  gap: 0.65rem;
+}
+
+.ops-list-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  color: var(--text);
+  padding: 0.82rem 0.9rem;
+}
+
+.ops-list-item-active {
+  border-color: hsl(var(--primary) / 0.46);
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--primary) / 0.12), transparent 44%),
+    var(--surface);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.14), var(--shadow-soft);
+}
+
+.ops-empty {
+  color: var(--text-muted);
+}
+
+.ops-summary-band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  padding: 0.75rem;
+}
+
+/* Forms */
+
+.ops-label,
+.ops-legend {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.ops-input,
+.ops-select,
+.ops-textarea {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.ops-input::placeholder,
+.ops-textarea::placeholder {
+  color: rgba(216, 229, 255, 0.48);
+}
+
+.ops-input:hover:not(:disabled),
+.ops-select:hover:not(:disabled),
+.ops-textarea:hover:not(:disabled) {
+  border-color: hsl(var(--primary) / 0.34);
+  background: var(--surface-strong);
+}
+
+.ops-input:focus,
+.ops-input:focus-visible,
+.ops-select:focus,
+.ops-select:focus-visible,
+.ops-textarea:focus,
+.ops-textarea:focus-visible {
+  outline: none;
+  border-color: hsl(var(--primary) / 0.68);
+  background: var(--surface-strong);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2), var(--shadow-soft);
+}
+
+.ops-input:disabled,
+.ops-select:disabled,
+.ops-textarea:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+/* Buttons */
+
+.ops-btn {
+  min-height: 2.5rem;
+  border-radius: var(--radius-pill);
+  font-weight: 800;
+  letter-spacing: 0.015em;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.ops-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.ops-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+}
+
+.ops-btn:focus,
+.ops-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.24);
+}
+
+.ops-btn-primary,
+.ops-btn-success {
+  border-color: transparent;
+  background: var(--gradient-primary);
+  color: hsl(var(--primary-foreground));
+  box-shadow: var(--shadow-glow);
+}
+
+.ops-btn-danger {
+  border-color: rgba(255, 117, 117, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255, 117, 117, 0.24), rgba(255, 95, 95, 0.16)),
+    var(--surface);
+  color: #ffdada;
+  box-shadow: var(--shadow-soft);
+}
+
+.ops-btn-outline,
+.ops-btn-muted {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.ops-btn-outline:hover:not(:disabled),
+.ops-btn-muted:hover:not(:disabled) {
+  border-color: hsl(var(--primary) / 0.42);
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--primary) / 0.14), transparent 42%),
+    var(--gradient-card);
+  box-shadow: var(--shadow-glow);
+}
+
+.ops-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Chips and statuses */
+
+.ops-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.ops-chip-info {
+  border-color: hsl(var(--primary) / 0.34);
+  background: hsl(var(--primary) / 0.12);
+  color: #dbeaff;
+}
+
+.ops-chip-success {
+  border-color: hsl(var(--success-hsl) / 0.32);
+  background: hsl(var(--success-hsl) / 0.12);
+  color: #d9ffef;
+}
+
+.ops-chip-warning {
+  border-color: rgba(246, 195, 91, 0.34);
+  background: rgba(246, 195, 91, 0.13);
+  color: #ffe8b8;
+}
+
+.ops-chip-danger {
+  border-color: rgba(255, 117, 117, 0.36);
+  background: rgba(255, 117, 117, 0.13);
+  color: #ffdada;
+}
+
+.ops-status {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-soft);
+}
+
+.ops-status-success {
+  border-color: hsl(var(--success-hsl) / 0.34);
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--success-hsl) / 0.14), transparent 44%),
+    var(--surface);
+  color: #dfffee;
+}
+
+.ops-status-info {
+  border-color: hsl(var(--primary) / 0.34);
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--primary) / 0.14), transparent 44%),
+    var(--surface);
+  color: #dbeaff;
+}
+
+.ops-status-error {
+  border-color: rgba(255, 117, 117, 0.38);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 117, 117, 0.16), transparent 44%),
+    var(--surface);
+  color: #ffdada;
+}
+
+/* Progress, loading, and maps */
+
+.ops-loading-block {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  color: var(--text-muted);
+}
+
+.ops-progress-track {
+  border-color: var(--border);
+  background: rgba(7, 13, 24, 0.72);
+}
+
+.ops-progress-fill {
+  background: var(--gradient-primary);
+}
+
+.ops-map-frame,
+.ops-route-map-shell {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--gradient-card);
+  box-shadow: var(--shadow-card);
+}
+
+.ops-route-map-leaflet {
+  border-color: var(--border);
+}
+
+.ops-route-map-static {
+  background:
+    radial-gradient(circle at 24% 20%, hsl(var(--primary) / 0.16), transparent 36%),
+    var(--surface);
+}
+
+.ops-route-map-shell .leaflet-control-zoom a,
+.ops-route-map-shell .leaflet-control-attribution,
+.ops-route-map-shell .leaflet-popup-content-wrapper,
+.ops-route-map-shell .leaflet-popup-tip {
+  background: var(--surface-strong) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+
+/* Admin surfaces */
+
+.ops-admin-nav {
+  border-radius: var(--radius-lg);
+}
+
+.ops-admin-tab {
+  border-radius: var(--radius-sm);
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.ops-admin-tab:hover {
+  color: var(--text);
+  border-color: hsl(var(--primary) / 0.34);
+  background: var(--surface);
+}
+
+.ops-admin-tab-active {
+  color: var(--text);
+  border-color: hsl(var(--primary) / 0.44);
+  background: hsl(var(--primary) / 0.14);
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.08);
+}
+
+.ops-admin-panel .bg-white,
+.ops-admin-panel .bg-gray-50,
+.ops-admin-panel .bg-gray-100 {
+  background: var(--surface) !important;
+}
+
+.ops-admin-panel .bg-white.rounded-lg,
+.ops-admin-panel .rounded-lg.bg-white,
+.ops-admin-panel .bg-white.shadow-sm,
+.ops-admin-panel .bg-white.shadow-xl {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--gradient-card) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.ops-admin-panel .text-gray-900 {
+  color: var(--text) !important;
+}
+
+.ops-admin-panel .text-gray-800,
+.ops-admin-panel .text-gray-700,
+.ops-admin-panel .text-gray-600,
+.ops-admin-panel .text-gray-500,
+.ops-admin-panel .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+.ops-admin-panel .border-gray-200,
+.ops-admin-panel .border-gray-300,
+.ops-admin-panel .divide-y > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+.ops-admin-panel select,
+.ops-admin-panel textarea {
+  border: 1px solid var(--border) !important;
+  border-radius: 12px;
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow-soft);
+}
+
+.ops-admin-modal-overlay {
+  background: rgba(3, 8, 18, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.ops-admin-modal-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--gradient-card);
+  box-shadow: var(--shadow-card);
+}
+
+/* Responsive */
+
+@media (max-width: 720px) {
+  .ops-page {
+    width: 100%;
+    gap: 0.85rem;
+  }
+
+  .ops-hero {
+    border-radius: 22px;
+    padding: 1rem;
+  }
+
+  .ops-card,
+  .ops-kpi-card {
+    border-radius: 18px;
+  }
+
+  .ops-actions > * {
+    width: 100%;
+  }
+
+  .ops-history-row {
+    flex-direction: column;
+  }
+}
+
+/* app-section-flat-surfaces: remove section-local green/white/blue glows */
+
+.ops-hero,
+.ops-card,
+.ops-kpi-card,
+.ops-list-item,
+.ops-summary-band,
+.ops-loading-block,
+.ops-map-frame,
+.ops-route-map-shell,
+.ops-admin-nav,
+.ops-admin-panel .bg-white.rounded-lg,
+.ops-admin-panel .rounded-lg.bg-white,
+.ops-admin-panel .bg-white.shadow-sm,
+.ops-admin-panel .bg-white.shadow-xl,
+.ops-admin-modal-panel {
+  background: var(--section-surface) !important;
+  box-shadow: var(--section-shadow) !important;
+  backdrop-filter: blur(12px);
+}
+
+.ops-card .ops-card,
+.ops-admin-panel .bg-white,
+.ops-admin-panel .bg-gray-50,
+.ops-admin-panel .bg-gray-100,
+.ops-admin-modal-panel .bg-gray-50,
+.ops-admin-modal-panel .bg-gray-100,
+.ops-admin-modal-panel .bg-blue-100 {
+  background: var(--section-surface-strong) !important;
+}
+
+.ops-hero::after {
+  display: none !important;
+}
+
+.ops-hero h1 {
+  color: var(--text);
+}
+
+.ops-hero p {
+  color: var(--text-muted);
+}

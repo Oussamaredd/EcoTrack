@@ -81,6 +81,25 @@ describe('CitizenProfilePage', () => {
     });
   });
 
+  it('uses the shared EcoTrack loading state while citizen follow-up data loads', async () => {
+    vi.mocked(useCitizenProfile).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as ReturnType<typeof useCitizenProfile>);
+    vi.mocked(useCitizenHistory).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useCitizenHistory>);
+
+    renderWithProviders(<CitizenProfilePage />, {
+      route: '/app/citizen/profile',
+      withAuthProvider: false,
+    });
+
+    expect(await screen.findByRole('heading', { name: /Loading EcoTrack/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Citizen Impact and Follow-up/i })).not.toBeInTheDocument();
+  });
+
   it('renders profile KPIs and navigates history pagination', async () => {
     renderWithProviders(<CitizenProfilePage />, {
       route: '/app/citizen/profile',

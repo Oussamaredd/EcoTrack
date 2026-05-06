@@ -11,10 +11,10 @@
     "npm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "npm run build:database:if-needed && concurrently --kill-others-on-fail -n api,app \"npm:dev:api\" \"npm:dev:app:wait-api\"",
+    "dev": "npm run build:database:if-needed && concurrently --kill-others-on-fail -n api,app \"npm:dev:api\" \"npm:dev:app\"",
     "dev:app": "npm run dev --workspace=ecotrack-app",
     "dev:mobile": "npm run start --workspace=ecotrack-mobile",
-    "dev:app:wait-api": "node ./infrastructure/scripts/wait-for-api-ready.mjs --interval-ms 500 --request-timeout-ms 2000 --timeout-ms 30000 --no-fail && npm run dev:app",
+    "dev:app:wait-api": "npm run dev:app",
     "dev:api": "npm run dev --workspace=ecotrack-api",
     "dev:database": "npm run watch --workspace=ecotrack-database",
     "dev:infra": "npm run infra:up",

@@ -256,7 +256,7 @@ describe("AgentTourPage", () => {
     await user.type(screen.getByLabelText(/Photo URL/i), "not-a-url");
     await user.click(screen.getByRole("button", { name: /Report Anomaly/i }));
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /Photo URL must begin with http:\/\/ or https:\/\//i,
+      /Photo URL must use a public web URL/i,
     );
 
     await user.clear(screen.getByLabelText(/Photo URL/i));

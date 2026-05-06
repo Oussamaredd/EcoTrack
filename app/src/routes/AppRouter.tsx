@@ -1,8 +1,9 @@
 import { Suspense, lazy, type ReactElement } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
-import AppStatusScreen from "../components/AppStatusScreen";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import FeatureReadinessLoading from "../components/FeatureReadinessLoading";
 import RouteScrollToTop from "../components/RouteScrollToTop";
 import { loadAppRuntimeConfig } from "../config/runtimeFeatures";
+import { useApiReady } from "../hooks/useApiReady";
 import { useCurrentUser } from "../hooks/useAuth";
 import AppLayout from "../layouts/AppLayout";
 import AuthLayout from "../layouts/AuthLayout";
@@ -18,6 +19,7 @@ import {
   hasManagerAccess,
   hasSupportWorkspaceAccess,
 } from "../utils/authz";
+import { API_BASE } from "../services/api";
 import RequireAuth from "./guards/RequireAuth";
 import RequireGuest from "./guards/RequireGuest";
 
@@ -44,27 +46,28 @@ const MarketingInfoPage = lazy(() => import("../pages/landing/MarketingInfoPage"
 const ResetPasswordPage = lazy(() => import("../pages/auth/ResetPasswordPage"));
 const SignupPage = lazy(() => import("../pages/auth/SignupPage"));
 
-const RouteLoadingFallback = () => (
-  <AppStatusScreen
-    title="Loading EcoTrack"
-    message="Preparing the next page so you can keep moving through the workspace."
-  />
+const withRouteSuspense = (element: ReactElement) => (
+  <Suspense fallback={<FeatureReadinessLoading />}>{element}</Suspense>
 );
 
-const withRouteSuspense = (element: ReactElement) => (
-  <Suspense fallback={<RouteLoadingFallback />}>{element}</Suspense>
+function ProductUseCaseGate({ children }: { children: ReactElement }) {
+  const { isApiReady } = useApiReady(API_BASE);
+
+  if (!isApiReady) {
+    return <FeatureReadinessLoading />;
+  }
+
+  return children;
+}
+
+// Keep this gate scoped to API-backed product/data routes only. Public pages,
+// auth pages, `/app`, and `/app/settings` must stay Supabase-only so they do
+// not wake the product API before the user enters a product surface.
+const withProductReadiness = (element: ReactElement) => (
+  <ProductUseCaseGate>{element}</ProductUseCaseGate>
 );
 
 function RootLandingRoute() {
-  const { user, isAuthenticated, isLoading, authState } = useCurrentUser();
-  const location = useLocation();
-  const isLoggedIn = Boolean(user) || Boolean(isAuthenticated);
-  const resolvedAuthState = authState ?? (isLoading ? 'unknown' : isLoggedIn ? 'authenticated' : 'anonymous');
-
-  if ((resolvedAuthState === 'authenticated' || (resolvedAuthState !== 'unknown' && isLoggedIn)) && !location.hash) {
-    return <Navigate to="/app" replace />;
-  }
-
   return withRouteSuspense(<LandingPage />);
 }
 
@@ -85,7 +88,7 @@ function AdminRoute() {
     );
   }
 
-  return withRouteSuspense(<AdminDashboard />);
+  return withProductReadiness(withRouteSuspense(<AdminDashboard />));
 }
 
 function DashboardRoute() {
@@ -95,7 +98,7 @@ function DashboardRoute() {
     return <Navigate to="/app" replace />;
   }
 
-  return withRouteSuspense(<Dashboard />);
+  return withProductReadiness(withRouteSuspense(<Dashboard />));
 }
 
 function ManagerRoute() {
@@ -110,7 +113,7 @@ function ManagerRoute() {
     );
   }
 
-  return withRouteSuspense(<ManagerPlanningPage />);
+  return withProductReadiness(withRouteSuspense(<ManagerPlanningPage />));
 }
 
 function ManagerReportsRoute() {
@@ -130,7 +133,7 @@ function ManagerReportsRoute() {
     );
   }
 
-  return withRouteSuspense(<ManagerReportsPage />);
+  return withProductReadiness(withRouteSuspense(<ManagerReportsPage />));
 }
 
 function ManagerToursRoute() {
@@ -145,7 +148,7 @@ function ManagerToursRoute() {
     );
   }
 
-  return withRouteSuspense(<ManagerToursPage />);
+  return withProductReadiness(withRouteSuspense(<ManagerToursPage />));
 }
 
 function CitizenChallengesRoute() {
@@ -162,7 +165,7 @@ function CitizenChallengesRoute() {
     );
   }
 
-  return withRouteSuspense(<CitizenChallengesPage />);
+  return withProductReadiness(withRouteSuspense(<CitizenChallengesPage />));
 }
 
 function AccessDeniedMessage({ message }: { message: string }) {
@@ -243,23 +246,23 @@ export default function AppRouter() {
             <Route index element={withRouteSuspense(<AppHomePage />)} />
             <Route path="dashboard" element={<DashboardRoute />} />
             <Route path="agent" element={<AgentRouteGuard />}>
-              <Route path="tour" element={withRouteSuspense(<AgentTourPage />)} />
+              <Route path="tour" element={withProductReadiness(withRouteSuspense(<AgentTourPage />))} />
             </Route>
             <Route path="manager/planning" element={<ManagerRoute />} />
             <Route path="manager/tours" element={<ManagerToursRoute />} />
             <Route path="manager/reports" element={<ManagerReportsRoute />} />
             <Route path="citizen" element={<CitizenRouteGuard />}>
-              <Route path="report" element={withRouteSuspense(<CitizenReportPage />)} />
-              <Route path="profile" element={withRouteSuspense(<CitizenProfilePage />)} />
+              <Route path="report" element={withProductReadiness(withRouteSuspense(<CitizenReportPage />))} />
+              <Route path="profile" element={withProductReadiness(withRouteSuspense(<CitizenProfilePage />))} />
               <Route path="challenges" element={<CitizenChallengesRoute />} />
             </Route>
             <Route element={<SupportWorkspaceRouteGuard />}>
-              <Route path="support" element={withRouteSuspense(<SupportPage />)} />
+              <Route path="support" element={withProductReadiness(withRouteSuspense(<SupportPage />))} />
               <Route path="tickets/advanced" element={<Navigate to="/app/support#advanced" replace />} />
               <Route path="tickets" element={<Navigate to="/app/support#simple" replace />} />
               <Route path="tickets/create" element={<Navigate to="/app/support#create" replace />} />
-              <Route path="tickets/:id/details" element={withRouteSuspense(<TicketDetails />)} />
-              <Route path="tickets/:id/treat" element={withRouteSuspense(<TreatTicketPage />)} />
+              <Route path="tickets/:id/details" element={withProductReadiness(withRouteSuspense(<TicketDetails />))} />
+              <Route path="tickets/:id/treat" element={withProductReadiness(withRouteSuspense(<TreatTicketPage />))} />
             </Route>
             <Route path="settings" element={withRouteSuspense(<SettingsPage />)} />
             <Route path="admin" element={<AdminRoute />} />

@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { clearPendingAuthRedirect } from "../services/authRedirect";
 
 type LogoutButtonProps = {
   className?: string;
@@ -22,8 +23,9 @@ export default function LogoutButton({
   const handleLogout = async () => {
     try {
       setIsSubmitting(true);
-      await logout();
+      clearPendingAuthRedirect();
       navigate("/", { replace: true });
+      await logout();
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {

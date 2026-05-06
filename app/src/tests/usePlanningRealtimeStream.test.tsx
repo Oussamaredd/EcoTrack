@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setAccessToken } from '../services/authToken';
-import { buildApiUrl } from '../services/api';
+import { buildApiUrl, getApiCredentialsMode } from '../services/api';
 import { usePlanningRealtimeStream } from '../hooks/usePlanningRealtimeStream';
 
 const { reportRealtimeTransportErrorSpy } = vi.hoisted(() => ({
@@ -107,12 +107,12 @@ describe('usePlanningRealtimeStream', () => {
     expect(stream.url).toContain('/api/planning/stream');
     expect(stream.url).toContain('stream_session=stream-session-123');
     expect(stream.url).not.toContain('access_token=token-123');
-    expect(stream.withCredentials).toBe(true);
+    expect(stream.withCredentials).toBe(getApiCredentialsMode(stream.url) === 'include');
     expect(fetch).toHaveBeenCalledWith(
       buildApiUrl('/api/planning/stream/session'),
       expect.objectContaining({
         method: 'POST',
-        credentials: 'include',
+        credentials: getApiCredentialsMode(buildApiUrl('/api/planning/stream/session')),
       }),
     );
 

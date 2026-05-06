@@ -1,5 +1,7 @@
 # Landing Page Default + Dedicated Auth Route Plan (Bridgemind-Style)
 
+> Historical planning note: this document records the landing/auth route implementation plan. The current canonical design-system contract lives in `docs/product/features/DesignSystem.md`.
+
 ## Scope and Constraints
 - Keep app stack as Vite + React SPA with `react-router-dom`.
 - Keep auth logic unchanged:

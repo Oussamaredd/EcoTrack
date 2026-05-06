@@ -96,7 +96,7 @@ npm run dev
 
 `npm run dev` now gives the local direct API liveness URL from the Port Contract a best-effort warm-up window before Vite starts. If the API is still warming after `30000ms`, the frontend dev server still starts and the app falls back to its built-in API degraded/retry handling instead of killing the whole local-dev session.
 
-The API workspace dev server now boots from the latest successful `dist/` build immediately when one is available, waits for that runtime to become healthy, then refreshes `dist/` in the background and reloads on later successful watch recompiles.
+The API workspace dev server now runs an initial TypeScript build before exposing the API runtime, so local requests do not hit stale `dist/` code after source changes. If that build fails and a previous `dist/` build exists, the supervisor starts the existing runtime and keeps TypeScript watch active for recovery.
 
 Optional service-scoped template (reference only; root `/.env` remains the local runtime source):
 
@@ -132,10 +132,11 @@ Install contract:
 Local/native dev:
 
 - Browser entrypoint: `http://localhost:5173`
-- Public edge API: `http://localhost:5173/api`
-- Public edge health: `http://localhost:5173/health`
-- API process listen port (direct local diagnostics only): `http://localhost:3001`
-- Root `npm run dev` waits on `http://127.0.0.1:3001/health` before Vite starts
+- Backend API origin: `http://localhost:3001/api`
+- Backend readiness: `http://localhost:3001/api/health/ready`
+- Root `npm run dev` starts Vite immediately; protected product routes show the shared cold-start loading state until backend readiness returns `200`
+- Browser API calls use Supabase bearer tokens and omit cookies; the Vite dev proxy strips `Cookie` before forwarding to the backend to avoid oversized Supabase cookie headers.
+- Supabase `user_metadata` must not contain inline base64 profile images; if an existing session is already bloated, the frontend calls `POST /api/auth/supabase/session/repair-profile-metadata` with the Supabase refresh token in the JSON body so the API can clear oversized `avatar_url`/`picture` metadata with the server-only service-role key and return compact session tokens before protected API calls are enabled.
 
 Docker dev:
 

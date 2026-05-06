@@ -17,6 +17,7 @@ import { AuthService } from './auth.service.js';
 import type { AuthUser } from './auth.types.js';
 import { ExchangeCodeDto } from './exchange-code.dto.js';
 import { GoogleOAuthEnabledGuard } from './google-oauth-enabled.guard.js';
+import { RepairSupabaseProfileMetadataDto } from './repair-supabase-profile-metadata.dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -84,6 +85,13 @@ export class AuthController {
   @Post('exchange')
   async exchangeCode(@Body() dto: ExchangeCodeDto) {
     return this.authService.exchangeCode(dto.code);
+  }
+
+  @Post('supabase/session/repair-profile-metadata')
+  async repairSupabaseProfileMetadata(@Body() dto: RepairSupabaseProfileMetadataDto) {
+    return this.authService.repairOversizedSupabaseProfileMetadata({
+      refreshToken: dto.refreshToken,
+    });
   }
 
   @Post('logout')

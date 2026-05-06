@@ -8,6 +8,12 @@ type ResolveCorsOriginsOptions = {
   nodeEnv?: string;
 };
 
+type IsCorsOriginAllowedOptions = {
+  origin?: string;
+  allowedOrigins: string[];
+  nodeEnv?: string;
+};
+
 const normalizeNodeEnv = (nodeEnv?: string) => nodeEnv?.trim().toLowerCase() ?? 'development';
 
 const normalizePathname = (pathname: string) => {
@@ -15,7 +21,8 @@ const normalizePathname = (pathname: string) => {
   return trimmed.length > 0 ? trimmed : '/';
 };
 
-const isLocalhostHost = (hostname: string) => hostname === 'localhost' || hostname === '127.0.0.1';
+const isLocalhostHost = (hostname: string) =>
+  hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 
 const normalizeCorsOrigin = (origin: string, options: { requireHttps: boolean }) => {
   if (origin === '*') {
@@ -81,4 +88,31 @@ export const resolveCorsOrigins = (options: ResolveCorsOriginsOptions): string[]
   }
 
   return [...new Set(parsedOrigins)];
+};
+
+export const isCorsOriginAllowed = (options: IsCorsOriginAllowedOptions) => {
+  if (!options.origin) {
+    return true;
+  }
+
+  const nodeEnv = normalizeNodeEnv(options.nodeEnv);
+  const isProduction = nodeEnv === 'production';
+  let normalizedOrigin: string;
+
+  try {
+    normalizedOrigin = normalizeCorsOrigin(options.origin, { requireHttps: isProduction });
+  } catch {
+    return false;
+  }
+
+  if (options.allowedOrigins.includes(normalizedOrigin)) {
+    return true;
+  }
+
+  if (isProduction) {
+    return false;
+  }
+
+  const parsed = new URL(normalizedOrigin);
+  return isLocalhostHost(parsed.hostname);
 };

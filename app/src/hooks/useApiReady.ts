@@ -1,22 +1,97 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { resolveApiBase } from '../lib/apiBase';
 
-const API_READY_RETRY_DELAYS_MS = [400, 900, 1600];
-const API_READY_STEADY_RETRY_DELAY_MS = 3000;
-const API_READY_TIMEOUT_MS = 1500;
+const API_READY_RETRY_DELAYS_MS = [750, 2000, 5000, 10000];
+const API_READY_STEADY_RETRY_DELAY_MS = 15000;
+const API_READY_TIMEOUT_MS = 2500;
+const API_READY_PATH = '/api/health/ready';
+const EXPECTED_NOT_READY_HTTP_STATUSES = new Set([500, 502, 503, 504]);
 
 export type ApiReachability = 'checking' | 'ready' | 'degraded';
 
+type ApiReadySnapshot = {
+  isApiReady: boolean;
+  apiReachability: ApiReachability;
+  healthUrl: string;
+};
+
+type ApiReadinessStore = {
+  apiBaseUrl: string;
+  bootstrapTimer: number | null;
+  healthUrl: string;
+  inFlightProbe: Promise<boolean> | null;
+  isStarted: boolean;
+  listeners: Set<() => void>;
+  retryAttemptCount: number;
+  retryTimer: number | null;
+  state: ApiReadySnapshot;
+};
+
+const readinessStores = new Map<string, ApiReadinessStore>();
+const storeStopHandlers = new WeakMap<ApiReadinessStore, () => void>();
+
 const getRetryDelayMs = (attemptCount: number) =>
   API_READY_RETRY_DELAYS_MS[attemptCount] ?? API_READY_STEADY_RETRY_DELAY_MS;
+
+const isExpectedReadinessNotReadyStatus = (status: number) =>
+  EXPECTED_NOT_READY_HTTP_STATUSES.has(status);
+
+const resolveReadinessApiBase = (apiBaseUrl: string) =>
+  resolveApiBase({
+    configuredApiBase: apiBaseUrl,
+  });
+
+const createApiReadySnapshot = (
+  apiBaseUrl: string,
+  apiReachability: ApiReachability = 'checking',
+): ApiReadySnapshot => ({
+  apiReachability,
+  healthUrl: `${apiBaseUrl}${API_READY_PATH}`,
+  isApiReady: apiReachability === 'ready',
+});
+
+const notifyStoreListeners = (store: ApiReadinessStore) => {
+  for (const listener of store.listeners) {
+    listener();
+  }
+};
+
+const setStoreState = (
+  store: ApiReadinessStore,
+  apiReachability: ApiReachability,
+) => {
+  const nextState = createApiReadySnapshot(store.apiBaseUrl, apiReachability);
+  if (
+    store.state.apiReachability === nextState.apiReachability &&
+    store.state.isApiReady === nextState.isApiReady &&
+    store.state.healthUrl === nextState.healthUrl
+  ) {
+    return;
+  }
+
+  store.state = nextState;
+  notifyStoreListeners(store);
+};
+
+const clearBootstrapTimer = (store: ApiReadinessStore) => {
+  if (store.bootstrapTimer !== null) {
+    window.clearTimeout(store.bootstrapTimer);
+    store.bootstrapTimer = null;
+  }
+};
+
+const clearRetryTimer = (store: ApiReadinessStore) => {
+  if (store.retryTimer !== null) {
+    window.clearTimeout(store.retryTimer);
+    store.retryTimer = null;
+  }
+};
 
 export const probeApiHealth = async (
   apiBaseUrl: string,
   options: { timeoutMs?: number } = {},
 ) => {
-  const resolvedApiBase = resolveApiBase({
-    configuredApiBase: apiBaseUrl,
-  });
+  const resolvedApiBase = resolveReadinessApiBase(apiBaseUrl);
   const controller = new AbortController();
   const timeoutId = window.setTimeout(
     () => controller.abort(),
@@ -24,13 +99,21 @@ export const probeApiHealth = async (
   );
 
   try {
-    const response = await fetch(`${resolvedApiBase}/health`, {
+    const response = await fetch(`${resolvedApiBase}${API_READY_PATH}`, {
       method: 'GET',
       cache: 'no-store',
       signal: controller.signal,
     });
 
-    return response.ok;
+    if (response.ok) {
+      return true;
+    }
+
+    if (isExpectedReadinessNotReadyStatus(response.status)) {
+      return false;
+    }
+
+    return false;
   } catch {
     return false;
   } finally {
@@ -38,103 +121,172 @@ export const probeApiHealth = async (
   }
 };
 
-export const useApiReady = (apiBaseUrl: string) => {
-  const [isApiReady, setIsApiReady] = useState(false);
-  const [apiReachability, setApiReachability] = useState<ApiReachability>('checking');
-  const healthUrl = useMemo(
-    () =>
-      `${resolveApiBase({
-        configuredApiBase: apiBaseUrl,
-      })}/health`,
-    [apiBaseUrl],
-  );
+const scheduleStoreRetry = (store: ApiReadinessStore) => {
+  if (store.listeners.size === 0) {
+    return;
+  }
 
-  const runProbe = async () => {
-    const isHealthy = await probeApiHealth(apiBaseUrl);
-    setIsApiReady(isHealthy);
-    setApiReachability(isHealthy ? 'ready' : 'degraded');
-    return isHealthy;
+  const retryDelayMs = getRetryDelayMs(store.retryAttemptCount);
+  store.retryAttemptCount += 1;
+  clearRetryTimer(store);
+  store.retryTimer = window.setTimeout(() => {
+    void runStoreProbe(store);
+  }, retryDelayMs);
+};
+
+const runStoreProbe = (
+  store: ApiReadinessStore,
+  options: { scheduleRetry?: boolean; setChecking?: boolean } = {},
+) => {
+  const { scheduleRetry = true, setChecking = false } = options;
+
+  if (setChecking && !store.state.isApiReady) {
+    setStoreState(store, 'checking');
+  }
+
+  if (store.inFlightProbe) {
+    return store.inFlightProbe;
+  }
+
+  store.inFlightProbe = (async () => {
+    const isHealthy = await probeApiHealth(store.apiBaseUrl);
+    store.inFlightProbe = null;
+
+    if (isHealthy) {
+      store.retryAttemptCount = 0;
+      clearRetryTimer(store);
+      setStoreState(store, 'ready');
+      return true;
+    }
+
+    setStoreState(store, 'degraded');
+    if (scheduleRetry) {
+      scheduleStoreRetry(store);
+    }
+
+    return false;
+  })();
+
+  return store.inFlightProbe;
+};
+
+const reprobeStoreSoon = (store: ApiReadinessStore) => {
+  if (!store.isStarted) {
+    return;
+  }
+
+  store.retryAttemptCount = 0;
+  clearRetryTimer(store);
+  void runStoreProbe(store, { setChecking: true });
+};
+
+const getApiReadinessStore = (apiBaseUrl: string) => {
+  const resolvedApiBase = resolveReadinessApiBase(apiBaseUrl);
+  const existingStore = readinessStores.get(resolvedApiBase);
+  if (existingStore) {
+    return existingStore;
+  }
+
+  const store: ApiReadinessStore = {
+    apiBaseUrl: resolvedApiBase,
+    bootstrapTimer: null,
+    healthUrl: `${resolvedApiBase}${API_READY_PATH}`,
+    inFlightProbe: null,
+    isStarted: false,
+    listeners: new Set(),
+    retryAttemptCount: 0,
+    retryTimer: null,
+    state: createApiReadySnapshot(resolvedApiBase),
   };
 
-  useEffect(() => {
-    let isActive = true;
-    let bootstrapTimer: number | null = null;
-    let retryTimer: number | null = null;
-    let retryAttemptCount = 0;
+  readinessStores.set(resolvedApiBase, store);
+  return store;
+};
 
-    const clearRetryTimer = () => {
-      if (retryTimer !== null) {
-        window.clearTimeout(retryTimer);
-        retryTimer = null;
-      }
-    };
+const startStore = (store: ApiReadinessStore) => {
+  if (store.isStarted || typeof window === 'undefined') {
+    return;
+  }
 
-    const probe = async ({ scheduleRetry = true }: { scheduleRetry?: boolean } = {}) => {
-      if (!isActive) {
-        return false;
-      }
+  store.isStarted = true;
+  store.retryAttemptCount = 0;
+  setStoreState(store, 'checking');
 
-      const isHealthy = await runProbe();
+  const handleOnline = () => reprobeStoreSoon(store);
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      reprobeStoreSoon(store);
+    }
+  };
 
-      if (!isActive) {
-        return false;
-      }
+  store.bootstrapTimer = window.setTimeout(() => {
+    store.bootstrapTimer = null;
+    void runStoreProbe(store);
+  }, 0);
 
-      if (isHealthy) {
-        retryAttemptCount = 0;
-        clearRetryTimer();
-      } else if (scheduleRetry) {
-        const retryDelayMs = getRetryDelayMs(retryAttemptCount);
-        retryAttemptCount += 1;
+  window.addEventListener('online', handleOnline);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        clearRetryTimer();
-        retryTimer = window.setTimeout(() => {
-          void probe();
-        }, retryDelayMs);
-      }
+  storeStopHandlers.set(store, () => {
+    window.removeEventListener('online', handleOnline);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  });
+};
 
-      return isHealthy;
-    };
+const stopStore = (store: ApiReadinessStore) => {
+  if (!store.isStarted) {
+    return;
+  }
 
-    const reprobeSoon = () => {
-      if (!isActive) {
-        return;
-      }
+  store.isStarted = false;
+  clearBootstrapTimer(store);
+  clearRetryTimer(store);
+  storeStopHandlers.get(store)?.();
+  storeStopHandlers.delete(store);
+};
 
-      retryAttemptCount = 0;
-      clearRetryTimer();
-      void probe();
-    };
+const subscribeToStore = (store: ApiReadinessStore, listener: () => void) => {
+  store.listeners.add(listener);
+  startStore(store);
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        reprobeSoon();
-      }
-    };
+  return () => {
+    store.listeners.delete(listener);
+    if (store.listeners.size === 0) {
+      stopStore(store);
+    }
+  };
+};
 
-    bootstrapTimer = window.setTimeout(() => {
-      setIsApiReady(false);
-      setApiReachability('checking');
-      void probe();
-    }, 0);
-    window.addEventListener('online', reprobeSoon);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+const retryStoreNow = (store: ApiReadinessStore) => {
+  store.retryAttemptCount = 0;
+  clearRetryTimer(store);
+  return runStoreProbe(store, { setChecking: true });
+};
 
-    return () => {
-      isActive = false;
-      window.removeEventListener('online', reprobeSoon);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (bootstrapTimer !== null) {
-        window.clearTimeout(bootstrapTimer);
-      }
-      clearRetryTimer();
-    };
-  }, [healthUrl]);
+export const resetApiReadyStoresForTests = () => {
+  for (const store of readinessStores.values()) {
+    stopStore(store);
+  }
+
+  readinessStores.clear();
+};
+
+export const useApiReady = (apiBaseUrl: string) => {
+  const resolvedApiBase = useMemo(() => resolveReadinessApiBase(apiBaseUrl), [apiBaseUrl]);
+  const store = useMemo(() => getApiReadinessStore(resolvedApiBase), [resolvedApiBase]);
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => subscribeToStore(store, onStoreChange),
+    [store],
+  );
+  const getSnapshot = useCallback(() => store.state, [store]);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  const retry = useCallback(() => {
+    return retryStoreNow(store);
+  }, [store]);
 
   return {
-    isApiReady,
-    apiReachability,
-    healthUrl,
-    retry: runProbe,
+    ...snapshot,
+    retry,
   };
 };

@@ -1,6 +1,6 @@
 import { IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
-const AVATAR_URL_ALLOWED_PATTERN = /^(https?:\/\/|data:image\/(png|jpeg|jpg|webp);base64,)/i;
+const AVATAR_URL_ALLOWED_PATTERN = /^https?:\/\//i;
 
 export class UpdateProfileDto {
   @IsString()
@@ -10,9 +10,9 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(1_500_000)
+  @MaxLength(2048)
   @Matches(AVATAR_URL_ALLOWED_PATTERN, {
-    message: 'avatarUrl must be an http/https URL or supported image data URL.',
+    message: 'avatarUrl must be an http/https URL.',
   })
   avatarUrl?: string;
 }

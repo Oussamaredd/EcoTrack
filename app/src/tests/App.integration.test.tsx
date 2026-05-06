@@ -87,10 +87,10 @@ describe("App Integration", () => {
     expect(getStartedLinks.some((link) => link.getAttribute("href") === "/login")).toBe(true);
   });
 
-  test("renders authenticated app when user is logged in", async () => {
+  test("renders authenticated role hub when user opens `/app`", async () => {
     const { useCurrentUser } = await import("../hooks/useAuth");
     (useCurrentUser as unknown as Mock).mockReturnValue({
-      user: { id: "123", displayName: "Test User", email: "test@example.com" },
+      user: { id: "123", displayName: "Test User", email: "test@example.com", role: "agent", roles: [] },
       isLoading: false,
       isAuthenticated: true,
     });
@@ -102,9 +102,12 @@ describe("App Integration", () => {
       text: async () => JSON.stringify({ authenticated: true }),
     } as Response);
 
-    renderApp();
+    renderApp("/app");
 
     expect(await screen.findByText("Test User")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Enter the field companion lane\./i }),
+    ).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "Support" })).toBeInTheDocument();
   });
 
@@ -123,7 +126,7 @@ describe("App Integration", () => {
       text: async () => JSON.stringify({ authenticated: true }),
     } as Response);
 
-    renderApp();
+    renderApp("/app");
 
     await waitFor(() => expect(screen.getByRole("link", { name: "Support" })).toBeInTheDocument());
 

@@ -14,7 +14,7 @@ import {
 } from '@nestjs/websockets';
 import type { Server, Socket } from 'socket.io';
 
-import { resolveCorsOrigins } from '../../config/cors-origins.js';
+import { isCorsOriginAllowed, resolveCorsOrigins } from '../../config/cors-origins.js';
 import { loadPlanningRealtimeConfig } from '../../config/runtime-features.js';
 import { AuthService } from '../auth/auth.service.js';
 
@@ -29,6 +29,19 @@ const WS_ALLOWED_ORIGINS = resolveCorsOrigins({
   clientOrigin: process.env.CLIENT_ORIGIN,
   nodeEnv: process.env.NODE_ENV,
 });
+const isPlanningWebSocketOriginAllowed = (
+  origin: string | undefined,
+  callback: (error: Error | null, allow?: boolean) => void,
+) => {
+  callback(
+    null,
+    isCorsOriginAllowed({
+      origin,
+      allowedOrigins: WS_ALLOWED_ORIGINS,
+      nodeEnv: process.env.NODE_ENV,
+    }),
+  );
+};
 
 @Injectable()
 @WebSocketGateway({
@@ -37,7 +50,7 @@ const WS_ALLOWED_ORIGINS = resolveCorsOrigins({
   pingInterval: WS_PING_INTERVAL_MS,
   pingTimeout: WS_PING_TIMEOUT_MS,
   cors: {
-    origin: WS_ALLOWED_ORIGINS,
+    origin: isPlanningWebSocketOriginAllowed,
     credentials: true,
   },
 })

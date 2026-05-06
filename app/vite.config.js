@@ -97,6 +97,19 @@ const normalizeProxyTargetOrigin = (value, key) => {
   return parsed.toString().replace(/\/$/, "");
 };
 
+const parsePositivePort = (value, fallback, key) => {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!value) {
+    return fallback;
+  }
+
+  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 65535) {
+    throw new Error(`${key} must be a valid TCP port.`);
+  }
+
+  return parsed;
+};
+
 const createCloudflarePagesRedirectsPlugin = ({
   edgeProxyEnabled,
   edgeProxyTargetOrigin,
@@ -148,6 +161,22 @@ const createHtmlReleaseMetadataPlugin = (releaseVersion) => ({
   },
 });
 
+const stripCookieHeader = (proxyRequest) => {
+  proxyRequest.removeHeader("cookie");
+};
+
+const createDevProxyOptions = (target, options = {}) => ({
+  target,
+  changeOrigin: true,
+  secure: false,
+  xfwd: true,
+  ...options,
+  configure(proxy) {
+    proxy.on("proxyReq", stripCookieHeader);
+    proxy.on("proxyReqWs", stripCookieHeader);
+  },
+});
+
 const resolveManualChunkName = (id) => {
   const normalizedId = id.split(path.sep).join("/");
 
@@ -195,6 +224,11 @@ export default defineConfig(({ mode }) => {
   const base = env.VITE_BASE || "/";
   const edgeProxyEnabled = env.VITE_USE_EDGE_API_PROXY === "true";
   const edgeProxyTargetOrigin = env.EDGE_PROXY_TARGET_ORIGIN?.trim() ?? "";
+  const devServerPort = parsePositivePort(env.VITE_DEV_SERVER_PORT, 5173, "VITE_DEV_SERVER_PORT");
+  const devApiProxyTargetOrigin = normalizeProxyTargetOrigin(
+    env.VITE_DEV_API_PROXY_TARGET_ORIGIN?.trim() || "http://localhost:3001",
+    "VITE_DEV_API_PROXY_TARGET_ORIGIN",
+  );
   const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN?.trim();
   const sentryOrganization = process.env.SENTRY_ORG?.trim();
   const sentryProject = process.env.SENTRY_PROJECT?.trim();
@@ -268,22 +302,13 @@ export default defineConfig(({ mode }) => {
       dedupe: ["react", "react-dom", "@tanstack/react-query"],
     },
     server: {
-      port: 5173,
+      port: devServerPort,
       open: !spawnRestricted,
       proxy: {
-        '/api': {
-          target: 'http://localhost:3001',
-          changeOrigin: true,
-          secure: false,
+        '/api': createDevProxyOptions(devApiProxyTargetOrigin, {
           ws: true,
-          xfwd: true,
-        },
-        '/health': {
-          target: 'http://localhost:3001',
-          changeOrigin: true,
-          secure: false,
-          xfwd: true,
-        },
+        }),
+        '/health': createDevProxyOptions(devApiProxyTargetOrigin),
       },
     },
     test: {

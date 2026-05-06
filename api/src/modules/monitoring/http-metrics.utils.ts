@@ -47,6 +47,7 @@ export const shouldIgnoreHttpMetricsPath = (rawUrl?: string): boolean => {
 
   return (
     normalizedPath === '/health' ||
+    normalizedPath === '/health/ready' ||
     normalizedPath === '/healthz' ||
     normalizedPath === '/startupz' ||
     normalizedPath === '/readyz' ||

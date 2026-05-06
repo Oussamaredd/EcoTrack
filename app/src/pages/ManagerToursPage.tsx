@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 
+import FeatureReadinessLoading from "../components/FeatureReadinessLoading";
+import { useCurrentUser } from "../hooks/useAuth";
 import { useManagerToursList, useRebuildTourRoute } from "../hooks/usePlanning";
 import "../styles/OperationsPages.css";
 
@@ -46,11 +48,13 @@ const formatDateTime = (value?: string | Date | null) => {
 };
 
 export default function ManagerToursPage() {
+  const { authState } = useCurrentUser();
+  const isAuthReady = authState === "authenticated";
   const [statusMessage, setStatusMessage] = useState("");
   const [statusTone, setStatusTone] = useState<"success" | "error" | "info">("info");
   const [rebuildingTourId, setRebuildingTourId] = useState<string | null>(null);
 
-  const toursQuery = useManagerToursList();
+  const toursQuery = useManagerToursList(isAuthReady);
   const rebuildRouteMutation = useRebuildTourRoute();
 
   const tours = useMemo(
@@ -94,6 +98,10 @@ export default function ManagerToursPage() {
     }
   };
 
+  if (toursQuery.isLoading) {
+    return <FeatureReadinessLoading />;
+  }
+
   return (
     <section className="ops-page">
       <header className="ops-hero">
@@ -111,10 +119,6 @@ export default function ManagerToursPage() {
             ? `Showing the first ${tours.length} tours out of ${pagination.total}.`
             : `Showing ${tours.length} tour${tours.length === 1 ? "" : "s"} from the current schedule queue.`}
         </p>
-
-        {toursQuery.isLoading ? (
-          <p className="ops-empty ops-mt-sm">Loading tours...</p>
-        ) : null}
 
         {toursQuery.isError ? (
           <div className="ops-mt-sm">

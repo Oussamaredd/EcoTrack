@@ -26,21 +26,21 @@ afterEach(() => {
 
 describe('OAuth callback config', () => {
   it('uses explicit GOOGLE_CALLBACK_URL when valid', () => {
-    process.env.GOOGLE_CALLBACK_URL = 'http://localhost:5173/api/auth/google/callback';
+    process.env.GOOGLE_CALLBACK_URL = 'http://localhost:3001/api/auth/google/callback';
 
-    expect(getGoogleCallbackUrl()).toBe('http://localhost:5173/api/auth/google/callback');
+    expect(getGoogleCallbackUrl()).toBe('http://localhost:3001/api/auth/google/callback');
   });
 
   it('rejects explicit callback URL with non-canonical path', () => {
-    process.env.GOOGLE_CALLBACK_URL = 'http://localhost:5173/auth/google/callback';
+    process.env.GOOGLE_CALLBACK_URL = 'http://localhost:3001/auth/google/callback';
 
     expect(() => getGoogleCallbackUrl()).toThrow(/Invalid GOOGLE_CALLBACK_URL path/i);
   });
 
   it('derives callback URL from API_BASE_URL when explicit callback is absent', () => {
-    process.env.API_BASE_URL = 'http://localhost:5173';
+    process.env.API_BASE_URL = 'http://localhost:3001';
 
-    expect(getGoogleCallbackUrl()).toBe('http://localhost:5173/api/auth/google/callback');
+    expect(getGoogleCallbackUrl()).toBe('http://localhost:3001/api/auth/google/callback');
   });
 
   it('derives callback URL from API_PORT and API_HOST fallback', () => {
@@ -79,6 +79,23 @@ describe('OAuth callback config', () => {
     const mainSource = fs.readFileSync(mainPath, 'utf8');
 
     expect(mainSource).toContain("expressApp.set('trust proxy', 1)");
+  });
+
+  it('bootstrap installs CORS before listening and lets Nest own the HTTP server for REST and websocket adapters', () => {
+    const testDir = path.dirname(fileURLToPath(import.meta.url));
+    const mainPath = path.resolve(testDir, '../main.ts');
+    const mainSource = fs.readFileSync(mainPath, 'utf8');
+
+    const corsMiddlewareIndex = mainSource.indexOf('expressApp.use(createBootstrapCorsMiddleware(origins))');
+    const listenIndex = mainSource.indexOf('await app.listen(port, host);');
+    const readinessRouteIndex = mainSource.indexOf('attachRootHealthRoutes(expressApp, app.get(HealthService));');
+    const httpServerIndex = mainSource.indexOf('server = app.getHttpServer() as Server;');
+
+    expect(corsMiddlewareIndex).toBeGreaterThanOrEqual(0);
+    expect(listenIndex).toBeGreaterThan(corsMiddlewareIndex);
+    expect(listenIndex).toBeGreaterThan(readinessRouteIndex);
+    expect(httpServerIndex).toBeGreaterThan(listenIndex);
+    expect(mainSource).not.toContain('expressApp.listen(port, host');
   });
 
   it('accepts canonical GOOGLE_CLIENT_ID format', () => {
@@ -154,9 +171,9 @@ describe('OAuth callback config', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        API_BASE_URL: 'http://localhost:5173',
+        API_BASE_URL: 'http://localhost:3001',
         DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
-        GOOGLE_CALLBACK_URL: 'http://localhost:5173/api/auth/google/callback',
+        GOOGLE_CALLBACK_URL: 'http://localhost:3001/api/auth/google/callback',
       }),
     ).not.toThrow();
   });
@@ -177,9 +194,9 @@ describe('OAuth callback config', () => {
       validateEnv({
         NODE_ENV: 'development',
         API_PORT: '3001',
-        API_BASE_URL: 'http://localhost:5173',
+        API_BASE_URL: 'http://localhost:3001',
         DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/ecotrack',
-        GOOGLE_CALLBACK_URL: 'http://localhost:3001/api/auth/google/callback',
+        GOOGLE_CALLBACK_URL: 'http://localhost:5173/api/auth/google/callback',
       }),
     ).toThrow(/API_BASE_URL/i);
   });

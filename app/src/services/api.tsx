@@ -1,7 +1,8 @@
 // API client with centralized configuration and error handling
 import { loadAppRuntimeConfig } from '../config/runtimeFeatures';
-import { clearAccessToken, withAuthHeader } from './authToken';
+import { clearAccessToken, isAccessTokenHeaderSafe, setAccessToken, withAuthHeader } from './authToken';
 import { resolveApiBase } from '../lib/apiBase';
+import { supabase } from './supabase';
 
 const EDGE_PROXY_ENABLED = import.meta.env.VITE_USE_EDGE_API_PROXY === 'true';
 
@@ -22,6 +23,30 @@ const normalizeOrigin = (value: string) => {
     return null;
   }
 };
+
+export const resolveRequestInputUrl = (input: RequestInfo | URL) => {
+  if (typeof input === 'string') {
+    return input;
+  }
+
+  if (input instanceof URL) {
+    return input.toString();
+  }
+
+  if (typeof Request !== 'undefined' && input instanceof Request) {
+    return input.url;
+  }
+
+  return String(input);
+};
+
+export const resolveApiCredentialsMode = (_options: {
+  requestUrl: string;
+  windowOrigin?: string | null;
+}): RequestCredentials => 'omit';
+
+export const getApiCredentialsMode = (input: RequestInfo | URL) =>
+  resolveApiCredentialsMode({ requestUrl: resolveRequestInputUrl(input) });
 
 const ensureConnectionHint = (rel: 'dns-prefetch' | 'preconnect', href: string) => {
   if (typeof document === 'undefined') {
@@ -147,9 +172,10 @@ const postTelemetry = async (path: string, payload: Record<string, unknown>) => 
   }
 
   try {
-    await fetch(buildApiUrl(path), {
+    const requestUrl = buildApiUrl(path);
+    await fetch(requestUrl, {
       method: 'POST',
-      credentials: 'include',
+      credentials: getApiCredentialsMode(requestUrl),
       keepalive: true,
       headers: createApiHeaders({
         'Content-Type': 'application/json',
@@ -225,6 +251,30 @@ export const buildApiUrl = (url: string) => `${API_BASE}${url}`;
 export const createApiHeaders = (headers?: HeadersInit) =>
   Object.fromEntries(withAuthHeader(headers).entries());
 
+const createApiHeadersWithSupabaseFallback = async (headers?: HeadersInit) => {
+  const resolvedHeaders = withAuthHeader(headers);
+
+  if (resolvedHeaders.has('Authorization')) {
+    return Object.fromEntries(resolvedHeaders.entries());
+  }
+
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token?.trim() ?? '';
+
+  if (!accessToken || !isAccessTokenHeaderSafe(accessToken)) {
+    if (accessToken) {
+      clearAccessToken();
+    }
+
+    return Object.fromEntries(resolvedHeaders.entries());
+  }
+
+  setAccessToken(accessToken);
+  resolvedHeaders.set('Authorization', `Bearer ${accessToken}`);
+
+  return Object.fromEntries(resolvedHeaders.entries());
+};
+
 // Global error handler for API calls
 const handleApiError = (error) => {
   console.error('API Error:', error);
@@ -255,10 +305,6 @@ export const createApiRequestError = async (response: Response) => {
     response.status,
     payload,
   );
-
-  if (response.status === 401) {
-    invalidateClientSession();
-  }
 
   if (
     response.status >= 500 &&
@@ -292,13 +338,14 @@ export const ensureApiResponse = async (response: Response) => {
   return response;
 };
 
-export const authorizedFetch = (url: string, init: RequestInit = {}) => {
-  const { headers, ...restInit } = init;
+export const authorizedFetch = async (url: string, init: RequestInit = {}) => {
+  const { headers, credentials: _credentials, ...restInit } = init;
+  const requestUrl = buildApiUrl(url);
 
-  return fetch(buildApiUrl(url), {
-    credentials: 'include',
+  return fetch(requestUrl, {
     ...restInit,
-    headers: createApiHeaders(headers),
+    credentials: getApiCredentialsMode(requestUrl),
+    headers: await createApiHeadersWithSupabaseFallback(headers),
   });
 };
 
@@ -308,10 +355,7 @@ export const apiClient = {
     try {
       const response = await authorizedFetch(url, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
+        headers: options.headers,
       });
 
       await ensureApiResponse(response);

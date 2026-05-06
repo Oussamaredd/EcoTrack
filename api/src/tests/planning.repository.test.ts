@@ -620,7 +620,9 @@ describe('PlanningRepository invariants', () => {
                   code: 'CTR-001',
                   label: 'North Hub',
                   fillLevelPercent: 92,
-                  
+                  fillRatePerHour: 0,
+                  lastMeasurementAt: new Date('2026-03-03T11:30:00.000Z'),
+                  lastCollectedAt: null,
                   status: 'attention_required',
                   latitude: '36.8100',
                   longitude: '10.1900',
@@ -712,6 +714,18 @@ describe('PlanningRepository invariants', () => {
       }),
     );
     expect(dbMock.select).toHaveBeenCalledTimes(9);
+    expect(
+      dbMock.select.mock.calls.some(([projection]) =>
+        projection &&
+        typeof projection === 'object' &&
+        'fillRatePerHour' in projection &&
+        'lastMeasurementAt' in projection &&
+        'lastCollectedAt' in projection &&
+        'zoneName' in projection &&
+        'warningFillPercent' in projection &&
+        'criticalFillPercent' in projection,
+      ),
+    ).toBe(true);
   });
 });
 

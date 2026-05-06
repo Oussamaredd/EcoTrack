@@ -57,6 +57,21 @@ describe('CitizenChallengesPage', () => {
     } as unknown as ReturnType<typeof useUpdateChallengeProgress>);
   });
 
+  it('uses the shared EcoTrack loading state while challenge data loads', async () => {
+    vi.mocked(useCitizenChallenges).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as ReturnType<typeof useCitizenChallenges>);
+
+    renderWithProviders(<CitizenChallengesPage />, {
+      route: '/app/citizen/challenges',
+      withAuthProvider: false,
+    });
+
+    expect(await screen.findByRole('heading', { name: /Loading EcoTrack/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Collective Challenges/i })).not.toBeInTheDocument();
+  });
+
   it('enrolls and updates progress through challenge actions', async () => {
     renderWithProviders(<CitizenChallengesPage />, {
       route: '/app/citizen/challenges',

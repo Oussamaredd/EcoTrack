@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FeatureReadinessLoading from "../components/FeatureReadinessLoading";
 import { useCitizenHistory, useCitizenProfile } from "../hooks/useCitizen";
 import "../styles/OperationsPages.css";
 
@@ -46,11 +47,7 @@ export default function CitizenProfilePage() {
   const reportsAwaiting = Math.max(0, reportsSubmitted - reportsResolved);
 
   if (profileQuery.isLoading || historyQuery.isLoading) {
-    return (
-      <section className="ops-page">
-        <p className="ops-status ops-status-success">Loading profile data...</p>
-      </section>
-    );
+    return <FeatureReadinessLoading />;
   }
 
   return (

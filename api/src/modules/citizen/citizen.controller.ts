@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  ForbiddenException,
   Get,
   Inject,
   Param,
@@ -27,6 +28,7 @@ import { RegisterNotificationDeviceDto } from './dto/register-notification-devic
 import { UpdateChallengeProgressDto } from './dto/update-challenge-progress.dto.js';
 
 const RUNTIME_FEATURE_FLAGS = loadRuntimeFeatureFlags(process.env as Record<string, unknown>);
+const CITIZEN_ACCESS_ROLES = new Set(['citizen', 'admin', 'super_admin']);
 
 @Controller('citizen')
 @UseGuards(AuthenticatedUserGuard)
@@ -35,7 +37,7 @@ export class CitizenController {
 
   @Post('reports')
   async createReport(@Req() request: RequestWithAuthUser, @Body() dto: CreateCitizenReportDto) {
-    return this.citizenService.createReport(this.requireUserId(request), dto);
+    return this.citizenService.createReport(this.requireCitizenUserId(request), dto);
   }
 
   @Post('notifications/devices')
@@ -43,7 +45,7 @@ export class CitizenController {
     @Req() request: RequestWithAuthUser,
     @Body() dto: RegisterNotificationDeviceDto,
   ) {
-    return this.citizenService.registerNotificationDevice(this.requireUserId(request), dto);
+    return this.citizenService.registerNotificationDevice(this.requireCitizenUserId(request), dto);
   }
 
   @Get('notifications')
@@ -60,7 +62,7 @@ export class CitizenController {
   ) {
     return {
       notifications: await this.citizenService.listNotifications(
-        this.requireUserId(request),
+        this.requireCitizenUserId(request),
         limit ?? 20,
       ),
     };
@@ -71,7 +73,10 @@ export class CitizenController {
     @Req() request: RequestWithAuthUser,
     @Param('id', new ParseUUIDPipe()) notificationId: string,
   ) {
-    return this.citizenService.markNotificationRead(this.requireUserId(request), notificationId);
+    return this.citizenService.markNotificationRead(
+      this.requireCitizenUserId(request),
+      notificationId,
+    );
   }
 
   @Get('profile')
@@ -83,7 +88,7 @@ export class CitizenController {
     vary: ['Authorization', 'Cookie'],
   })
   async profile(@Req() request: RequestWithAuthUser) {
-    return this.citizenService.getProfile(this.requireUserId(request));
+    return this.citizenService.getProfile(this.requireCitizenUserId(request));
   }
 
   @Get('history')
@@ -101,7 +106,7 @@ export class CitizenController {
   ) {
     const pagination = parsePaginationParams(pageParam, pageSizeParam);
     const { items, total } = await this.citizenService.getHistory(
-      this.requireUserId(request),
+      this.requireCitizenUserId(request),
       pagination.limit,
       pagination.offset,
     );
@@ -127,7 +132,7 @@ export class CitizenController {
   })
   async challenges(@Req() request: RequestWithAuthUser) {
     this.requireCitizenChallengesEnabled();
-    const items = await this.citizenService.listChallenges(this.requireUserId(request));
+    const items = await this.citizenService.listChallenges(this.requireCitizenUserId(request));
     return { challenges: items };
   }
 
@@ -137,7 +142,7 @@ export class CitizenController {
     @Param('id', new ParseUUIDPipe()) challengeId: string,
   ) {
     this.requireCitizenChallengesEnabled();
-    return this.citizenService.enrollInChallenge(this.requireUserId(request), challengeId);
+    return this.citizenService.enrollInChallenge(this.requireCitizenUserId(request), challengeId);
   }
 
   @Post('challenges/:id/progress')
@@ -148,7 +153,7 @@ export class CitizenController {
   ) {
     this.requireCitizenChallengesEnabled();
     return this.citizenService.updateChallengeProgress(
-      this.requireUserId(request),
+      this.requireCitizenUserId(request),
       challengeId,
       dto.progressDelta,
     );
@@ -160,11 +165,28 @@ export class CitizenController {
     }
   }
 
-  private requireUserId(request: RequestWithAuthUser) {
-    const userId = request.authUser?.id;
+  private requireCitizenUserId(request: RequestWithAuthUser) {
+    const authUser = request.authUser;
+    const userId = authUser?.id;
     if (!userId) {
       throw new UnauthorizedException();
     }
+
+    const roleNames = new Set<string>();
+    if (typeof authUser.role === 'string') {
+      roleNames.add(authUser.role.trim().toLowerCase());
+    }
+
+    for (const role of authUser.roles ?? []) {
+      if (typeof role.name === 'string') {
+        roleNames.add(role.name.trim().toLowerCase());
+      }
+    }
+
+    if (![...roleNames].some((roleName) => CITIZEN_ACCESS_ROLES.has(roleName))) {
+      throw new ForbiddenException('Insufficient permissions');
+    }
+
     return userId;
   }
 }

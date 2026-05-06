@@ -42,7 +42,11 @@ function TicketItem({ ticket, onDelete, isDeleting }: TicketItemProps) {
       <div className="ticket-item-layout">
         <div className="ticket-item-main">
           <div className="ticket-item-header">
-            <h3 className="ticket-item-title">{ticket.title}</h3>
+            <h3 className="ticket-item-title">
+              <Link to={`/app/tickets/${ticket.id}/details`} className="ticket-item-title-link">
+                {ticket.title || "Untitled ticket"}
+              </Link>
+            </h3>
             <span className={priorityClass}>{priority}</span>
             <em className={statusClass}>{status}</em>
           </div>

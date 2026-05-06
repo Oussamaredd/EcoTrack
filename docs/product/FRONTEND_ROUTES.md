@@ -9,7 +9,7 @@ EcoTrack web is the primary desktop surface for manager and admin work. Citizen 
 | Path | Auth state | Result |
 | --- | --- | --- |
 | `/` | Unauthenticated | Marketing landing page for the EcoTrack citizen-first waste reporting and collection coordination prototype |
-| `/` | Authenticated | Redirect to `/app` |
+| `/` | Authenticated | Public landing page remains visible; users enter the workspace explicitly |
 | `/about`, `/contact`, `/security`, `/features`, `/how-it-works`, `/pricing`, `/support`, `/terms`, `/privacy`, `/cookies` | Any | Public marketing/legal information pages aligned to citizen reporting, role-based coordination, prototype scope, and platform policy |
 | `/login` | Unauthenticated | Login page (Supabase email/password + Google OAuth button) with a cursor-following spotlight overlay on pointer devices and assertive inline auth error announcements |
 | `/signup` | Unauthenticated | Supabase-backed account registration page |
@@ -24,10 +24,10 @@ EcoTrack web is the primary desktop surface for manager and admin work. Citizen 
 Special case:
 
 - `/#<section-id>` remains accessible for authenticated users to support route+scroll links back to marketing sections.
-- The public landing route (`/`) redirects to `/app` only after the browser restores a valid Supabase session; the auth bootstrap no longer calls `/api/auth/status`.
+- The public landing route (`/`) remains public for both anonymous and authenticated sessions; the auth bootstrap no longer calls `/api/auth/status`.
 - Route changes reset scroll position to top for public/app pages (hash-only changes are excluded).
 - `/auth/callback` deduplicates concurrent exchange attempts for the same auth `code` during the retry window so router remounts and rapid refreshes do not double-submit the exchange request.
-- Lazy route boundaries show a shared `Loading EcoTrack` status screen while route bundles are fetched; `/login` and the authenticated app routes keep that shared route-suspense contract, but `/` now eager-loads the landing shell so the hero can paint without an extra route-bundle fetch.
+- Lazy route boundaries and initial feature bootstrap API calls show a shared `Loading EcoTrack` status screen while route bundles or required page data are fetched; `/login` and the authenticated app routes keep that shared route-suspense contract, but `/` now eager-loads the landing shell so the hero can paint without an extra route-bundle fetch.
 - Direct-entry performance contract: `/`, `/login`, `/app`, and `/app/dashboard` stay in the eager route shell so audits and first-load navigation do not pay an extra lazy-route fetch before the first meaningful public/auth/dashboard paint. The landing page still defers below-the-fold marketing sections until browser idle so the hero remains the critical path.
 - Public marketing routes publish route-specific title, description, canonical, Open Graph, Twitter, and structured-data metadata aligned to EcoTrack as a citizen-first collection coordination prototype.
 - The public sign-in route (`/login`) publishes standard indexable metadata because it is part of the audited public entry surface.
@@ -37,9 +37,9 @@ Special case:
 
 | Path | Component | Notes |
 | --- | --- | --- |
-| `/app` | `AppHomePage` | Shared authenticated role hub; stays lightweight after sign-in and only points users into live workflows when they explicitly open them |
+| `/app` | `AppHomePage` | Shared authenticated role hub with one role-aware onboarding panel; stays lightweight after sign-in and only points users into live workflows when they explicitly open them |
 | `/app/dashboard` | `Dashboard` | Primary manager/admin desktop monitoring surface; requires `manager`/`admin`/`super_admin`, otherwise redirects to `/app`. In the low-cost MVP baseline it only opens realtime while the dashboard tab is visible, prefers websocket push, keeps SSE disabled by default, and falls back to 5-minute polling. |
-| `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; web citizen companion flow for reporting issues on existing mapped containers with typed issue selection and latest known seeded/simulated context |
+| `/app/citizen/report` | `CitizenReportPage` | Requires `citizen`/`admin`/`super_admin`; web citizen companion flow for reporting issues on existing mapped database-backed containers with typed issue selection, shared EcoTrack loading screen while mapped-container context loads, and latest known fill context |
 | `/app/citizen/profile` | `CitizenProfilePage` | Requires `citizen`/`admin`/`super_admin`; web follow-up surface for citizen history, current report status, and prototype impact visibility |
 | `/app/citizen/challenges` | `CitizenChallengesPage` | Requires `citizen`/`admin`/`super_admin`; otherwise shows Access Denied. Deferred behind `VITE_CITIZEN_CHALLENGES_ENABLED` / `CITIZEN_CHALLENGES_ENABLED` and off by default for the low-cost MVP surface. |
 | `/app/agent/tour` | `AgentTourPage` | Requires `agent`/`admin`/`super_admin`; otherwise shows Access Denied. This retained web companion surface supports demo, accessibility, and recovery use cases while mobile remains the primary field-execution lane. Refresh reloads server tour state, while persisted-route rebuild remains a manager-only action. The page is zone-assigned, shows the zone depot/start location, loads all paginated mapped containers for that assigned zone to verify route coverage, and renders only the routed stop sequence on the map with numbered operational markers. When the page is showing an overdue or cached tour snapshot, it also offers `Reload Without Cache` recovery. |
@@ -58,8 +58,14 @@ Special case:
 Authenticated shell behavior:
 
 - All `/app/*` routes render inside a shared sidebar layout.
-- Protected `/app/*` routes keep the shared session gate visible only while the local Supabase session is restoring, then either open the workspace or fall through to `/login`.
-- The shared `/app` role hub does not prefetch citizen profile data on mount; citizen follow-up pages such as `/app/citizen/profile` and `/app/citizen/challenges` load their live data only when opened.
+- Protected `/app/*` routes use the restored Supabase browser session for the app-shell auth decision, then API-backed product routes probe `/api/health/ready` and keep the shared `Loading EcoTrack` state visible until the backend is dependency-ready.
+- Public routes, auth routes, `/app`, and `/app/settings` do not run product API readiness probes; product/data routes share one readiness probe loop per API base and treat cold-start connection failures, proxy `500`, and `502`/`503`/`504` as normal waking states until readiness returns `200`.
+- Role gates prefer trusted Supabase `app_metadata.role` / `app_metadata.roles` claims, with user metadata used only as a compatibility fallback; the API consumes the same app metadata role claims when linking a Supabase user to local role permissions.
+- Citizen API routes enforce the same role policy as the frontend: `citizen`, `admin`, and `super_admin` may use `/api/citizen/*`; agent/manager-only sessions receive `403` instead of citizen data.
+- Product API calls attach the cached Supabase access token, and if that cache is empty they refresh it from the current Supabase browser session before sending the request. Oversized Supabase sessions are repaired before caching by sending only the refresh token to `POST /api/auth/supabase/session/repair-profile-metadata`, so the browser never sends a bloated bearer header.
+- Ordinary feature API `401` responses surface through the active page/query error path instead of clearing the Supabase browser session; explicit auth status/profile checks still own session invalidation.
+- The shared `/app` role hub renders one consistent onboarding panel whose copy is selected from the signed-in role; it does not prefetch citizen profile data on mount, and citizen follow-up pages such as `/app/citizen/profile` and `/app/citizen/challenges` load their live data only when opened.
+- Initial feature pages that need live data before they are usable treat route entry as feature intent: while required API context is loading, the page shows the shared `Loading EcoTrack` screen and keeps true Access Denied messaging reserved for users without role access.
 - The role hub and route copy reinforce the intended split: citizens and agents are mobile-first, while managers and admins are web-first.
 - Sidebar top: logo link on the left and sidebar toggle on the right.
 - Sidebar navigation is priority-ordered with the shared role hub first.
@@ -75,7 +81,7 @@ Authenticated shell behavior:
 - When a profile photo is configured, the shell account chip reuses that avatar; otherwise it falls back to the default user glyph.
 - The page title in the sticky header is derived from the active route, including support/ticket compatibility routes and role-specific workspace pages.
 - Non-dashboard `/app/*` workspace pages use full main-section width (`width: 100%`) with container-aware responsive styles, so grid/tab/detail layouts reflow when sidebar width changes (expanded vs compressed), not only on viewport breakpoints.
-- Sign Out returns users to the landing page (`/`).
+- Sign Out clears any pending `next`/OAuth redirect intent before returning users to the landing page (`/`), so the next normal login opens the role hub (`/app`) unless the user intentionally starts from a fresh protected deep link.
 - Role-protected app surfaces use a shared Access Denied presentation pattern (`app-access-denied`).
 - Unauthorized authenticated requests for `/app/dashboard` are redirected back to `/app` instead of rendering the dashboard.
 - `/app/dashboard` now lazy-loads non-critical analytics panels and a manager heatmap panel after the shell and KPI strip have rendered.
@@ -83,7 +89,7 @@ Authenticated shell behavior:
 - The citizen follow-up loop currently exposes truthful web visibility through report submission confirmation, history status, resolved-report counts, and prototype impact estimates. Route linkage is not yet exposed directly to citizen web users.
 - Settings form behavior:
   - Display name changes are validated client-side before submission.
-  - Profile photos accept PNG, JPEG, or WEBP uploads up to 1 MB and are stored as profile/avatar URLs or data URLs.
+  - Inline profile photo uploads are blocked so base64 image data is not written into Supabase auth metadata or embedded into access tokens.
   - Removing a profile photo clears the stored avatar preview and returns the shell/header avatar to its fallback state.
   - Password changes are available only for `local` accounts; Google SSO accounts are shown provider guidance instead.
 - Login/auth error messaging:

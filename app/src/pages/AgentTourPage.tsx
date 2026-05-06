@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import FeatureReadinessLoading from "../components/FeatureReadinessLoading";
 import AgentRouteMap from "../components/agent/AgentRouteMap";
 import {
   type TourRouteGeometry,
@@ -434,7 +435,7 @@ export default function AgentTourPage() {
     const trimmedPhotoUrl = anomalyPhotoUrl.trim();
     if (trimmedPhotoUrl && !/^https?:\/\//i.test(trimmedPhotoUrl)) {
       setStatusTone("error");
-      setStatusMessage("Photo URL must begin with http:// or https://.");
+      setStatusMessage("Photo URL must use a public web URL.");
       return;
     }
 
@@ -467,11 +468,7 @@ export default function AgentTourPage() {
   };
 
   if (agentTourQuery.isLoading) {
-    return (
-      <section className="ops-page">
-        <p className="ops-status ops-status-info">Loading assigned tour...</p>
-      </section>
-    );
+    return <FeatureReadinessLoading />;
   }
 
   if (agentTourQuery.isError) {
@@ -898,7 +895,7 @@ export default function AgentTourPage() {
             className="ops-input"
             value={anomalyPhotoUrl}
             onChange={(event) => setAnomalyPhotoUrl(event.target.value)}
-            placeholder="https://..."
+            placeholder="Paste a public image URL"
           />
         </div>
 

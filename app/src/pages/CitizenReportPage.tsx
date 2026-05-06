@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import FeatureReadinessLoading from '../components/FeatureReadinessLoading';
 import { loadAppRuntimeConfig } from '../config/runtimeFeatures';
 import { useCreateCitizenReport } from '../hooks/useCitizen';
 import {
@@ -22,6 +23,7 @@ type ContainerOption = {
 };
 
 type StatusTone = 'success' | 'error';
+type ReportWorkspaceReadiness = 'ready' | 'blocked' | 'unavailable';
 type SubmissionSummary = {
   confirmationState?: string;
   managerNotificationQueued?: boolean;
@@ -189,6 +191,19 @@ export default function CitizenReportPage() {
   const searchHasMatches = visibleContainerOptions.length > 0;
   const selectedReportType =
     citizenReportTypes.find((item) => item.value === reportType) ?? citizenReportTypes[0];
+  const reportWorkspaceReadiness: ReportWorkspaceReadiness = containersQuery.isError
+      ? 'unavailable'
+      : hasMappedContainers
+        ? 'ready'
+        : 'blocked';
+  const isReportWorkspaceUnavailable = reportWorkspaceReadiness === 'unavailable';
+  const isReportWorkspaceBlocked = reportWorkspaceReadiness === 'blocked';
+  const isReportSubmissionDisabled =
+    createReportMutation.isPending ||
+    reportWorkspaceReadiness !== 'ready';
+  const submitButtonLabel = createReportMutation.isPending
+    ? 'Submitting...'
+    : 'Submit Report';
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -304,13 +319,17 @@ export default function CitizenReportPage() {
     );
   };
 
+  if (containersQuery.isLoading) {
+    return <FeatureReadinessLoading />;
+  }
+
   return (
     <section className="ops-page">
       <header className="ops-hero">
         <h1>Report Container Issue</h1>
         <p>
-          Use the retained web citizen flow to report a mapped container issue,
-          review the latest known context, and send a typed signal into the manager queue.
+          Opening this feature prepares the reporting workspace, loads mapped containers and zones,
+          then lets you send a typed signal into the manager queue.
         </p>
       </header>
 
@@ -331,7 +350,7 @@ export default function CitizenReportPage() {
             placeholder="Search by code, address, waste stream, or zone"
             value={containerSearch}
             onChange={(event) => setContainerSearch(event.target.value)}
-            disabled={containersQuery.isLoading || containersQuery.isError || !hasMappedContainers}
+            disabled={reportWorkspaceReadiness !== 'ready'}
           />
           <p className="ops-helper">
             Search the live mapped-container list if the nearest container is not obvious.
@@ -348,14 +367,14 @@ export default function CitizenReportPage() {
             value={containerId}
             onChange={(event) => setContainerId(event.target.value)}
             required
-            disabled={containersQuery.isLoading || containersQuery.isError || !hasMappedContainers}
+            disabled={reportWorkspaceReadiness !== 'ready'}
           >
             <option value="">
-              {containersQuery.isLoading
-                ? 'Loading mapped containers...'
-                : hasMappedContainers
-                  ? 'Select a container'
-                  : 'No mapped containers available'}
+              {isReportWorkspaceUnavailable
+                  ? 'Mapped containers unavailable'
+                  : hasMappedContainers
+                    ? 'Select a container'
+                    : 'No mapped containers available'}
             </option>
             {visibleContainerOptions.map((container) => (
               <option key={container.id} value={container.id}>
@@ -365,19 +384,14 @@ export default function CitizenReportPage() {
           </select>
         </div>
 
-        {containersQuery.isLoading ? (
-          <p className="ops-status ops-status-info">Loading mapped containers for citizen reporting.</p>
-        ) : null}
-
-        {!containersQuery.isLoading && !containersQuery.isError && !hasMappedContainers ? (
+        {isReportWorkspaceBlocked ? (
           <p className="ops-status ops-status-error">
             No mapped containers are available right now. Try again later or contact support if
             the coverage data should already exist.
           </p>
         ) : null}
 
-        {!containersQuery.isLoading &&
-        !containersQuery.isError &&
+        {reportWorkspaceReadiness === 'ready' &&
         hasMappedContainers &&
         normalizeSearchValue(containerSearch).length > 0 &&
         !searchHasMatches ? (
@@ -506,7 +520,7 @@ export default function CitizenReportPage() {
             id="citizen-report-photo-url"
             type="url"
             className="ops-input"
-            placeholder="https://example.com/container.jpg"
+            placeholder="Paste a public image URL"
             value={photoUrl}
             onChange={(event) => setPhotoUrl(event.target.value)}
           />
@@ -516,19 +530,14 @@ export default function CitizenReportPage() {
           <button
             type="submit"
             className="ops-btn ops-btn-success"
-            disabled={
-              createReportMutation.isPending ||
-              containersQuery.isLoading ||
-              containersQuery.isError ||
-              !hasMappedContainers
-            }
+            disabled={isReportSubmissionDisabled}
           >
-            {createReportMutation.isPending ? 'Submitting...' : 'Submit Report'}
+            {submitButtonLabel}
           </button>
         </div>
       </form>
 
-      {containersQuery.isError ? (
+      {isReportWorkspaceUnavailable ? (
         <p className="ops-status ops-status-error">
           Could not load mapped containers. Refresh the page and try again.
         </p>

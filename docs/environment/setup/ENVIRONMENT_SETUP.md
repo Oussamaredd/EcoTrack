@@ -45,7 +45,8 @@ Managed Postgres local-testing note:
 - When you intentionally want local native `api`/`database` commands to target the managed deployment database, update root `/.env` `DATABASE_URL` to the direct Postgres connection string.
 - Self-managed examples in this repo use database name `ecotrack`, but provider-managed hosted Postgres services such as Supabase may expose the primary database as `postgres`.
 - When you are testing or rolling out Supabase Auth, also set `SUPABASE_URL` in root `/.env` so the API can verify Supabase access tokens.
-- Keep `SUPABASE_SERVICE_ROLE_KEY` only in trusted shell or server-side env files when running the one-off `npm run db:auth:import:supabase --workspace=ecotrack-database` import script.
+- Keep `SUPABASE_SERVICE_ROLE_KEY` only in trusted shell or server-side env files; the API uses it for Supabase Auth token introspection when JWKS verification is not available, and the one-off `npm run db:auth:import:supabase --workspace=ecotrack-database` import script also requires it.
+- Store authorization role claims in Supabase `app_metadata.role` or `app_metadata.roles` for non-citizen access. Browser route guards and API permission linking prefer app metadata so editable user metadata does not become the authorization source.
 - Keep `app/.env.local` frontend-only (`VITE_*` keys only).
 - Keep `mobile/.env.local` mobile-only (`EXPO_PUBLIC_*` keys only).
 - Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in `app/.env.local` for browser sign-in, signup, OAuth callback, and password reset flows.
@@ -62,12 +63,13 @@ npm run smoke-test
 
 ## Port Contract
 
-- Local/native dev browser traffic enters through `http://localhost:5173`; the API process listens on `http://localhost:3001` for local-native diagnostics only.
+- Local/native dev browser traffic enters through `http://localhost:5173`; the API process listens on `http://localhost:3001` and browser API calls may target that backend origin directly.
 - Local/native mobile traffic enters through Expo and should use `EXPO_PUBLIC_API_BASE_URL` with a simulator/device reachable API origin.
 - Docker dev browser traffic enters through `http://localhost:3000`; the backend still listens on `API_PORT=3001`, but that port stays internal-only on the Docker network.
 - `API_PORT` remains the canonical backend listen key; hosted providers may inject `PORT`, and the API runtime now uses that value only when `API_PORT` is absent.
-- `API_BASE_URL`, `VITE_API_BASE_URL`, and `EXPO_PUBLIC_API_BASE_URL` must resolve to public client-facing origins.
-- Public routes such as `/` and `/login` should render immediately; only protected `/app/**` routes may wait on session resolution.
+- `API_BASE_URL` is the backend API origin. `VITE_API_BASE_URL` is the browser API origin and normally matches `API_BASE_URL` in host dev; deployed frontend-edge proxy builds may keep it on the frontend origin when `VITE_USE_EDGE_API_PROXY=true`.
+- Public routes such as `/` and `/login` should render immediately. Protected `/app/**` routes may wait on Supabase session resolution, and API-backed product pages keep the shared loading state visible while `/api/health/ready` warms a cold backend.
+- Host API dev loads root `/.env` first by default so Supabase and database pooler settings stay canonical across workspaces. Use `ECOTRACK_API_ENV_FILE` only when intentionally testing a different API env file.
 
 ### Mobile API Base Helpers
 
@@ -95,6 +97,8 @@ Cloudflare Pages build note:
 - Set `VITE_USE_EDGE_API_PROXY=true` in the Pages build environment to force browser API calls onto the frontend origin.
 - Set `EDGE_PROXY_TARGET_ORIGIN=<backend-public-origin>` in the Pages build environment so the generated `_redirects` file proxies `/api/*` and `/health` to the backend origin.
 - Keep deployed `VITE_API_BASE_URL` on the frontend origin when the edge proxy is enabled.
+- Browser API calls still authenticate with Supabase bearer tokens and omit cookies; edge or dev proxies must not forward browser `Cookie` headers to the API.
+- Do not store inline base64 profile images in Supabase `user_metadata` fields such as `avatar_url` or `picture`; those fields are embedded in access tokens and can exceed HTTP header limits. Keep `SUPABASE_SERVICE_ROLE_KEY` configured on the API so existing oversized sessions can be repaired server-side by `POST /api/auth/supabase/session/repair-profile-metadata`.
 
 ## GitHub Pages Status
 
@@ -117,13 +121,13 @@ Cloudflare Pages build note:
 
 ## OAuth Callback Requirements
 
-- Canonical callback URI for local dev:
-  - `http://localhost:5173/api/auth/google/callback`
+- Canonical backend callback URI for local dev:
+  - `http://localhost:3001/api/auth/google/callback`
 - Canonical callback URI for Docker dev:
   - `http://localhost:3000/api/auth/google/callback`
 - `GOOGLE_CLIENT_ID` must be a Google OAuth Web client ID in this format:
   - `<numeric-project-id>-<client>.apps.googleusercontent.com`
-- Set `API_BASE_URL` and `GOOGLE_CALLBACK_URL` to the same public edge origin in runtime env files.
+- Set `API_BASE_URL` to the backend API origin and keep `GOOGLE_CALLBACK_URL` aligned with `API_BASE_URL + /api/auth/google/callback` while the legacy backend Google callback exists. Browser Google sign-in should use Supabase Auth directly.
 - Google Cloud Console Authorized redirect URI must match exactly:
   - scheme + host + port + path
   - expected path: `/api/auth/google/callback`

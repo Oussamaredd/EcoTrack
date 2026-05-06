@@ -1,6 +1,6 @@
 # Cross-App Design System Contract
 
-Last updated: 2026-03-23
+Last updated: 2026-05-03
 
 ## Scope
 
@@ -9,6 +9,20 @@ The design system is a contract across `app` and `mobile`, not a shared runtime 
 - `app` keeps browser-native implementations
 - `mobile` keeps React Native / Paper-native implementations
 - both clients align on names, intent, states, and accessibility expectations
+
+## Web Styling Contract
+
+The web app uses semantic tokens from `app/src/index.css` as the source of truth for the authenticated app shell, dashboard, operations pages, support workspace, ticket flows, and auth surfaces. Tailwind mirrors these tokens through `app/tailwind.config.ts` so utility-based components and CSS-authored screens stay aligned.
+
+Current web styling rules:
+
+- App sections, cards, panels, forms, tables, dashboard surfaces, operations surfaces, support surfaces, and ticket surfaces use sharp `0px` corners.
+- `--radius`, `--radius-sm`, `--radius-md`, `--radius-lg`, and `--radius-pill` are currently set to `0px` for a squared product style.
+- Reusable surfaces should use `--section-surface`, `--section-surface-strong`, `--section-shadow`, `--surface`, `--surface-strong`, `--border`, `--text`, and `--text-muted` instead of hard-coded section colors.
+- Decorative radial glows should stay on the app background, selected/focus states, and intentional primary actions. Normal section cards and panels should not carry green, white, or blue local glow effects.
+- Primary actions use `--gradient-primary` and `--shadow-glow`.
+- Status colors use semantic intent tokens: success, warning, danger, and info.
+- Status meaning must not rely on color alone; visible text remains required for status, error, empty, and loading states.
 
 ## Implemented Primitive Set
 
@@ -58,8 +72,11 @@ The current baseline standardizes these 10 primitives:
 
 Web reuse now appears in:
 
-- manager dashboard: KPI tiles, admin panel, heatmap filters, ticket feed, skeleton panels
-- manager planning: shared operations-card structure plus centralized planning workflow state
+- authenticated app shell: sidebar, toolbar, account surfaces, status screens, access-denied states, and install banners
+- dashboard: hero, KPI cards, panels, ticket status surfaces, heatmap containers, empty states, and loading states
+- manager, agent, citizen, and admin operations pages: operations heroes, cards, KPI tiles, forms, status messages, chips, map shells, admin panels, and modal surfaces
+- support workspace and ticket flows: support tabs, advanced ticket queue, simple ticket queue, create-ticket form, ticket details, treatment workflow, comments, activity timeline, and ticket feedback states
+- shared token layer: semantic colors, sharp radius tokens, font tokens, section surfaces, shadows, app gradients, and Tailwind theme aliases
 
 Mobile reuse now appears in:
 
@@ -74,7 +91,7 @@ Instead of adding Storybook as a new runtime dependency immediately, the repo us
 - documented primitive inventory in this file
 - real-screen reuse in both clients
 - existing automated tests around web and mobile UI helpers
-- validation through `lint`, `typecheck`, and test suites in each workspace
+- validation through `lint`, `typecheck`, test suites, `validate-doc-sync`, and the web theme contract check
 
 This is the current "Storybook or equivalent" path approved for the monorepo phase.
 

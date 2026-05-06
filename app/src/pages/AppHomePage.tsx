@@ -112,26 +112,18 @@ const citizenLinks: WorkspaceLink[] = [
   },
 ];
 
-const buildCitizenFollowUpLinks = (canAccessSupportWorkspace: boolean): WorkspaceLink[] => [
-  {
-    label: 'Impact & History',
-    description: 'Open live report history, current statuses, and the follow-up details when you need them.',
-    meta: 'Follow-up',
-    to: '/app/citizen/profile',
-  },
-  {
-    label: 'Challenges',
-    description: 'Open current citizen challenges without leaving the shared host.',
-    meta: 'Engagement',
-    to: '/app/citizen/challenges',
-  },
-  {
-    label: 'Support',
-    description: 'Get help if a mapped container or session issue blocks the report flow.',
-    meta: 'Recovery',
-    to: canAccessSupportWorkspace ? '/app/support' : '/support',
-  },
-];
+type ActiveRole = 'admin' | 'manager' | 'agent' | 'citizen' | 'shared';
+
+type RoleHubPanel = {
+  badgeLabel: string;
+  heading: string;
+  description: string;
+  panelTitle: string;
+  panelDescription: string;
+  primaryLane: string;
+  roleSplit: string;
+  desktopPriority: string;
+};
 
 const adminLinks: WorkspaceLink[] = [
   {
@@ -140,19 +132,6 @@ const adminLinks: WorkspaceLink[] = [
     meta: 'Governance',
     to: '/app/admin',
   },
-];
-
-const citizenFirstRunChecklist = [
-  'Choose an existing mapped container in the current report flow.',
-  'Select the typed issue that best matches what you saw.',
-  'Submit one valid report to unlock the lighter returning-citizen lane at /app.',
-];
-
-const citizenRecoveryNotes = [
-  'Mobile remains the primary citizen experience when camera, geolocation, and offline support matter. This web lane stays available as a companion flow.',
-  'Web GPS is optional. If location is unavailable or denied, keep going with manual mapped-container selection.',
-  'If the mapped container no longer exists, reload the report page and choose another live container.',
-  'If you already reported the same issue recently, EcoTrack will stop the duplicate and point you back to history.',
 ];
 
 const buildRoleGuides = (options: {
@@ -225,6 +204,120 @@ const collectRoleNames = (user: {
   }
 
   return Array.from(roleNames);
+};
+
+const normalizeRoleName = (roleName: string) => roleName.trim().toLowerCase();
+
+const resolveActiveRole = (
+  user: {
+    role?: string | null;
+    roles?: Array<{ name?: string | null }> | null;
+  } | null | undefined,
+  access: {
+    canAccessManager: boolean;
+    canAccessAgent: boolean;
+    canAccessCitizen: boolean;
+    canAccessAdmin: boolean;
+  },
+): ActiveRole => {
+  const explicitRole = typeof user?.role === 'string' ? normalizeRoleName(user.role) : '';
+
+  if ((explicitRole === 'admin' || explicitRole === 'super_admin') && access.canAccessAdmin) {
+    return 'admin';
+  }
+
+  if (explicitRole === 'manager' && access.canAccessManager) {
+    return 'manager';
+  }
+
+  if (explicitRole === 'agent' && access.canAccessAgent) {
+    return 'agent';
+  }
+
+  if (explicitRole === 'citizen' && access.canAccessCitizen) {
+    return 'citizen';
+  }
+
+  if (access.canAccessAdmin) {
+    return 'admin';
+  }
+
+  if (access.canAccessManager) {
+    return 'manager';
+  }
+
+  if (access.canAccessAgent) {
+    return 'agent';
+  }
+
+  if (access.canAccessCitizen) {
+    return 'citizen';
+  }
+
+  return 'shared';
+};
+
+const roleHubPanels: Record<ActiveRole, RoleHubPanel> = {
+  citizen: {
+    badgeLabel: 'EcoTrack citizen hub',
+    heading: 'Open citizen reporting when you are ready.',
+    description:
+      'This shared authenticated surface keeps the citizen lane lightweight after sign-in. Start with one mapped-container report, then open history, challenges, or support only when you need live product data.',
+    panelTitle: 'Citizen lane guidance',
+    panelDescription:
+      'Mobile remains the primary citizen experience; this web host stays available as the companion path.',
+    primaryLane: 'Citizen experience',
+    roleSplit: 'Citizen companion web',
+    desktopPriority: 'Citizen/agent companion',
+  },
+  manager: {
+    badgeLabel: 'EcoTrack manager hub',
+    heading: 'Coordinate the right EcoTrack lane.',
+    description:
+      'This shared authenticated surface routes managers toward monitoring, planning, and reporting while keeping citizen reports visible as the operational signal that starts the loop.',
+    panelTitle: 'Manager routing',
+    panelDescription:
+      'Managers use the web workspace first for coordination, planning, and operational review.',
+    primaryLane: 'Manager control',
+    roleSplit: 'Manager web-first',
+    desktopPriority: 'Manager/admin web-first',
+  },
+  agent: {
+    badgeLabel: 'EcoTrack agent hub',
+    heading: 'Enter the field companion lane.',
+    description:
+      'This shared authenticated surface keeps agent web access available for assigned-route recovery, demos, and accessibility while field execution remains mobile-first.',
+    panelTitle: 'Agent routing',
+    panelDescription:
+      'Agents keep this web host as a retained companion surface, not the primary field-execution lane.',
+    primaryLane: 'Agent execution',
+    roleSplit: 'Agent companion web',
+    desktopPriority: 'Citizen/agent companion',
+  },
+  admin: {
+    badgeLabel: 'EcoTrack admin hub',
+    heading: 'Govern the right EcoTrack lane.',
+    description:
+      'This shared authenticated surface routes admins toward oversight and governance while preserving access to the role lanes they may need to inspect.',
+    panelTitle: 'Admin routing',
+    panelDescription:
+      'Admins use the web workspace first for governance, configuration, and role-aware oversight.',
+    primaryLane: 'Admin oversight',
+    roleSplit: 'Manager/admin web-first',
+    desktopPriority: 'Manager/admin web-first',
+  },
+  shared: {
+    badgeLabel: 'EcoTrack role hub',
+    heading: 'Enter the right EcoTrack lane.',
+    description:
+      'This shared authenticated surface routes each account into the right part of the prototype and keeps support and settings available when no product role is assigned yet.',
+    panelTitle: 'Session routing',
+    panelDescription:
+      'This host stays honest about which roles are mobile-first and which roles are web-first.',
+    primaryLane: 'Shared operations',
+    roleSplit: 'Shared workspace',
+    desktopPriority: 'Citizen/agent companion',
+  },
 };
 
 const resolveFirstName = (user: {
@@ -316,84 +409,6 @@ const buildPriorityActions = (options: {
   return actions.slice(0, 4);
 };
 
-function CitizenEntrySection({
-  followUpLinks,
-}: {
-  followUpLinks: WorkspaceLink[];
-}) {
-  return (
-    <section className="app-home-card app-home-citizen-entry" aria-labelledby="citizen-entry-title">
-      <div className="app-home-citizen-grid">
-        <div className="app-home-citizen-copy">
-          <div className="app-home-badge app-home-badge-citizen">
-            <FileText size={14} aria-hidden="true" />
-            Citizen lane
-          </div>
-
-          <div className="app-home-citizen-heading">
-            <h2 id="citizen-entry-title">Open citizen reporting when you are ready.</h2>
-            <p>
-              EcoTrack keeps the authenticated role hub lightweight so sign-in can finish without
-              waking the operational API. Open reporting, history, or challenges only when you want
-              live product data.
-            </p>
-          </div>
-
-          <div className="app-home-citizen-chip-row" aria-label="Citizen onboarding facts">
-            <span className="app-home-citizen-chip">Mobile-first citizen lane</span>
-            <span className="app-home-citizen-chip">Mapped containers only</span>
-            <span className="app-home-citizen-chip">GPS optional on web</span>
-            <span className="app-home-citizen-chip">Lighter follow-up after first report</span>
-          </div>
-
-          <div className="app-home-citizen-actions">
-            <Link to="/app/citizen/report" className="app-home-primary-cta">
-              Report an issue
-              <ArrowRight size={16} aria-hidden="true" />
-            </Link>
-          </div>
-
-          <div className="app-home-citizen-secondary-links">
-            {followUpLinks.map((link) => (
-              <Link key={link.to} to={link.to} className="app-home-citizen-secondary-link">
-                <span className="app-home-citizen-secondary-title">{link.label}</span>
-                <span className="app-home-citizen-secondary-meta">{link.meta}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <aside className="app-home-citizen-panel" aria-label="Citizen lane guidance">
-          <div className="app-home-card-head">
-            <span className="app-home-icon app-home-icon-muted">
-              <Sparkles size={18} aria-hidden="true" />
-            </span>
-            <div>
-              <h3>Citizen lane guidance</h3>
-              <p>Keep the first interaction lightweight, then open deeper follow-up only on demand.</p>
-            </div>
-          </div>
-
-          <ul className="app-home-citizen-list">
-            {citizenFirstRunChecklist.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-
-          <div className="app-home-citizen-subsection">
-            <p className="app-home-citizen-subtitle">If something blocks you</p>
-            <ul className="app-home-citizen-list app-home-citizen-list-muted">
-              {citizenRecoveryNotes.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        </aside>
-      </div>
-    </section>
-  );
-}
-
 export default function AppHomePage() {
   const { user } = useCurrentUser();
   const runtimeConfig = loadAppRuntimeConfig();
@@ -403,10 +418,6 @@ export default function AppHomePage() {
   const canAccessAdmin = hasAdminAccess(user);
   const canAccessSupportWorkspace = hasSupportWorkspaceAccess(user);
   const universalLinks = buildUniversalLinks(canAccessSupportWorkspace);
-  const citizenFollowUpLinks = filterRuntimeLinks(
-    buildCitizenFollowUpLinks(canAccessSupportWorkspace),
-    runtimeConfig,
-  );
   const roleGuides = buildRoleGuides({
     canAccessManager,
     canAccessAgent,
@@ -430,9 +441,15 @@ export default function AppHomePage() {
   );
   const roleNames = collectRoleNames(user);
   const firstName = resolveFirstName(user);
+  const activeRole = resolveActiveRole(user, {
+    canAccessManager,
+    canAccessAgent,
+    canAccessCitizen,
+    canAccessAdmin,
+  });
+  const roleHubPanel = roleHubPanels[activeRole];
   const accessibleSurfaceCount =
     universalLinks.length + roleGuides.reduce((count, guide) => count + guide.links.length, 0);
-  const primaryLane = roleGuides[0]?.title ?? 'Shared operations';
   const workspaceSignals = [
     {
       label: 'Default route',
@@ -444,7 +461,21 @@ export default function AppHomePage() {
     },
     {
       label: 'Desktop priority',
-      value: canAccessManager || canAccessAdmin ? 'Manager/admin web-first' : 'Citizen/agent companion',
+      value: roleHubPanel.desktopPriority,
+    },
+  ];
+  const sessionMetrics = [
+    {
+      label: 'Current roles',
+      value: roleNames.length > 0 ? roleNames.join(', ') : 'No explicit role assigned yet.',
+    },
+    {
+      label: 'Primary lane',
+      value: roleHubPanel.primaryLane,
+    },
+    {
+      label: 'Role split',
+      value: roleHubPanel.roleSplit,
     },
   ];
   const operatingRules = [
@@ -465,25 +496,17 @@ export default function AppHomePage() {
   return (
     <section className="app-home-page app-content-page">
       <div className="app-home-stack">
-        {canAccessCitizen ? (
-          <CitizenEntrySection
-            followUpLinks={citizenFollowUpLinks}
-          />
-        ) : null}
-
         <section className="app-home-command">
           <div className="app-home-command-grid">
             <div className="app-home-command-copy">
               <div className="app-home-badge">
                 <House size={14} aria-hidden="true" />
-                EcoTrack role hub
+                {roleHubPanel.badgeLabel}
               </div>
               <div className="app-home-command-heading">
-                <h1>Enter the right EcoTrack lane.</h1>
+                <h1>{roleHubPanel.heading}</h1>
                 <p>
-                  {firstName}, this shared authenticated surface routes each role into the right part
-                  of the prototype. Citizens start the loop, managers coordinate it, agents validate
-                  field work, and admins keep the platform governed.
+                  {firstName}, {roleHubPanel.description}
                 </p>
               </div>
               <div className="app-home-signal-row">
@@ -501,24 +524,18 @@ export default function AppHomePage() {
                   <Compass size={18} aria-hidden="true" />
                 </span>
                 <div>
-                  <h2>Session routing</h2>
-                  <p>This host stays honest about which roles are mobile-first and which roles are web-first.</p>
+                  <h2>{roleHubPanel.panelTitle}</h2>
+                  <p>{roleHubPanel.panelDescription}</p>
                 </div>
               </div>
 
               <dl className="app-home-metric-list">
-                <div className="app-home-metric">
-                  <dt>Current roles</dt>
-                  <dd>{roleNames.length > 0 ? roleNames.join(', ') : 'No explicit role assigned yet.'}</dd>
-                </div>
-                <div className="app-home-metric">
-                  <dt>Primary lane</dt>
-                  <dd>{primaryLane}</dd>
-                </div>
-                <div className="app-home-metric">
-                  <dt>Role split</dt>
-                  <dd>{canAccessManager || canAccessAdmin ? 'Manager/admin web-first' : 'Citizen/agent companion web'}</dd>
-                </div>
+                {sessionMetrics.map((metric) => (
+                  <div key={metric.label} className="app-home-metric">
+                    <dt>{metric.label}</dt>
+                    <dd>{metric.value}</dd>
+                  </div>
+                ))}
               </dl>
             </aside>
           </div>

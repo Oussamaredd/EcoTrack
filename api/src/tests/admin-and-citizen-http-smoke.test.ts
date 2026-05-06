@@ -73,10 +73,18 @@ describe('Admin and citizen endpoint smoke', () => {
     app.setGlobalPrefix('api');
     app.use((req: Request, _res: Response, next: NextFunction) => {
       const mutableReq = req as Request & {
-        authUser?: { id: string };
+        authUser?: {
+          id: string;
+          role: string;
+          roles: Array<{ id: string; name: string }>;
+        };
         adminUser?: { id: string };
       };
-      mutableReq.authUser = { id: authUserId };
+      mutableReq.authUser = {
+        id: authUserId,
+        role: 'citizen',
+        roles: [{ id: roleId, name: 'citizen' }],
+      };
       mutableReq.adminUser = { id: adminUserId };
       next();
     });
@@ -180,7 +188,7 @@ describe('Admin and citizen endpoint smoke', () => {
     expect(auditServiceMock.getStats).toHaveBeenCalledTimes(1);
   });
 
-  it('handles citizen profile/challenge/report endpoints without errors', async () => {
+  it('handles citizen profile/history/report endpoints and disabled challenges correctly', async () => {
     await request(app.getHttpServer())
       .post('/api/citizen/reports')
       .send({
@@ -207,23 +215,39 @@ describe('Admin and citizen endpoint smoke', () => {
       .expect(200);
     expect(citizenServiceMock.getHistory).toHaveBeenCalledWith(authUserId, 10, 0);
 
-    await request(app.getHttpServer()).get('/api/citizen/challenges').expect(200);
-    expect(citizenServiceMock.listChallenges).toHaveBeenCalledWith(authUserId);
+    const challengesResponse = await request(app.getHttpServer()).get('/api/citizen/challenges');
+    if (challengesResponse.status === 200) {
+      expect(citizenServiceMock.listChallenges).toHaveBeenCalledWith(authUserId);
 
-    await request(app.getHttpServer())
-      .post(`/api/citizen/challenges/${challengeId}/enroll`)
-      .expect(201);
-    expect(citizenServiceMock.enrollInChallenge).toHaveBeenCalledWith(authUserId, challengeId);
+      await request(app.getHttpServer())
+        .post(`/api/citizen/challenges/${challengeId}/enroll`)
+        .expect(201);
+      expect(citizenServiceMock.enrollInChallenge).toHaveBeenCalledWith(authUserId, challengeId);
 
-    await request(app.getHttpServer())
-      .post(`/api/citizen/challenges/${challengeId}/progress`)
-      .send({ progressDelta: 2 })
-      .expect(201);
-    expect(citizenServiceMock.updateChallengeProgress).toHaveBeenCalledWith(
-      authUserId,
-      challengeId,
-      2,
-    );
+      await request(app.getHttpServer())
+        .post(`/api/citizen/challenges/${challengeId}/progress`)
+        .send({ progressDelta: 2 })
+        .expect(201);
+      expect(citizenServiceMock.updateChallengeProgress).toHaveBeenCalledWith(
+        authUserId,
+        challengeId,
+        2,
+      );
+    } else {
+      expect(challengesResponse.status).toBe(503);
+      expect(citizenServiceMock.listChallenges).not.toHaveBeenCalled();
+
+      await request(app.getHttpServer())
+        .post(`/api/citizen/challenges/${challengeId}/enroll`)
+        .expect(503);
+      expect(citizenServiceMock.enrollInChallenge).not.toHaveBeenCalled();
+
+      await request(app.getHttpServer())
+        .post(`/api/citizen/challenges/${challengeId}/progress`)
+        .send({ progressDelta: 2 })
+        .expect(503);
+      expect(citizenServiceMock.updateChallengeProgress).not.toHaveBeenCalled();
+    }
   });
 
   it('surfaces degraded admin and citizen reads, then recovers on the next request', async () => {

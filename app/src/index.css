@@ -23,7 +23,10 @@
   --border-hsl: 216 20% 55%;
   --input-hsl: 216 20% 55%;
   --ring-hsl: 217 92% 74%;
-  --radius: 16px;
+  --radius: 0px;
+
+  --font-sans: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 
   --bg: hsl(var(--background));
   --surface: hsl(var(--card) / 0.72);
@@ -34,17 +37,55 @@
   --accent: hsl(var(--primary));
   --accent-strong: hsl(220 89% 58%);
   --accent-soft: hsl(var(--accent-hsl));
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius-pill: 999px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-pill: 0px;
+
+  --success-hsl: 151 70% 49%;
+  --success-foreground: 155 100% 96%;
+
+  --warning-hsl: 41 89% 66%;
+  --warning-foreground: 38 90% 10%;
+
+  --danger-hsl: 0 100% 71%;
+  --danger-foreground: 0 100% 97%;
+
+  --info-hsl: 203 100% 64%;
+  --info-foreground: 210 100% 97%;
+
+  --success: hsl(var(--success-hsl));
+  --warning: hsl(var(--warning-hsl));
+  --danger: hsl(var(--danger-hsl));
+  --info: hsl(var(--info-hsl));
+
+  --shadow-soft: 0 12px 32px hsl(223 60% 2% / 0.32);
+  --shadow-card: 0 18px 44px hsl(223 60% 2% / 0.36);
+  --shadow-glow: 0 18px 40px hsl(var(--primary) / 0.24);
+  --shadow-success-glow: 0 18px 36px hsl(var(--success-hsl) / 0.2);
+
+  --section-surface: hsl(var(--card) / 0.86);
+  --section-surface-strong: hsl(var(--card) / 0.92);
+  --section-shadow: 0 18px 44px hsl(223 60% 2% / 0.34);
+
+  --gradient-app:
+    radial-gradient(circle at 10% -20%, hsl(var(--primary) / 0.2), transparent 45%),
+    radial-gradient(circle at 90% 0%, hsl(var(--info-hsl) / 0.08), transparent 40%),
+    var(--bg);
+
+  --gradient-card:
+    radial-gradient(circle at 100% -20%, hsl(var(--primary) / 0.12), transparent 52%),
+    hsl(var(--card) / 0.86);
+
+  --gradient-primary:
+    linear-gradient(135deg, hsl(var(--primary)), var(--accent-strong));
+
+  --gradient-success:
+    linear-gradient(135deg, hsl(var(--success-hsl)), hsl(158 68% 57%));
 
   --panel: hsl(var(--card) / 0.8);
   --panel-2: hsl(var(--card) / 0.9);
   --muted: var(--text-muted);
-  --success: #27d17f;
-  --warning: #f6c35b;
-  --danger: #ff6b6b;
 }
 
 .dark {
@@ -88,7 +129,7 @@ html {
 
 body {
   margin: 0;
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.55;
@@ -306,4 +347,131 @@ body {
   .animate-sheet-in-left {
     animation: none;
   }
+}
+
+/* app-sharp-surfaces: force squared UI borders across the app */
+
+:root,
+.dark {
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-pill: 0px;
+}
+
+/* Main app surfaces, cards, panels, buttons, inputs, tabs, chips */
+.container,
+.panel,
+.app-shell,
+.app-sidebar,
+.app-sidebar-link,
+.app-sidebar-account,
+.app-sidebar-logout,
+.app-sidebar-toggle,
+.app-main-title,
+.app-header-account,
+.app-status-card,
+.app-access-denied,
+.app-home-command,
+.app-home-card,
+.app-home-action-card,
+.app-home-rule-item,
+.app-home-signal,
+.app-home-metric,
+.app-home-icon,
+.app-settings-card,
+.app-settings-avatar-row,
+.app-settings-field input,
+.app-settings-message,
+.app-settings-actions button,
+.dashboard-hero,
+.dashboard-kpi-card,
+.dashboard-panel,
+.dashboard-ticket-item,
+.dashboard-ticket-status,
+.dashboard-heatmap-map,
+.dashboard-heatmap-static,
+.dashboard-zone-summary-item,
+.toast-item,
+.toast-action,
+.toast-dismiss,
+.app-install-banner,
+.app-install-banner-dismiss,
+.app-install-banner-accept,
+.auth-authmode-shell,
+.auth-authmode-card,
+.auth-form input,
+.auth-form button,
+.auth-google-btn,
+.auth-error-banner,
+.auth-success-banner,
+.auth-status-banner,
+.auth-status-action,
+.auth-callback-actions button {
+  border-radius: 0 !important;
+}
+
+/* Operational/citizen/manager/admin pages */
+.ops-hero,
+.ops-card,
+.ops-kpi-card,
+.ops-list-item,
+.ops-summary-band,
+.ops-input,
+.ops-select,
+.ops-textarea,
+.ops-btn,
+.ops-chip,
+.ops-status,
+.ops-loading-block,
+.ops-map-frame,
+.ops-route-map-shell,
+.ops-route-map-leaflet,
+.ops-admin-tab,
+.ops-admin-icon-btn,
+.ops-admin-modal-panel {
+  border-radius: 0 !important;
+}
+
+/* Support/ticket pages */
+.support-workspace-hero,
+.support-workspace-tabs,
+.support-workspace-tab,
+.support-workspace-card,
+.advanced-ticket-header,
+.advanced-ticket-card,
+.advanced-ticket-input,
+.advanced-ticket-select,
+.advanced-ticket-primary-btn,
+.advanced-ticket-secondary-btn,
+.advanced-ticket-page-btn,
+.advanced-ticket-status,
+.advanced-ticket-treat-link,
+.advanced-ticket-feedback,
+.ticket-flow-feedback,
+.ticket-details-back-link,
+.ticket-details-secondary-btn,
+.ticket-details-primary-btn,
+.ticket-details-hero,
+.ticket-treat-page-header,
+.ticket-details-stat,
+.ticket-details-badge,
+.ticket-details-card,
+.ticket-details-activity-item,
+.ticket-details-activity-badge,
+.ticket-details-input,
+.ticket-details-comment-item,
+.ticket-details-action-btn,
+.ticket-item,
+.ticket-priority,
+.ticket-status,
+.ticket-action-link,
+.ticket-delete-btn,
+.ticket-feedback-state,
+.ticket-delete-error,
+.create-input,
+.create-error,
+.create-submit {
+  border-radius: 0 !important;
 }

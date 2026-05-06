@@ -61,7 +61,7 @@ describe('root health probe routes', () => {
     expect(healthService.checkDatabase).not.toHaveBeenCalled();
   });
 
-  it('returns 200 on /readyz when readiness checks succeed', async () => {
+  it('returns 200 on readiness aliases when readiness checks succeed', async () => {
     const healthService = {
       checkDatabase: vi.fn().mockResolvedValue({
         status: 'ok',
@@ -71,17 +71,20 @@ describe('root health probe routes', () => {
     const harness = createRoutesHarness(healthService);
 
     const response = await harness.invoke('/readyz');
+    const healthReadyResponse = await harness.invoke('/health/ready');
 
     expect(response.statusCode).toBe(200);
+    expect(healthReadyResponse.statusCode).toBe(200);
     expect(response.body).toEqual(
       expect.objectContaining({
         status: 'ok',
         database: expect.objectContaining({ status: 'ok' }),
       }),
     );
+    expect(healthReadyResponse.body).toEqual(response.body);
   });
 
-  it('returns 503 on /readyz when readiness checks fail', async () => {
+  it('returns 503 on readiness aliases when readiness checks fail', async () => {
     const healthService = {
       checkDatabase: vi.fn().mockResolvedValue({
         status: 'error',
@@ -92,13 +95,16 @@ describe('root health probe routes', () => {
     const harness = createRoutesHarness(healthService);
 
     const response = await harness.invoke('/readyz');
+    const healthReadyResponse = await harness.invoke('/health/ready');
 
     expect(response.statusCode).toBe(503);
+    expect(healthReadyResponse.statusCode).toBe(503);
     expect(response.body).toEqual(
       expect.objectContaining({
         status: 'degraded',
         database: expect.objectContaining({ status: 'error' }),
       }),
     );
+    expect(healthReadyResponse.body).toEqual(response.body);
   });
 });

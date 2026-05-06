@@ -7,6 +7,26 @@ servers:
   - url: /api
     description: Browser-facing edge-relative API base
 paths:
+  /auth/supabase/session/repair-profile-metadata:
+    post:
+      tags: [Auth]
+      summary: Repair oversized Supabase profile metadata and return compact session tokens
+      description: Accepts a Supabase refresh token in the request body, clears bulky avatar_url/picture user metadata server-side, refreshes the Supabase session, and returns compact camelCase accessToken/refreshToken fields.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Compact repaired Supabase session token payload
+        '401':
+          description: Refresh token is missing, invalid, or expired
   /auth/me:
     get:
       tags: [Auth]

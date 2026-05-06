@@ -65,6 +65,7 @@ const envSchema = z.object({
   IOT_VALIDATED_CONSUMER_CONCURRENCY: z.coerce.number().int().positive().optional(),
   IOT_VALIDATED_CONSUMER_BATCH_SIZE: z.coerce.number().int().positive().optional(),
   IOT_VALIDATED_CONSUMER_SHARD_COUNT: z.coerce.number().int().positive().optional(),
+  ALLOW_LEGACY_CONTAINER_SCHEMA_FALLBACK: z.enum(['true', 'false']).optional(),
   CORS_ORIGINS: z.string().optional(),
   APP_BASE_URL: z.string().url().optional(),
   APP_URL: z.string().url().optional(),
@@ -74,6 +75,8 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().optional(),
   JWT_ACCESS_EXPIRES_IN: z.string().optional(),
   SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_PUBLISHABLE_KEY: z.string().optional(),
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid connection string'),
 });
 

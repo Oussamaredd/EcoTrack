@@ -6,6 +6,7 @@ import CreateTicket from "../components/CreateTicket";
 import "../styles/SupportPage.css";
 import "../styles/TicketList.css";
 import "../styles/CreateTickets.css";
+import "../styles/TicketTheme.css";
 
 type SupportView = "advanced" | "simple" | "create";
 

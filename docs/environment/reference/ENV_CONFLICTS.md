@@ -21,13 +21,13 @@ This page is a historical normalization record. The active runtime policy lives 
 | --- | --- | --- |
 | `VITE_API_URL` | `VITE_API_BASE_URL` | Keep read support in frontend code temporarily; stop writing this key in env files now. |
 | `PORT` | `API_PORT` | Keep `API_PORT` as canonical; runtime accepts provider-injected `PORT` only as a hosted fallback when `API_PORT` is absent. |
-| `API_URL` | `API_BASE_URL` | Removed from API runtime callback derivation; use `API_BASE_URL` as the canonical public API origin, especially when the frontend edge owns `/api`. |
+| `API_URL` | `API_BASE_URL` | Removed from API runtime callback derivation; use `API_BASE_URL` as the canonical backend API origin. |
 | `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_PORT` | `DATABASE_URL` | Keep only when needed for local DB bootstrap tooling; runtime resolution uses `DATABASE_URL`. |
 | `CLIENT_ORIGIN` | `CORS_ORIGINS` (first origin) | Keep optional for backward compatibility; canonical docs and templates use `CORS_ORIGINS`. |
 
 ## Non-Conflicts (Intentional)
 
-- `API_PORT` vs `API_BASE_URL` is intentional after the edge-gateway cleanup: `API_PORT` is the backend listen port, while `API_BASE_URL` is the public frontend-edge origin.
+- `API_PORT` vs `API_BASE_URL` is intentional: `API_PORT` is the backend listen port, while `API_BASE_URL` is the backend API origin used for generated API/OAuth URLs.
 - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` remain compose DB-container settings and are not replacements for `DATABASE_URL`.
 - `VITE_BASE` remains frontend-only and valid for hosted path deployments.
 

@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import jwtPkg from 'jsonwebtoken';
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '../modules/auth/auth.service.js';
 
@@ -48,6 +48,10 @@ describe('AuthService', () => {
     process.env = originalEnv;
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('creates and parses local bearer token from Authorization header', async () => {
     const service = new AuthService(usersServiceMock as any);
 
@@ -68,7 +72,25 @@ describe('AuthService', () => {
   });
 
   it('accepts Supabase bearer tokens when legacy local verification misses', async () => {
-    const service = new AuthService(usersServiceMock as any);
+    process.env.SUPABASE_URL = 'https://project.supabase.co';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          id: 'supabase-user-1',
+          email: 'google@example.com',
+          app_metadata: {
+            provider: 'google',
+          },
+          user_metadata: {
+            name: 'Google User',
+            avatar_url: 'https://example.com/avatar.png',
+          },
+        }),
+      }),
+    );
     verifySupabaseAccessTokenMock.mockResolvedValueOnce({
       id: 'supabase-user-1',
       authUserId: 'supabase-user-1',
@@ -78,6 +100,8 @@ describe('AuthService', () => {
       avatarUrl: 'https://example.com/avatar.png',
     });
 
+    const service = new AuthService(usersServiceMock as any);
+
     await expect(service.getAuthUserFromAuthorizationHeader('Bearer supabase-token')).resolves.toEqual({
       id: 'supabase-user-1',
       authUserId: 'supabase-user-1',
@@ -86,7 +110,117 @@ describe('AuthService', () => {
       name: 'Google User',
       avatarUrl: 'https://example.com/avatar.png',
     });
-    expect(verifySupabaseAccessTokenMock).toHaveBeenCalledWith('supabase-token');
+  });
+
+  it('repairs bulky Supabase profile image metadata through server-side refresh token flow', async () => {
+    process.env.SUPABASE_URL = 'https://project.supabase.co///';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
+    const bulkyImageValue = `data:image/png;base64,${'a'.repeat(24_000)}`;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: `oversized.${'a'.repeat(24_000)}.token`,
+            refresh_token: 'rotated-refresh-token-1',
+            token_type: 'bearer',
+            user: {
+              id: 'supabase-user-1',
+              email: 'google@example.com',
+              user_metadata: {
+                avatar_url: bulkyImageValue,
+                display_name: 'Google User',
+                picture: bulkyImageValue,
+                role: 'agent',
+              },
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 'supabase-user-1' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: 'compact-access-token',
+            refresh_token: 'rotated-refresh-token-2',
+            expires_in: 3600,
+            token_type: 'bearer',
+            user: {
+              id: 'supabase-user-1',
+              email: 'google@example.com',
+              user_metadata: {
+                display_name: 'Google User',
+                role: 'agent',
+              },
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const service = new AuthService(usersServiceMock as any);
+
+    await expect(
+      service.repairOversizedSupabaseProfileMetadata({
+        refreshToken: 'refresh-token-1',
+      }),
+    ).resolves.toEqual({
+      accessToken: 'compact-access-token',
+      refreshToken: 'rotated-refresh-token-2',
+      expiresAt: null,
+      expiresIn: 3600,
+      tokenType: 'bearer',
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://project.supabase.co/auth/v1/token?grant_type=refresh_token',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ refresh_token: 'refresh-token-1' }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://project.supabase.co/auth/v1/admin/users/supabase-user-1',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({
+          apikey: 'service-role-key',
+          Authorization: 'Bearer service-role-key',
+        }),
+      }),
+    );
+    const adminRequest = fetchMock.mock.calls[1]?.[1] as RequestInit;
+    expect(JSON.parse(String(adminRequest.body))).toEqual({
+      user_metadata: {
+        avatar_url: null,
+        display_name: 'Google User',
+        picture: null,
+        role: 'agent',
+      },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      'https://project.supabase.co/auth/v1/token?grant_type=refresh_token',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ refresh_token: 'rotated-refresh-token-1' }),
+      }),
+    );
   });
 
   it('rejects oauth session tokens on bearer-protected APIs', async () => {

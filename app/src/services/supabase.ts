@@ -2,6 +2,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const TEST_SUPABASE_URL = 'https://ecotrack.test.supabase.co';
 const TEST_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_test_key';
+export const SUPABASE_BROWSER_AUTH_STORAGE_KEY = 'ecotrack.supabase.auth';
+const LEGACY_SUPABASE_BROWSER_AUTH_STORAGE_KEYS = ['undefined', 'token'] as const;
 export const SUPABASE_BROWSER_AUTH_CONFIG_ERROR =
   'Browser auth is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in the frontend build environment.';
 
@@ -66,6 +68,74 @@ const createTestStorageKey = () => {
 
 const createSupabaseConfigError = () => new Error(SUPABASE_BROWSER_AUTH_CONFIG_ERROR);
 
+type SupabaseAuthStorage = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>;
+
+const isSupabaseSessionStorageValue = (value: string | null) => {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const parsedValue = JSON.parse(value) as Record<string, unknown>;
+    return (
+      typeof parsedValue.access_token === 'string' &&
+      parsedValue.access_token.trim().length > 0 &&
+      typeof parsedValue.refresh_token === 'string' &&
+      parsedValue.refresh_token.trim().length > 0
+    );
+  } catch {
+    return false;
+  }
+};
+
+export const migrateLegacySupabaseAuthStorage = (
+  storage: SupabaseAuthStorage,
+  storageKey = SUPABASE_BROWSER_AUTH_STORAGE_KEY,
+) => {
+  const currentValue = storage.getItem(storageKey);
+  let hasUsableCurrentSession = isSupabaseSessionStorageValue(currentValue);
+  const removedKeys: string[] = [];
+  let migratedFrom: string | null = null;
+
+  for (const legacyKey of LEGACY_SUPABASE_BROWSER_AUTH_STORAGE_KEYS) {
+    if (legacyKey === storageKey) {
+      continue;
+    }
+
+    const legacyValue = storage.getItem(legacyKey);
+    if (legacyValue === null) {
+      continue;
+    }
+
+    if (!hasUsableCurrentSession && isSupabaseSessionStorageValue(legacyValue)) {
+      storage.setItem(storageKey, legacyValue);
+      hasUsableCurrentSession = true;
+      migratedFrom = legacyKey;
+    }
+
+    storage.removeItem(legacyKey);
+    removedKeys.push(legacyKey);
+  }
+
+  return {
+    migratedFrom,
+    removedKeys,
+  };
+};
+
+const runBrowserSupabaseStorageMigration = (storageKey: string) => {
+  if (typeof window === 'undefined' || import.meta.env.MODE === 'test') {
+    return;
+  }
+
+  try {
+    migrateLegacySupabaseAuthStorage(window.localStorage, storageKey);
+  } catch {
+    // localStorage may be unavailable in privacy-restricted browsers. Supabase
+    // will handle storage failures through its own auth client behavior.
+  }
+};
+
 const createDisabledSupabaseClient = () =>
   ({
     auth: {
@@ -76,6 +146,10 @@ const createDisabledSupabaseClient = () =>
       getSession: async () => ({
         data: { session: null },
         error: null,
+      }),
+      refreshSession: async () => ({
+        data: { session: null, user: null },
+        error: createSupabaseConfigError(),
       }),
       onAuthStateChange: () => ({
         data: {
@@ -88,6 +162,10 @@ const createDisabledSupabaseClient = () =>
       }),
       resetPasswordForEmail: async () => ({
         data: {},
+        error: createSupabaseConfigError(),
+      }),
+      setSession: async () => ({
+        data: { session: null, user: null },
         error: createSupabaseConfigError(),
       }),
       signInWithOAuth: async () => ({
@@ -118,7 +196,9 @@ export const getSupabaseBrowserConfigError = () =>
 const supabaseStorageKey =
   import.meta.env.MODE === 'test'
     ? createTestStorageKey()
-    : undefined;
+    : SUPABASE_BROWSER_AUTH_STORAGE_KEY;
+
+runBrowserSupabaseStorageMigration(supabaseStorageKey);
 
 export const supabase =
   supabaseConfig === null

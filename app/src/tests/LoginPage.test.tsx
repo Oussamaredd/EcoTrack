@@ -25,7 +25,7 @@ vi.mock('../services/authApi', () => ({
 
 vi.mock('../services/authRedirect', () => ({
   clearPendingAuthRedirect: mockClearPendingAuthRedirect,
-  resolveRequestedAuthRedirect: vi.fn(() => '/app'),
+  resolveRequestedAuthRedirect: vi.fn((search: string) => new URLSearchParams(search).get('next') ?? '/app'),
   storePendingAuthRedirect: mockStorePendingAuthRedirect,
 }));
 
@@ -78,6 +78,19 @@ describe('LoginPage', () => {
     });
   });
 
+  test('stores the requested deep link before starting google sign-in', async () => {
+    mockStartGoogleSignIn.mockResolvedValue('https://example.supabase.co/auth/v1/authorize');
+
+    renderWithRouter(<LoginPage />, { route: '/login?next=/app/support' });
+
+    fireEvent.click(screen.getByRole('button', { name: /continue with google/i }));
+
+    await waitFor(() => {
+      expect(mockStorePendingAuthRedirect).toHaveBeenCalledWith('/app/support');
+      expect(mockLocationAssign).toHaveBeenCalledWith('https://example.supabase.co/auth/v1/authorize');
+    });
+  });
+
   test('submits email sign-in without a preflight health gate', async () => {
     mockAuthApiLogin.mockResolvedValue({
       accessToken: 'token',
@@ -112,6 +125,37 @@ describe('LoginPage', () => {
         }),
       });
       expect(getLocation()?.pathname).toBe('/app');
+    });
+  });
+
+  test('returns to a protected deep link only when login was reached with an explicit next parameter', async () => {
+    mockAuthApiLogin.mockResolvedValue({
+      accessToken: 'token',
+      user: {
+        id: 'user-1',
+        email: 'support@example.com',
+        displayName: 'Support User',
+        avatarUrl: null,
+        role: 'agent',
+        roles: [],
+        isActive: true,
+        provider: 'local',
+      },
+    });
+
+    const { getLocation } = renderWithRouter(<LoginPage />, { route: '/login?next=/app/support' });
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'support@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'password123' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(mockAuthApiLogin).toHaveBeenCalledWith('support@example.com', 'password123');
+      expect(getLocation()?.pathname).toBe('/app/support');
     });
   });
 

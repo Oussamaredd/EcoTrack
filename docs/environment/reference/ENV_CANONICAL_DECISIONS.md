@@ -21,7 +21,7 @@ Deprecated aliases (read-only compatibility window):
 ## 2) Port Contract
 
 - `API_PORT` is the backend listen port, not the browser entrypoint.
-- `API_BASE_URL` and `VITE_API_BASE_URL` must resolve to the public frontend edge origin.
+- `API_BASE_URL` resolves to the backend API origin. `VITE_API_BASE_URL` resolves to the browser API origin; it normally matches the backend origin in host dev and may resolve to the frontend edge only when an explicit edge proxy is enabled.
 - Local/native dev:
   - Browser entrypoint: `http://localhost:5173`
   - Direct backend diagnostics: `http://localhost:3001`

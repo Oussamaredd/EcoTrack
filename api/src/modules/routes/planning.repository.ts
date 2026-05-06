@@ -263,6 +263,10 @@ export class PlanningRepository {
     }
 
     const scheduledFor = new Date(dto.scheduledFor);
+    if (Number.isNaN(scheduledFor.getTime())) {
+      throw new BadRequestException('scheduledFor must be a valid ISO date string');
+    }
+
     const blockedContainerIds = await this.getBlockedContainerIdsForSchedule(dto.zoneId, scheduledFor);
     const deferredForNearbyTours = allCandidatesWithEffectiveFill.filter(
       (item) => blockedContainerIds.has(item.id) && !manualIdSet.has(item.id),

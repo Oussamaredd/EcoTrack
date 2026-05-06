@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useCurrentUser } from '../hooks/useAuth';
@@ -31,26 +31,23 @@ describe('AppHomePage', () => {
     });
   });
 
-  it('keeps the citizen role hub lightweight and points follow-up routes to on-demand pages', () => {
+  it('uses the shared role hub panel for the citizen lane', () => {
     renderWithProviders(<AppHomePage />, { route: '/app', withAuthProvider: false });
-    const citizenEntry = screen.getByRole('region', {
-      name: /Open citizen reporting when you are ready/i,
-    });
 
     expect(
       screen.getByRole('heading', { name: /Open citizen reporting when you are ready/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Report an issue/i })).toHaveAttribute(
+    expect(screen.getByRole('heading', { name: /Citizen lane guidance/i })).toBeInTheDocument();
+    expect(screen.getByText(/Primary lane/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Citizen experience/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Citizen Reporting/i })[0]).toHaveAttribute(
       'href',
       '/app/citizen/report',
     );
     expect(
-      screen.getByText(/sign-in can finish without waking the operational API/i),
+      screen.getByText(/keeps the citizen lane lightweight after sign-in/i),
     ).toBeInTheDocument();
-    expect(within(citizenEntry).getByRole('link', { name: /Impact & History/i })).toHaveAttribute(
-      'href',
-      '/app/citizen/profile',
-    );
+    expect(screen.getAllByRole('heading', { name: /Open citizen reporting when you are ready/i })).toHaveLength(1);
   });
 
   it('keeps the shared workspace host behavior for non-citizen roles', () => {
@@ -74,7 +71,7 @@ describe('AppHomePage', () => {
     renderWithProviders(<AppHomePage />, { route: '/app', withAuthProvider: false });
 
     expect(
-      screen.getByRole('heading', { name: /Enter the right EcoTrack lane\./i }),
+      screen.getByRole('heading', { name: /Coordinate the right EcoTrack lane\./i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { name: /Open citizen reporting when you are ready/i }),

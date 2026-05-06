@@ -80,19 +80,18 @@ function buildUserMetadata(user) {
     metadata.avatar_url = user.avatar_url;
   }
 
-  if (user.role) {
-    metadata.role = user.role;
-  }
-
   metadata.is_active = user.is_active !== false;
   metadata.legacy_user_id = user.id;
   return metadata;
 }
 
 function buildAppMetadata(user) {
+  const roleNames = normalizeRoleNames(user);
   const metadata = {
     legacy_user_id: user.id,
     legacy_auth_provider: user.auth_provider,
+    role: roleNames[0] ?? user.role ?? 'citizen',
+    roles: roleNames,
   };
 
   if (user.google_id) {
@@ -100,6 +99,51 @@ function buildAppMetadata(user) {
   }
 
   return metadata;
+}
+
+function normalizeRoleNames(user) {
+  const rawRoleNames = Array.isArray(user.role_names) ? user.role_names : [];
+  const normalizedRoleNames = [];
+  const seenRoleNames = new Set();
+
+  for (const roleName of [user.role, ...rawRoleNames]) {
+    if (typeof roleName !== 'string') {
+      continue;
+    }
+
+    const normalizedRoleName = roleName.trim().toLowerCase();
+    if (!normalizedRoleName || seenRoleNames.has(normalizedRoleName)) {
+      continue;
+    }
+
+    seenRoleNames.add(normalizedRoleName);
+    normalizedRoleNames.push(normalizedRoleName);
+  }
+
+  return normalizedRoleNames.length > 0 ? normalizedRoleNames : ['citizen'];
+}
+
+async function syncSupabaseAppMetadata(authUserId, user) {
+  const { data, error } = await supabase.auth.admin.getUserById(authUserId);
+  if (error) {
+    throw new Error(`Failed to read Supabase auth user ${authUserId}: ${error.message}`);
+  }
+
+  const currentAppMetadata =
+    data.user?.app_metadata && typeof data.user.app_metadata === 'object'
+      ? data.user.app_metadata
+      : {};
+  const nextAppMetadata = {
+    ...currentAppMetadata,
+    ...buildAppMetadata(user),
+  };
+
+  const { error: updateError } = await supabase.auth.admin.updateUserById(authUserId, {
+    app_metadata: nextAppMetadata,
+  });
+  if (updateError) {
+    throw new Error(`Failed to update Supabase app_metadata for ${user.email}: ${updateError.message}`);
+  }
 }
 
 function normalizeEmail(email) {
@@ -139,35 +183,49 @@ try {
   const usersQuery = args.email
     ? sql`
         select
-          "id",
-          "email",
-          "password_hash",
-          "auth_provider",
-          "google_id",
-          "display_name",
-          "avatar_url",
-          "role",
-          "is_active",
-          "auth_user_id"
+          "identity"."users"."id",
+          "identity"."users"."email",
+          "identity"."users"."password_hash",
+          "identity"."users"."auth_provider",
+          "identity"."users"."google_id",
+          "identity"."users"."display_name",
+          "identity"."users"."avatar_url",
+          "identity"."users"."role",
+          "identity"."users"."is_active",
+          "identity"."users"."auth_user_id",
+          coalesce(
+            array_agg(distinct "roles"."name") filter (where "roles"."name" is not null),
+            array[]::text[]
+          ) as "role_names"
         from "identity"."users"
-        where lower("email") = ${args.email}
-        order by "created_at" asc
+        left join "identity"."user_roles" on "identity"."user_roles"."user_id" = "identity"."users"."id"
+        left join "identity"."roles" on "identity"."roles"."id" = "identity"."user_roles"."role_id"
+        where lower("identity"."users"."email") = ${args.email}
+        group by "identity"."users"."id"
+        order by "identity"."users"."created_at" asc
         ${args.limit > 0 ? sql`limit ${args.limit}` : sql``}
       `
     : sql`
         select
-          "id",
-          "email",
-          "password_hash",
-          "auth_provider",
-          "google_id",
-          "display_name",
-          "avatar_url",
-          "role",
-          "is_active",
-          "auth_user_id"
+          "identity"."users"."id",
+          "identity"."users"."email",
+          "identity"."users"."password_hash",
+          "identity"."users"."auth_provider",
+          "identity"."users"."google_id",
+          "identity"."users"."display_name",
+          "identity"."users"."avatar_url",
+          "identity"."users"."role",
+          "identity"."users"."is_active",
+          "identity"."users"."auth_user_id",
+          coalesce(
+            array_agg(distinct "roles"."name") filter (where "roles"."name" is not null),
+            array[]::text[]
+          ) as "role_names"
         from "identity"."users"
-        order by "created_at" asc
+        left join "identity"."user_roles" on "identity"."user_roles"."user_id" = "identity"."users"."id"
+        left join "identity"."roles" on "identity"."roles"."id" = "identity"."user_roles"."role_id"
+        group by "identity"."users"."id"
+        order by "identity"."users"."created_at" asc
         ${args.limit > 0 ? sql`limit ${args.limit}` : sql``}
       `;
 
@@ -177,6 +235,7 @@ try {
     linkedExisting: 0,
     createdAuthUsers: 0,
     alreadyLinked: 0,
+    appMetadataSynced: 0,
   };
 
   for (const user of appUsers) {
@@ -212,6 +271,10 @@ try {
 
     if (authUser) {
       if (user.auth_user_id === authUser.id) {
+        if (!args.dryRun) {
+          await syncSupabaseAppMetadata(authUser.id, user);
+        }
+        stats.appMetadataSynced += 1;
         stats.alreadyLinked += 1;
         continue;
       }
@@ -225,6 +288,10 @@ try {
         `;
       }
 
+      if (!args.dryRun) {
+        await syncSupabaseAppMetadata(authUser.id, user);
+      }
+      stats.appMetadataSynced += 1;
       stats.linkedExisting += 1;
       continue;
     }
@@ -260,6 +327,7 @@ try {
       where "id" = ${user.id}::uuid
     `;
 
+    stats.appMetadataSynced += 1;
     stats.createdAuthUsers += 1;
   }
 

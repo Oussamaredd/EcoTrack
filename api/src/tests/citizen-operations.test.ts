@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CitizenController } from '../modules/citizen/citizen.controller.js';
@@ -6,6 +6,13 @@ import { CitizenController } from '../modules/citizen/citizen.controller.js';
 describe('Citizen profile and challenges controller contract', () => {
   const authUserId = '390ca84d-6d0f-4b55-a2d6-c38fb9834a57';
   const challengeId = 'ef7502ed-7620-471f-9865-31101595ad0a';
+  const citizenRequest = {
+    authUser: {
+      id: authUserId,
+      role: 'citizen',
+      roles: [{ id: 'role-citizen', name: 'citizen' }],
+    },
+  };
 
   const citizenServiceMock = {
     createReport: vi.fn(),
@@ -50,7 +57,7 @@ describe('Citizen profile and challenges controller contract', () => {
 
   it('returns profile for authenticated citizen user id', async () => {
     const response = await controller.profile({
-      authUser: { id: authUserId },
+      ...citizenRequest,
     } as any);
 
     expect(citizenServiceMock.getProfile).toHaveBeenCalledWith(authUserId);
@@ -65,7 +72,7 @@ describe('Citizen profile and challenges controller contract', () => {
 
   it('normalizes history pagination and wraps pagination metadata', async () => {
     const response = await controller.history(
-      { authUser: { id: authUserId } } as any,
+      { ...citizenRequest } as any,
       '2',
       '8',
     );
@@ -80,14 +87,14 @@ describe('Citizen profile and challenges controller contract', () => {
   });
 
   it('exposes citizen challenges and challenge actions', async () => {
-    await controller.challenges({ authUser: { id: authUserId } } as any);
+    await controller.challenges({ ...citizenRequest } as any);
     expect(citizenServiceMock.listChallenges).toHaveBeenCalledWith(authUserId);
 
-    await controller.enroll({ authUser: { id: authUserId } } as any, challengeId);
+    await controller.enroll({ ...citizenRequest } as any, challengeId);
     expect(citizenServiceMock.enrollInChallenge).toHaveBeenCalledWith(authUserId, challengeId);
 
     await controller.progress(
-      { authUser: { id: authUserId } } as any,
+      { ...citizenRequest } as any,
       challengeId,
       { progressDelta: 2 },
     );
@@ -98,6 +105,18 @@ describe('Citizen profile and challenges controller contract', () => {
     await expect(controller.profile({ authUser: undefined } as any)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
+  });
+
+  it('rejects authenticated users without citizen access', async () => {
+    await expect(
+      controller.profile({
+        authUser: {
+          id: authUserId,
+          role: 'agent',
+          roles: [{ id: 'role-agent', name: 'agent' }],
+        },
+      } as any),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
 

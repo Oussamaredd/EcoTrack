@@ -7,15 +7,11 @@ import { hasSupportWorkspaceAccess } from "../utils/authz";
 const DISPLAY_NAME_MIN_LENGTH = 2;
 const DISPLAY_NAME_MAX_LENGTH = 80;
 const PASSWORD_MIN_LENGTH = 12;
-const AVATAR_MAX_BYTES = 1_000_000;
-const SUPPORTED_AVATAR_MIME_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const INLINE_AVATAR_UPLOAD_DISABLED_MESSAGE =
+  "Profile image uploads are disabled while auth tokens are kept small. Remove the photo or use a hosted image URL once avatar storage is available.";
 
 const isValidAvatarUrl = (value: string) => {
   if (!value.trim()) {
-    return true;
-  }
-
-  if (/^data:image\/(png|jpeg|jpg|webp);base64,[a-zA-Z0-9+/=]+$/i.test(value)) {
     return true;
   }
 
@@ -91,33 +87,8 @@ export default function SettingsPage() {
       return;
     }
 
-    if (!SUPPORTED_AVATAR_MIME_TYPES.includes(selectedFile.type)) {
-      setErrorMessage("Please choose a PNG, JPEG, or WEBP image.");
-      setSuccessMessage("");
-      event.target.value = "";
-      return;
-    }
-
-    if (selectedFile.size > AVATAR_MAX_BYTES) {
-      setErrorMessage("Profile image must be 1 MB or smaller.");
-      setSuccessMessage("");
-      event.target.value = "";
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setAvatarUrl(reader.result);
-        setErrorMessage("");
-        setSuccessMessage("");
-      }
-    };
-    reader.onerror = () => {
-      setErrorMessage("Unable to process selected image. Please try another file.");
-      setSuccessMessage("");
-    };
-    reader.readAsDataURL(selectedFile);
+    setErrorMessage(INLINE_AVATAR_UPLOAD_DISABLED_MESSAGE);
+    setSuccessMessage("");
     event.target.value = "";
   };
 
@@ -273,7 +244,7 @@ export default function SettingsPage() {
               />
               <div className="app-settings-avatar-copy">
                 <h3>Profile picture</h3>
-                <p>Click your avatar to upload a photo (PNG, JPEG, WEBP up to 1 MB).</p>
+                <p>Profile images must stay out of auth metadata to keep API tokens small.</p>
                 <button type="button" className="app-settings-text-button" onClick={() => setAvatarUrl("")}>
                   Remove photo
                 </button>

@@ -10,6 +10,7 @@ import {
   useUpdateComment,
 } from "../hooks/useTickets";
 import "../styles/TicketWorkflow.css";
+import "../styles/TicketTheme.css";
 
 interface Comment {
   id: string;

@@ -1,3 +1,4 @@
+import FeatureReadinessLoading from "../components/FeatureReadinessLoading";
 import {
   useCitizenChallenges,
   useEnrollInChallenge,
@@ -28,11 +29,7 @@ export default function CitizenChallengesPage() {
     : [];
 
   if (challengesQuery.isLoading) {
-    return (
-      <section className="ops-page">
-        <p className="ops-status ops-status-success">Loading challenges...</p>
-      </section>
-    );
+    return <FeatureReadinessLoading />;
   }
 
   return (
