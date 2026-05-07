@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { attachRootHealthRoutes } from '../modules/health/root-health-routes.js';
 
@@ -45,6 +45,10 @@ const createRoutesHarness = (healthService: { checkDatabase: ReturnType<typeof v
 };
 
 describe('root health probe routes', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('serves the root liveness aliases without touching the database dependency', async () => {
     const healthService = {
       checkDatabase: vi.fn(),
@@ -62,6 +66,9 @@ describe('root health probe routes', () => {
   });
 
   it('returns 200 on readiness aliases when readiness checks succeed', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-07T00:00:00.000Z'));
+
     const healthService = {
       checkDatabase: vi.fn().mockResolvedValue({
         status: 'ok',
@@ -85,6 +92,9 @@ describe('root health probe routes', () => {
   });
 
   it('returns 503 on readiness aliases when readiness checks fail', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-07T00:00:00.000Z'));
+
     const healthService = {
       checkDatabase: vi.fn().mockResolvedValue({
         status: 'error',
