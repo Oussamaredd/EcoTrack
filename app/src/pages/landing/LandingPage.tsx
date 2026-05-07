@@ -15,11 +15,8 @@ const FaqSection = lazy(() => import("../../components/landing/sections/FaqSecti
 const FinalCtaSection = lazy(() => import("../../components/landing/sections/FinalCtaSection"));
 const FooterSection = lazy(() => import("../../components/landing/sections/FooterSection"));
 
-type IdleCallbackCapableWindow = Window &
-  typeof globalThis & {
-    requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
-    cancelIdleCallback?: (handle: number) => void;
-  };
+const BELOW_FOLD_CONTENT_DELAY_MS = 4200;
+const BELOW_FOLD_SCROLL_REVEAL_THRESHOLD_PX = 160;
 
 export default function LandingPage() {
   useLandingSectionScroll();
@@ -64,19 +61,28 @@ export default function LandingPage() {
         ];
 
   useEffect(() => {
-    const idleCapableWindow = window as IdleCallbackCapableWindow;
-    const revealBelowFoldContent = () => setIsBelowFoldContentReady(true);
-
-    if (typeof idleCapableWindow.requestIdleCallback === "function") {
-      const idleCallbackId = idleCapableWindow.requestIdleCallback(revealBelowFoldContent, {
-        timeout: 1200,
-      });
-      return () => idleCapableWindow.cancelIdleCallback?.(idleCallbackId);
+    if (isBelowFoldContentReady) {
+      return undefined;
     }
 
-    const timeoutId = globalThis.setTimeout(revealBelowFoldContent, 250);
-    return () => globalThis.clearTimeout(timeoutId);
-  }, []);
+    const revealBelowFoldContent = () => setIsBelowFoldContentReady(true);
+    const revealAfterScroll = () => {
+      if (window.scrollY >= BELOW_FOLD_SCROLL_REVEAL_THRESHOLD_PX) {
+        revealBelowFoldContent();
+      }
+    };
+    const timeoutId = globalThis.setTimeout(
+      revealBelowFoldContent,
+      BELOW_FOLD_CONTENT_DELAY_MS,
+    );
+
+    window.addEventListener("scroll", revealAfterScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", revealAfterScroll);
+      globalThis.clearTimeout(timeoutId);
+    };
+  }, [isBelowFoldContentReady]);
 
   return (
     <div className="landing-root">

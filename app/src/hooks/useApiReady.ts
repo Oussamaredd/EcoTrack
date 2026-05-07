@@ -144,7 +144,7 @@ const runStoreProbe = (
     setStoreState(store, 'checking');
   }
 
-  if (store.inFlightProbe) {
+  if (store.inFlightProbe !== null) {
     return store.inFlightProbe;
   }
 

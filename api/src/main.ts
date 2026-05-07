@@ -132,7 +132,8 @@ const createBootstrapCorsMiddleware =
     });
 
     if (origin && isAllowed) {
-      response.setHeader('Access-Control-Allow-Origin', origin);
+      // The request origin is emitted only after resolveCorsOrigins/isCorsOriginAllowed allow-list validation.
+      response.setHeader('Access-Control-Allow-Origin', origin); // nosemgrep: javascript.express.security.cors-misconfiguration.cors-misconfiguration
       response.vary('Origin');
       response.setHeader('Access-Control-Allow-Credentials', 'true');
       response.setHeader('Access-Control-Allow-Methods', CORS_ALLOWED_METHODS);

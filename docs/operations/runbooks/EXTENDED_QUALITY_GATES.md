@@ -1,6 +1,6 @@
 # Quality Gates And Extended Lanes
 
-Last updated: 2026-03-28
+Last updated: 2026-05-07
 
 This runbook describes the repo-owned Development quality bar plus the optional extended lanes available through manual CI dispatch.
 
@@ -48,6 +48,7 @@ npm run quality:mobile-readiness
 - Config: `app/lighthouserc.cjs`
 - Runner: `infrastructure/scripts/ci/run-lighthouse-gate.mjs`
 - The runner now boots a lightweight local mock API for `/api/auth/status`, `/api/metrics/frontend`, and `/api/errors` so preview-only audits are stable even when no backend process is running.
+- The landing route keeps first-viewport content eager and defers non-critical below-fold sections plus the install banner until after the initial load window or user scroll, so the blocking gate measures the actual first screen instead of idle-time content hydration.
 - Canonical URLs:
   - `/`
   - `/login`

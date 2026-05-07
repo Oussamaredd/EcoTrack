@@ -10,7 +10,7 @@ export default function HeroSection() {
   return (
     <section id="hero" className="landing-section">
       <div className="landing-container py-20 sm:py-24">
-        <div className="landing-reveal mx-auto max-w-4xl text-center">
+        <div className="mx-auto max-w-4xl text-center">
           <Badge className="mb-6">
             <ShieldCheck className="mr-2 h-3.5 w-3.5 text-[var(--accent-soft)]" />
             Citizen-first coordination prototype
