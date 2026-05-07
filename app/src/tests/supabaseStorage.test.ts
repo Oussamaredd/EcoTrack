@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { ACCESS_TOKEN_STORAGE_KEY } from '../services/authToken';
 import {
   SUPABASE_BROWSER_AUTH_STORAGE_KEY,
+  hasStoredSupabaseBrowserSession,
   migrateLegacySupabaseAuthStorage,
 } from '../services/supabase';
 
@@ -74,5 +75,15 @@ describe('Supabase auth storage migration', () => {
     expect(window.localStorage.getItem(SUPABASE_BROWSER_AUTH_STORAGE_KEY)).toBe(stableSession);
     expect(window.localStorage.getItem('undefined')).toBeNull();
     expect(window.localStorage.getItem('token')).toBeNull();
+  });
+
+  test('detects whether a stable Supabase session exists for protected route bootstrapping', () => {
+    expect(hasStoredSupabaseBrowserSession(SUPABASE_BROWSER_AUTH_STORAGE_KEY)).toBe(false);
+
+    window.localStorage.setItem(SUPABASE_BROWSER_AUTH_STORAGE_KEY, 'not-json');
+    expect(hasStoredSupabaseBrowserSession(SUPABASE_BROWSER_AUTH_STORAGE_KEY)).toBe(false);
+
+    window.localStorage.setItem(SUPABASE_BROWSER_AUTH_STORAGE_KEY, createSupabaseStorageSession('stable'));
+    expect(hasStoredSupabaseBrowserSession(SUPABASE_BROWSER_AUTH_STORAGE_KEY)).toBe(true);
   });
 });

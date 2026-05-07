@@ -4,7 +4,7 @@ import { AUTH_SESSION_INVALIDATED_EVENT } from '../services/api';
 import { authApi, type AuthSuccess, type AuthUser } from '../services/authApi';
 import { clearPendingAuthRedirect } from '../services/authRedirect';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../services/authToken';
-import { supabase } from '../services/supabase';
+import { hasStoredSupabaseBrowserSession, supabase } from '../services/supabase';
 
 export type AuthState = 'unknown' | 'authenticated' | 'anonymous';
 
@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const initialToken = getAccessToken();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authState, setAuthState] = useState<AuthState>(() => {
-    if (initialToken || isProtectedAppPath()) {
+    if (initialToken || (isProtectedAppPath() && hasStoredSupabaseBrowserSession())) {
       return 'unknown';
     }
 

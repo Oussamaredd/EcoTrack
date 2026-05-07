@@ -25,8 +25,8 @@
   --ring-hsl: 217 92% 74%;
   --radius: 0px;
 
-  --font-sans: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  --font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 
   --bg: hsl(var(--background));
   --surface: hsl(var(--card) / 0.72);

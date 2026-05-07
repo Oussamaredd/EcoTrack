@@ -23,6 +23,7 @@ const {
 }));
 
 vi.mock('../services/supabase', () => ({
+  hasStoredSupabaseBrowserSession: vi.fn(() => false),
   supabase: {
     auth: {
       getSession: mockSupabaseGetSession,

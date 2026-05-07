@@ -168,7 +168,7 @@
 .ticket-details-stat-meta {
   color: var(--text-muted);
   font-size: 0.75rem;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: var(--font-mono);
 }
 
 .ticket-details-badge {

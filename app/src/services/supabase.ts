@@ -123,6 +123,18 @@ export const migrateLegacySupabaseAuthStorage = (
   };
 };
 
+export const hasStoredSupabaseBrowserSession = (storageKey = supabaseStorageKey) => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return isSupabaseSessionStorageValue(window.localStorage.getItem(storageKey));
+  } catch {
+    return false;
+  }
+};
+
 const runBrowserSupabaseStorageMigration = (storageKey: string) => {
   if (typeof window === 'undefined' || import.meta.env.MODE === 'test') {
     return;
