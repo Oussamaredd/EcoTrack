@@ -396,50 +396,9 @@ const USER_SEEDS: UserSeed[] = [
   },
 ];
 
-const TICKET_SEEDS: TicketSeed[] = [
-  {
-    title: 'Overflow reported near Louvre collection point',
-    description: 'Trilib station on Rue Croix des Petits Champs is nearing capacity before midday pickup.',
-    status: 'open',
-    priority: 'high',
-    requesterEmail: 'agent@example.com',
-    assigneeEmail: 'manager@example.com',
-  },
-  {
-    title: 'Collection delay in Paris 10e sector',
-    description: 'Residents reported a delayed pickup sequence around Place Jacques Bonsergent during the morning round.',
-    status: 'in_progress',
-    priority: 'medium',
-    requesterEmail: 'agent@example.com',
-    assigneeEmail: 'manager@example.com',
-  },
-  {
-    title: 'Paris 14e container repair follow-up',
-    description: 'Repair verification for the Edgar Quinet public collection point has been completed.',
-    status: 'completed',
-    priority: 'low',
-    requesterEmail: 'manager@example.com',
-    assigneeEmail: 'manager@example.com',
-  },
-];
+const TICKET_SEEDS: TicketSeed[] = [];
 
-const COMMENT_SEEDS: CommentSeed[] = [
-  {
-    ticketTitle: 'Overflow reported near Louvre collection point',
-    authorEmail: 'agent@example.com',
-    body: 'Escalated by field observation and resident feedback from the Louvre block. Please prioritize.',
-  },
-  {
-    ticketTitle: 'Collection delay in Paris 10e sector',
-    authorEmail: 'manager@example.com',
-    body: 'Dispatch updated for the 10e route and the revised ETA has been shared with operations.',
-  },
-  {
-    ticketTitle: 'Paris 14e container repair follow-up',
-    authorEmail: 'manager@example.com',
-    body: 'Repair checklist closed and evidence attached.',
-  },
-];
+const COMMENT_SEEDS: CommentSeed[] = [];
 
 const SETTING_SEEDS: SettingSeed[] = [
   {
@@ -633,548 +592,7 @@ const CONTAINER_TYPE_SEEDS: ContainerTypeSeed[] = [
   },
 ];
 
-const CONTAINER_SEED_BLUEPRINTS: ContainerSeedBlueprint[] = [
-  {
-    code: 'CTR-1001',
-    address: '10 RUE DE L ECHELLE',
-    fillLevelPercent: 44,
-    zoneCode: 'ZONE-DOWNTOWN',
-    containerTypeCode: 'glass',
-    latitude: '48.864360',
-    longitude: '2.334760',
-  },
-  {
-    code: 'CTR-1002',
-    address: '17 RUE CROIX DES PETITS CHAMPS',
-    fillLevelPercent: 76,
-    zoneCode: 'ZONE-DOWNTOWN',
-    containerTypeCode: 'recyclables',
-    latitude: '48.863444',
-    longitude: '2.339586',
-  },
-  {
-    code: 'CTR-1003',
-    address: 'ANGLE RUE DU BOULOI / RUE DU COLONEL DRIANT',
-    fillLevelPercent: 54,
-    zoneCode: 'ZONE-DOWNTOWN',
-    containerTypeCode: 'textile',
-    latitude: '48.863402',
-    longitude: '2.340617',
-  },
-  {
-    code: 'CTR-1004',
-    address: '128 RUE REAUMUR',
-    fillLevelPercent: 58,
-    zoneCode: 'ZONE-HARBOR',
-    containerTypeCode: 'glass',
-    latitude: '48.868312',
-    longitude: '2.343263',
-  },
-  {
-    code: 'CTR-1005',
-    address: '11 RUE DE GRAMONT',
-    fillLevelPercent: 69,
-    zoneCode: 'ZONE-HARBOR',
-    containerTypeCode: 'recyclables',
-    latitude: '48.870022',
-    longitude: '2.336816',
-  },
-  {
-    code: 'CTR-1006',
-    address: '14 RUE D ALEXANDRIE',
-    fillLevelPercent: 63,
-    zoneCode: 'ZONE-HARBOR',
-    containerTypeCode: 'glass',
-    latitude: '48.868318',
-    longitude: '2.350061',
-  },
-  {
-    code: 'CTR-1007',
-    address: '1 RUE AUX OURS',
-    fillLevelPercent: 37,
-    zoneCode: 'ZONE-PARIS-03',
-    containerTypeCode: 'glass',
-    latitude: '48.863005',
-    longitude: '2.352259',
-  },
-  {
-    code: 'CTR-1008',
-    address: '13 RUE MESLAY',
-    fillLevelPercent: 88,
-    zoneCode: 'ZONE-PARIS-03',
-    containerTypeCode: 'recyclables',
-    latitude: '48.867510',
-    longitude: '2.361047',
-  },
-  {
-    code: 'CTR-1009',
-    address: '106 BOULEVARD SEBASTOPOL',
-    fillLevelPercent: 61,
-    zoneCode: 'ZONE-PARIS-03',
-    containerTypeCode: 'textile',
-    latitude: '48.868383',
-    longitude: '2.353535',
-  },
-  {
-    code: 'CTR-1010',
-    address: '1 RUE DU FAUCONNIER',
-    fillLevelPercent: 63,
-    zoneCode: 'ZONE-PARIS-04',
-    containerTypeCode: 'glass',
-    latitude: '48.853186',
-    longitude: '2.359111',
-  },
-  {
-    code: 'CTR-2001',
-    address: '12 RUE DE LA CERISAIE',
-    fillLevelPercent: 73,
-    zoneCode: 'ZONE-PARIS-04',
-    containerTypeCode: 'recyclables',
-    latitude: '48.851982',
-    longitude: '2.366071',
-  },
-  {
-    code: 'CTR-P04-03',
-    address: '21 BIS BOULEVARD BOURDON',
-    fillLevelPercent: 31,
-    zoneCode: 'ZONE-PARIS-04',
-    containerTypeCode: 'textile',
-    latitude: '48.849722',
-    longitude: '2.366947',
-  },
-  {
-    code: 'CTR-P05-01',
-    address: '10 BOULEVARD SAINT MARCEL',
-    fillLevelPercent: 49,
-    zoneCode: 'ZONE-PARIS-05',
-    containerTypeCode: 'glass',
-    latitude: '48.839733',
-    longitude: '2.360803',
-  },
-  {
-    code: 'CTR-P05-02',
-    address: '1 RUE DU GRIL',
-    fillLevelPercent: 82,
-    zoneCode: 'ZONE-PARIS-05',
-    containerTypeCode: 'recyclables',
-    latitude: '48.841006',
-    longitude: '2.354758',
-  },
-  {
-    code: 'CTR-P05-03',
-    address: '1 BOULEVARD SAINT-MICHEL',
-    fillLevelPercent: 46,
-    zoneCode: 'ZONE-PARIS-05',
-    containerTypeCode: 'textile',
-    latitude: '48.852841',
-    longitude: '2.343973',
-  },
-  {
-    code: 'CTR-P06-01',
-    address: '1 QUAI DE CONTI',
-    fillLevelPercent: 44,
-    zoneCode: 'ZONE-PARIS-06',
-    containerTypeCode: 'glass',
-    latitude: '48.855987',
-    longitude: '2.340324',
-  },
-  {
-    code: 'CTR-P06-02',
-    address: '11 RUE DE MEDICIS',
-    fillLevelPercent: 76,
-    zoneCode: 'ZONE-PARIS-06',
-    containerTypeCode: 'recyclables',
-    latitude: '48.848218',
-    longitude: '2.339828',
-  },
-  {
-    code: 'CTR-P06-03',
-    address: '114 BOULEVARD RASPAIL',
-    fillLevelPercent: 54,
-    zoneCode: 'ZONE-PARIS-06',
-    containerTypeCode: 'textile',
-    latitude: '48.844736',
-    longitude: '2.328799',
-  },
-  {
-    code: 'CTR-P07-01',
-    address: '1 AVENUE DUQUESNE',
-    fillLevelPercent: 58,
-    zoneCode: 'ZONE-PARIS-07',
-    containerTypeCode: 'glass',
-    latitude: '48.853924',
-    longitude: '2.306975',
-  },
-  {
-    code: 'CTR-P07-02',
-    address: '35 BIS RUE DE SEVRES',
-    fillLevelPercent: 69,
-    zoneCode: 'ZONE-PARIS-07',
-    containerTypeCode: 'recyclables',
-    latitude: '48.850922',
-    longitude: '2.325569',
-  },
-  {
-    code: 'CTR-P07-03',
-    address: '12 RUE DE SEVRES - PAV',
-    fillLevelPercent: 39,
-    zoneCode: 'ZONE-PARIS-07',
-    containerTypeCode: 'textile',
-    latitude: '48.851362',
-    longitude: '2.326845',
-  },
-  {
-    code: 'CTR-P08-01',
-    address: '1 AVENUE BEAUCOUR',
-    fillLevelPercent: 37,
-    zoneCode: 'ZONE-PARIS-08',
-    containerTypeCode: 'glass',
-    latitude: '48.876695',
-    longitude: '2.301613',
-  },
-  {
-    code: 'CTR-P08-02',
-    address: '1 RUE DE CONSTANTINOPLE',
-    fillLevelPercent: 88,
-    zoneCode: 'ZONE-PARIS-08',
-    containerTypeCode: 'recyclables',
-    latitude: '48.879330',
-    longitude: '2.322516',
-  },
-  {
-    code: 'CTR-P08-03',
-    address: '1 AVENUE CESAR CAIRE',
-    fillLevelPercent: 61,
-    zoneCode: 'ZONE-PARIS-08',
-    containerTypeCode: 'textile',
-    latitude: '48.875977',
-    longitude: '2.319262',
-  },
-  {
-    code: 'CTR-P09-01',
-    address: '10 AVENUE TRUDAINE',
-    fillLevelPercent: 63,
-    zoneCode: 'ZONE-PARIS-09',
-    containerTypeCode: 'glass',
-    latitude: '48.881780',
-    longitude: '2.345360',
-  },
-  {
-    code: 'CTR-P09-02',
-    address: '12 RUE JEAN BAPTISTE PIGALLE',
-    fillLevelPercent: 73,
-    zoneCode: 'ZONE-PARIS-09',
-    containerTypeCode: 'recyclables',
-    latitude: '48.878512',
-    longitude: '2.332714',
-  },
-  {
-    code: 'CTR-P09-03',
-    address: '16 BOULEVARD DES ITALIENS',
-    fillLevelPercent: 31,
-    zoneCode: 'ZONE-PARIS-09',
-    containerTypeCode: 'textile',
-    latitude: '48.871815',
-    longitude: '2.338595',
-  },
-  {
-    code: 'CTR-P10-01',
-    address: '10 PLACE JACQUES BONSERGENT',
-    fillLevelPercent: 49,
-    zoneCode: 'ZONE-PARIS-10',
-    containerTypeCode: 'glass',
-    latitude: '48.871147',
-    longitude: '2.361073',
-  },
-  {
-    code: 'CTR-P10-02',
-    address: '10 RUE PIERRE DUPONT',
-    fillLevelPercent: 82,
-    zoneCode: 'ZONE-PARIS-10',
-    containerTypeCode: 'recyclables',
-    latitude: '48.879319',
-    longitude: '2.365111',
-  },
-  {
-    code: 'CTR-P10-03',
-    address: '1 PLACE DE LA BATAILLE DE STALINGRAD',
-    fillLevelPercent: 46,
-    zoneCode: 'ZONE-PARIS-10',
-    containerTypeCode: 'textile',
-    latitude: '48.882724',
-    longitude: '2.369701',
-  },
-  {
-    code: 'CTR-P11-01',
-    address: 'PLACE DARNO MAFFINI',
-    fillLevelPercent: 44,
-    zoneCode: 'ZONE-PARIS-11',
-    containerTypeCode: 'glass',
-    latitude: '48.866552',
-    longitude: '2.369242',
-  },
-  {
-    code: 'CTR-P11-02',
-    address: '1 RUE CONDILLAC',
-    fillLevelPercent: 76,
-    zoneCode: 'ZONE-PARIS-11',
-    containerTypeCode: 'recyclables',
-    latitude: '48.863768',
-    longitude: '2.383417',
-  },
-  {
-    code: 'CTR-P11-03',
-    address: '78 BOULEVARD MENILMONTANT',
-    fillLevelPercent: 54,
-    zoneCode: 'ZONE-PARIS-11',
-    containerTypeCode: 'textile',
-    latitude: '48.864094',
-    longitude: '2.385980',
-  },
-  {
-    code: 'CTR-P12-01',
-    address: '1 AVENUE COURTELINE',
-    fillLevelPercent: 58,
-    zoneCode: 'ZONE-PARIS-12',
-    containerTypeCode: 'glass',
-    latitude: '48.844333',
-    longitude: '2.410834',
-  },
-  {
-    code: 'CTR-P12-02',
-    address: '1 AVENUE DU BEL AIR',
-    fillLevelPercent: 69,
-    zoneCode: 'ZONE-PARIS-12',
-    containerTypeCode: 'recyclables',
-    latitude: '48.845566',
-    longitude: '2.398066',
-  },
-  {
-    code: 'CTR-P12-03',
-    address: '10 PLACE LACHAMBEAUDIE',
-    fillLevelPercent: 39,
-    zoneCode: 'ZONE-PARIS-12',
-    containerTypeCode: 'textile',
-    latitude: '48.836032',
-    longitude: '2.386923',
-  },
-  {
-    code: 'CTR-P13-01',
-    address: '1 AVENUE BOUTROUX',
-    fillLevelPercent: 37,
-    zoneCode: 'ZONE-PARIS-13',
-    containerTypeCode: 'glass',
-    latitude: '48.822757',
-    longitude: '2.377733',
-  },
-  {
-    code: 'CTR-P13-02',
-    address: '1 RUE AUGUSTE LANCON',
-    fillLevelPercent: 88,
-    zoneCode: 'ZONE-PARIS-13',
-    containerTypeCode: 'recyclables',
-    latitude: '48.824558',
-    longitude: '2.346423',
-  },
-  {
-    code: 'CTR-P13-03',
-    address: '1 PLACE DE L ABBE HENOCQUE',
-    fillLevelPercent: 61,
-    zoneCode: 'ZONE-PARIS-13',
-    containerTypeCode: 'textile',
-    latitude: '48.824111',
-    longitude: '2.353502',
-  },
-  {
-    code: 'CTR-P14-01',
-    address: '1 BOULEVARD EDGAR QUINET',
-    fillLevelPercent: 63,
-    zoneCode: 'ZONE-PARIS-14',
-    containerTypeCode: 'glass',
-    latitude: '48.839302',
-    longitude: '2.329933',
-  },
-  {
-    code: 'CTR-P14-02',
-    address: '1 RUE ALPHONSE DAUDET',
-    fillLevelPercent: 73,
-    zoneCode: 'ZONE-PARIS-14',
-    containerTypeCode: 'recyclables',
-    latitude: '48.826227',
-    longitude: '2.328516',
-  },
-  {
-    code: 'CTR-P14-03',
-    address: '111 AVENUE DU GENERAL LECLERC',
-    fillLevelPercent: 31,
-    zoneCode: 'ZONE-PARIS-14',
-    containerTypeCode: 'textile',
-    latitude: '48.825013',
-    longitude: '2.326032',
-  },
-  {
-    code: 'CTR-P15-01',
-    address: '1 PLACE VIOLET',
-    fillLevelPercent: 49,
-    zoneCode: 'ZONE-PARIS-15',
-    containerTypeCode: 'glass',
-    latitude: '48.844733',
-    longitude: '2.290445',
-  },
-  {
-    code: 'CTR-P15-02',
-    address: '1 PLACE CHANTAL MAUDUIT',
-    fillLevelPercent: 82,
-    zoneCode: 'ZONE-PARIS-15',
-    containerTypeCode: 'recyclables',
-    latitude: '48.830708',
-    longitude: '2.303949',
-  },
-  {
-    code: 'CTR-P15-03',
-    address: '10 RUE ANDRE GIDE',
-    fillLevelPercent: 46,
-    zoneCode: 'ZONE-PARIS-15',
-    containerTypeCode: 'textile',
-    latitude: '48.837840',
-    longitude: '2.314150',
-  },
-  {
-    code: 'CTR-P16-01',
-    address: '1 PLACE ROCHAMBEAU',
-    fillLevelPercent: 44,
-    zoneCode: 'ZONE-PARIS-16',
-    containerTypeCode: 'glass',
-    latitude: '48.866284',
-    longitude: '2.296781',
-  },
-  {
-    code: 'CTR-P16-02',
-    address: '1 RUE PICCINI',
-    fillLevelPercent: 76,
-    zoneCode: 'ZONE-PARIS-16',
-    containerTypeCode: 'recyclables',
-    latitude: '48.873641',
-    longitude: '2.285703',
-  },
-  {
-    code: 'CTR-P16-03',
-    address: '1 AVENUE D EYLAU',
-    fillLevelPercent: 54,
-    zoneCode: 'ZONE-PARIS-16',
-    containerTypeCode: 'textile',
-    latitude: '48.863449',
-    longitude: '2.286073',
-  },
-  {
-    code: 'CTR-P17-01',
-    address: '1 PLACE YVON ET CLAIRE MORANDAT',
-    fillLevelPercent: 58,
-    zoneCode: 'ZONE-PARIS-17',
-    containerTypeCode: 'glass',
-    latitude: '48.875928',
-    longitude: '2.288769',
-  },
-  {
-    code: 'CTR-P17-02',
-    address: '1 AVENUE BRUNETIERE',
-    fillLevelPercent: 69,
-    zoneCode: 'ZONE-PARIS-17',
-    containerTypeCode: 'recyclables',
-    latitude: '48.890871',
-    longitude: '2.302219',
-  },
-  {
-    code: 'CTR-P17-03',
-    address: '1 BOULEVARD PEREIRE',
-    fillLevelPercent: 39,
-    zoneCode: 'ZONE-PARIS-17',
-    containerTypeCode: 'textile',
-    latitude: '48.887334',
-    longitude: '2.314120',
-  },
-  {
-    code: 'CTR-P18-01',
-    address: '1 RUE DAMREMONT',
-    fillLevelPercent: 37,
-    zoneCode: 'ZONE-PARIS-18',
-    containerTypeCode: 'glass',
-    latitude: '48.887187',
-    longitude: '2.332502',
-  },
-  {
-    code: 'CTR-P18-02',
-    address: '1 RUE CHARLES HERMITE',
-    fillLevelPercent: 88,
-    zoneCode: 'ZONE-PARIS-18',
-    containerTypeCode: 'recyclables',
-    latitude: '48.899813',
-    longitude: '2.369903',
-  },
-  {
-    code: 'CTR-P18-03',
-    address: '1 AVENUE JUNOT',
-    fillLevelPercent: 61,
-    zoneCode: 'ZONE-PARIS-18',
-    containerTypeCode: 'textile',
-    latitude: '48.887716',
-    longitude: '2.337127',
-  },
-  {
-    code: 'CTR-P19-01',
-    address: '1 PLACE DU MAROC',
-    fillLevelPercent: 63,
-    zoneCode: 'ZONE-PARIS-19',
-    containerTypeCode: 'glass',
-    latitude: '48.886375',
-    longitude: '2.369297',
-  },
-  {
-    code: 'CTR-P19-02',
-    address: '1 RUE LAUZIN',
-    fillLevelPercent: 73,
-    zoneCode: 'ZONE-PARIS-19',
-    containerTypeCode: 'recyclables',
-    latitude: '48.874815',
-    longitude: '2.378809',
-  },
-  {
-    code: 'CTR-P19-03',
-    address: '118 BOULEVARD DE LA VILLETTE',
-    fillLevelPercent: 31,
-    zoneCode: 'ZONE-PARIS-19',
-    containerTypeCode: 'textile',
-    latitude: '48.877252',
-    longitude: '2.371224',
-  },
-  {
-    code: 'CTR-P20-01',
-    address: '1 RUE DU COMMANDANT L HERMINIER',
-    fillLevelPercent: 49,
-    zoneCode: 'ZONE-PARIS-20',
-    containerTypeCode: 'glass',
-    latitude: '48.847039',
-    longitude: '2.415870',
-  },
-  {
-    code: 'CTR-P20-02',
-    address: '1 RUE FELIX HUGUENET',
-    fillLevelPercent: 82,
-    zoneCode: 'ZONE-PARIS-20',
-    containerTypeCode: 'recyclables',
-    latitude: '48.848103',
-    longitude: '2.404836',
-  },
-  {
-    code: 'CTR-P20-03',
-    address: '101 RUE DE LAGNY',
-    fillLevelPercent: 46,
-    zoneCode: 'ZONE-PARIS-20',
-    containerTypeCode: 'textile',
-    latitude: '48.849241',
-    longitude: '2.410591',
-  },
-];
+const CONTAINER_SEED_BLUEPRINTS: ContainerSeedBlueprint[] = [];
 
 const CONTAINER_SEEDS: ContainerSeed[] = CONTAINER_SEED_BLUEPRINTS.map(({ address, ...seed }) => ({
   ...seed,
@@ -1187,77 +605,54 @@ const CONTAINER_SEEDS: ContainerSeed[] = CONTAINER_SEED_BLUEPRINTS.map(({ addres
 
 const formatDepotCoordinate = (value: number) => value.toFixed(6);
 
+const ZONE_DEPOT_COORDINATES_BY_CODE: Record<string, { latitude: string; longitude: string }> = {
+  'ZONE-DOWNTOWN': { latitude: '48.864360', longitude: '2.334760' },
+  'ZONE-HARBOR': { latitude: '48.868312', longitude: '2.343263' },
+  'ZONE-PARIS-03': { latitude: '48.866000', longitude: '2.356000' },
+  'ZONE-PARIS-04': { latitude: '48.852000', longitude: '2.362000' },
+  'ZONE-PARIS-05': { latitude: '48.844000', longitude: '2.350000' },
+  'ZONE-PARIS-06': { latitude: '48.849000', longitude: '2.334000' },
+  'ZONE-PARIS-07': { latitude: '48.856000', longitude: '2.312000' },
+  'ZONE-PARIS-08': { latitude: '48.872000', longitude: '2.312000' },
+  'ZONE-PARIS-09': { latitude: '48.876000', longitude: '2.340000' },
+  'ZONE-PARIS-10': { latitude: '48.876000', longitude: '2.360000' },
+  'ZONE-PARIS-11': { latitude: '48.861000', longitude: '2.379000' },
+  'ZONE-PARIS-12': { latitude: '48.840000', longitude: '2.397000' },
+  'ZONE-PARIS-13': { latitude: '48.832000', longitude: '2.356000' },
+  'ZONE-PARIS-14': { latitude: '48.833000', longitude: '2.326000' },
+  'ZONE-PARIS-15': { latitude: '48.840000', longitude: '2.300000' },
+  'ZONE-PARIS-16': { latitude: '48.865000', longitude: '2.285000' },
+  'ZONE-PARIS-17': { latitude: '48.883000', longitude: '2.306000' },
+  'ZONE-PARIS-18': { latitude: '48.892000', longitude: '2.345000' },
+  'ZONE-PARIS-19': { latitude: '48.881000', longitude: '2.379000' },
+  'ZONE-PARIS-20': { latitude: '48.849000', longitude: '2.410000' },
+};
+
 const ZONE_DEPOT_SEEDS = new Map<string, ZoneDepotSeed>(
-  Array.from(
-    CONTAINER_SEEDS.reduce((accumulator, seed) => {
-      const latitude = Number(seed.latitude);
-      const longitude = Number(seed.longitude);
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-        return accumulator;
-      }
+  ZONE_SEEDS.map((zone) => {
+    const coordinates = ZONE_DEPOT_COORDINATES_BY_CODE[zone.code] ?? {
+      latitude: '48.856600',
+      longitude: '2.352200',
+    };
 
-      const entry = accumulator.get(seed.zoneCode) ?? {
-        sumLatitude: 0,
-        sumLongitude: 0,
-        count: 0,
-      };
-
-      entry.sumLatitude += latitude;
-      entry.sumLongitude += longitude;
-      entry.count += 1;
-      accumulator.set(seed.zoneCode, entry);
-      return accumulator;
-    }, new Map<string, { sumLatitude: number; sumLongitude: number; count: number }>()),
-  )
-    .filter(([, entry]) => entry.count > 0)
-    .map(([zoneCode, entry]) => [
-      zoneCode,
+    return [
+      zone.code,
       {
-        label: `Depot ${ZONE_SEEDS.find((zone) => zone.code === zoneCode)?.name ?? zoneCode}`,
-        latitude: formatDepotCoordinate(entry.sumLatitude / entry.count),
-        longitude: formatDepotCoordinate(entry.sumLongitude / entry.count),
-      } satisfies ZoneDepotSeed,
-    ]),
+        label: `Depot ${zone.name}`,
+        latitude: formatDepotCoordinate(Number(coordinates.latitude)),
+        longitude: formatDepotCoordinate(Number(coordinates.longitude)),
+      },
+    ] satisfies [string, ZoneDepotSeed];
+  }),
 );
 
-const TOUR_SEEDS: TourSeed[] = [
-  {
-    name: 'Paris 1er Morning Round',
-    status: 'planned',
-    zoneCode: 'ZONE-DOWNTOWN',
-    assignedAgentEmail: 'agent@example.com',
-    scheduledForOffsetDays: 0,
-    stopContainerCodes: ['CTR-1002', 'CTR-1001', 'CTR-1003'],
-  },
-];
+const TOUR_SEEDS: TourSeed[] = [];
 
-const LEGACY_TOUR_SEED_NAMES = ['Downtown Morning Round'];
+const LEGACY_TOUR_SEED_NAMES: string[] = [];
 
-const CITIZEN_REPORT_SEEDS: CitizenReportSeed[] = [
-  {
-    containerCode: 'CTR-1002',
-    reporterEmail: 'citizen@example.com',
-    status: 'submitted',
-    description: '[container_full] Trilib station is close to overflow near the Louvre sector.',
-    latitude: '48.863444',
-    longitude: '2.339586',
-  },
-];
+const CITIZEN_REPORT_SEEDS: CitizenReportSeed[] = [];
 
-const GAMIFICATION_PROFILE_SEEDS: GamificationProfileSeed[] = [
-  {
-    email: 'citizen@example.com',
-    points: 120,
-    level: 2,
-    badges: ['first_report', 'neighborhood_helper'],
-  },
-  {
-    email: 'agent@example.com',
-    points: 45,
-    level: 1,
-    badges: ['first_collection'],
-  },
-];
+const GAMIFICATION_PROFILE_SEEDS: GamificationProfileSeed[] = [];
 
 const CHALLENGE_SEEDS: ChallengeSeed[] = [
   {
@@ -1278,14 +673,7 @@ const CHALLENGE_SEEDS: ChallengeSeed[] = [
   },
 ];
 
-const CHALLENGE_PARTICIPATION_SEEDS: ChallengeParticipationSeed[] = [
-  {
-    challengeCode: 'CHL-NEIGHBORHOOD-03',
-    userEmail: 'citizen@example.com',
-    progress: 1,
-    status: 'enrolled',
-  },
-];
+const CHALLENGE_PARTICIPATION_SEEDS: ChallengeParticipationSeed[] = [];
 
 const ANOMALY_TYPE_SEEDS: AnomalyTypeSeed[] = [
   {
@@ -1305,242 +693,11 @@ const ANOMALY_TYPE_SEEDS: AnomalyTypeSeed[] = [
   },
 ];
 
-const ANOMALY_REPORT_SEEDS: AnomalyReportSeed[] = [
-  {
-    anomalyTypeCode: 'ANOM-BLOCKED-ACCESS',
-    tourName: 'Paris 1er Morning Round',
-    stopOrder: 1,
-    reporterEmail: 'agent@example.com',
-    comments: 'Delivery vans blocked access on Rue Croix des Petits Champs for 20 minutes.',
-    severity: 'medium',
-  },
-];
+const ANOMALY_REPORT_SEEDS: AnomalyReportSeed[] = [];
 
-const SENSOR_DEVICE_SEEDS: SensorDeviceSeed[] = [
-  {
-    containerCode: 'CTR-1001',
-    deviceUid: 'sensor-ctr-1001',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.0',
-    installStatus: 'active',
-    batteryPercent: 88,
-    lastSeenAt: '2026-03-03T08:00:00.000Z',
-    installedAt: '2026-02-15T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-1002',
-    deviceUid: 'sensor-ctr-1002',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.1',
-    installStatus: 'active',
-    batteryPercent: 61,
-    lastSeenAt: '2026-03-03T08:05:00.000Z',
-    installedAt: '2026-02-16T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-1003',
-    deviceUid: 'sensor-ctr-1003',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.0',
-    installStatus: 'active',
-    batteryPercent: 92,
-    lastSeenAt: '2026-03-03T08:10:00.000Z',
-    installedAt: '2026-02-17T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-1004',
-    deviceUid: 'sensor-ctr-1004',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.1',
-    installStatus: 'active',
-    batteryPercent: 75,
-    lastSeenAt: '2026-03-03T08:15:00.000Z',
-    installedAt: '2026-02-18T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-1005',
-    deviceUid: 'sensor-ctr-1005',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.0',
-    installStatus: 'active',
-    batteryPercent: 95,
-    lastSeenAt: '2026-03-03T08:20:00.000Z',
-    installedAt: '2026-02-19T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-1006',
-    deviceUid: 'sensor-ctr-1006',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.1',
-    installStatus: 'active',
-    batteryPercent: 55,
-    lastSeenAt: '2026-03-03T08:25:00.000Z',
-    installedAt: '2026-02-20T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-1007',
-    deviceUid: 'sensor-ctr-1007',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.0',
-    installStatus: 'active',
-    batteryPercent: 80,
-    lastSeenAt: '2026-03-03T08:30:00.000Z',
-    installedAt: '2026-02-21T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-1008',
-    deviceUid: 'sensor-ctr-1008',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.1',
-    installStatus: 'active',
-    batteryPercent: 68,
-    lastSeenAt: '2026-03-03T08:35:00.000Z',
-    installedAt: '2026-02-22T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-1009',
-    deviceUid: 'sensor-ctr-1009',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.0',
-    installStatus: 'active',
-    batteryPercent: 42,
-    lastSeenAt: '2026-03-03T08:40:00.000Z',
-    installedAt: '2026-02-23T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-1010',
-    deviceUid: 'sensor-ctr-1010',
-    hardwareModel: 'EcoSense-A1',
-    firmwareVersion: '1.2.1',
-    installStatus: 'active',
-    batteryPercent: 90,
-    lastSeenAt: '2026-03-03T08:45:00.000Z',
-    installedAt: '2026-02-24T09:00:00.000Z',
-  },
-  {
-    containerCode: 'CTR-2001',
-    deviceUid: 'sensor-ctr-2001',
-    hardwareModel: 'EcoSense-B2',
-    firmwareVersion: '2.0.0',
-    installStatus: 'maintenance',
-    batteryPercent: 48,
-    lastSeenAt: '2026-03-02T22:00:00.000Z',
-    installedAt: '2026-02-18T09:00:00.000Z',
-  },
-];
+const SENSOR_DEVICE_SEEDS: SensorDeviceSeed[] = [];
 
-const MEASUREMENT_SEEDS: MeasurementSeed[] = [
-  {
-    deviceUid: 'sensor-ctr-1001',
-    containerCode: 'CTR-1001',
-    measuredAt: '2026-03-03T07:45:00.000Z',
-    fillLevelPercent: 44,
-    temperatureC: 21,
-    batteryPercent: 88,
-    signalStrength: -67,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-1002',
-    containerCode: 'CTR-1002',
-    measuredAt: '2026-03-03T07:50:00.000Z',
-    fillLevelPercent: 76,
-    temperatureC: 23,
-    batteryPercent: 61,
-    signalStrength: -71,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-1003',
-    containerCode: 'CTR-1003',
-    measuredAt: '2026-03-03T07:55:00.000Z',
-    fillLevelPercent: 54,
-    temperatureC: 20,
-    batteryPercent: 92,
-    signalStrength: -65,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-1004',
-    containerCode: 'CTR-1004',
-    measuredAt: '2026-03-03T08:00:00.000Z',
-    fillLevelPercent: 58,
-    temperatureC: 22,
-    batteryPercent: 75,
-    signalStrength: -68,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-1005',
-    containerCode: 'CTR-1005',
-    measuredAt: '2026-03-03T08:05:00.000Z',
-    fillLevelPercent: 69,
-    temperatureC: 19,
-    batteryPercent: 95,
-    signalStrength: -63,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-1006',
-    containerCode: 'CTR-1006',
-    measuredAt: '2026-03-03T08:10:00.000Z',
-    fillLevelPercent: 63,
-    temperatureC: 24,
-    batteryPercent: 55,
-    signalStrength: -72,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-1007',
-    containerCode: 'CTR-1007',
-    measuredAt: '2026-03-03T08:15:00.000Z',
-    fillLevelPercent: 37,
-    temperatureC: 21,
-    batteryPercent: 80,
-    signalStrength: -69,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-1008',
-    containerCode: 'CTR-1008',
-    measuredAt: '2026-03-03T08:20:00.000Z',
-    fillLevelPercent: 88,
-    temperatureC: 20,
-    batteryPercent: 68,
-    signalStrength: -70,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-1009',
-    containerCode: 'CTR-1009',
-    measuredAt: '2026-03-03T08:25:00.000Z',
-    fillLevelPercent: 61,
-    temperatureC: 25,
-    batteryPercent: 42,
-    signalStrength: -74,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-1010',
-    containerCode: 'CTR-1010',
-    measuredAt: '2026-03-03T08:30:00.000Z',
-    fillLevelPercent: 63,
-    temperatureC: 18,
-    batteryPercent: 90,
-    signalStrength: -66,
-    measurementQuality: 'valid',
-  },
-  {
-    deviceUid: 'sensor-ctr-2001',
-    containerCode: 'CTR-2001',
-    measuredAt: '2026-03-02T21:45:00.000Z',
-    fillLevelPercent: 73,
-    temperatureC: 19,
-    batteryPercent: 48,
-    signalStrength: -79,
-    measurementQuality: 'suspect',
-  },
-];
+const MEASUREMENT_SEEDS: MeasurementSeed[] = [];
 
 const ALERT_RULE_SEEDS: AlertRuleSeed[] = [
   {
@@ -1565,43 +722,9 @@ const ALERT_RULE_SEEDS: AlertRuleSeed[] = [
   },
 ];
 
-const ALERT_EVENT_SEEDS: AlertEventSeed[] = [
-  {
-    ruleScopeType: 'container_type',
-    ruleScopeKey: 'recyclables',
-    containerCode: 'CTR-1002',
-    zoneCode: 'ZONE-DOWNTOWN',
-    eventType: 'fill_threshold_exceeded',
-    severity: 'warning',
-    currentStatus: 'open',
-    acknowledgedByEmail: null,
-    payloadSnapshot: {
-      fillLevelPercent: 76,
-      measuredAt: '2026-03-03T07:50:00.000Z',
-    },
-  },
-];
+const ALERT_EVENT_SEEDS: AlertEventSeed[] = [];
 
-const NOTIFICATION_SEEDS: NotificationSeed[] = [
-  {
-    eventType: 'seed.alert_raised',
-    entityType: 'alert_event',
-    entityId: 'seed-fill-threshold-ctr-1002',
-    audienceScope: 'role:manager',
-    title: 'Container nearing capacity',
-    body: 'CTR-1002 has crossed the warning threshold near the Louvre sector.',
-    preferredChannels: ['email'],
-    status: 'sent',
-    deliveries: [
-      {
-        channel: 'email',
-        recipientAddress: 'ops@example.com',
-        deliveryStatus: 'delivered',
-        attemptCount: 1,
-      },
-    ],
-  },
-];
+const NOTIFICATION_SEEDS: NotificationSeed[] = [];
 
 const CLOSED_STATUSES = new Set(['completed', 'closed']);
 const EARTH_RADIUS_KM = 6371;

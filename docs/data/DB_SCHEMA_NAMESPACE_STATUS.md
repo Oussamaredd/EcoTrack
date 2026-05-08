@@ -65,6 +65,14 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 - `database/scripts/import-supabase-auth-users.mjs` now provides the one-off trusted import/link path that creates missing Supabase Auth users, preserves legacy password hashes where available, and backfills `identity.users.auth_user_id`.
 - The API now accepts Supabase bearer tokens when `SUPABASE_URL` is configured and resolves app authorization through the linked `identity.users` record.
 
+2026-05-08 seed data cleanup note:
+
+- `database/seeds/index.ts` now treats seed data as bootstrap/reference data only.
+- Zones, zone depot metadata, container types, roles, settings, default alert rules, anomaly types, and challenge catalog data remain seedable.
+- Containers, sensors, measurements, tours, citizen reports, alert events, notifications, and support-demo records are no longer seeded.
+- Real containers must be inserted through explicit real-data import/application workflows, not by `db:seed`.
+- No schema migration is required for this cleanup.
+
 Known readiness exceptions from the original rollout pass:
 
 - the worktree still had broad unrelated local changes across `app`, `api`, `database`, `docs`, environment templates, and `package-lock.json`
