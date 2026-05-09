@@ -325,3 +325,9 @@ Checklist:
 - introduce PostGIS-backed geometry columns later if and when the approved data scope requires them
 - create a proper backup or restore-point procedure for future database rollout work where tooling is available
 
+2026-05-09 seed policy note:
+
+- Paris zones are restored as seeded reference data using `ZONE-PARIS-01` through `ZONE-PARIS-20`.
+- Operational containers remain excluded from database seed logic.
+- Live Supabase container records use `PAR-*` codes and are inserted as operational data, not seed data.
+- Legacy demo `CTR-*`, `CTR-P*`, and placeholder `REAL-*` container records must not be recreated by seed scripts.

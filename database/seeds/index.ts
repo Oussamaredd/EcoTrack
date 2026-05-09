@@ -327,7 +327,7 @@ const USER_SEEDS: UserSeed[] = [
     displayName: 'Local Smoke User',
     role: 'agent',
     assignedRoles: ['agent'],
-    zoneCode: 'ZONE-DOWNTOWN',
+    zoneCode: 'ZONE-PARIS-01',
     isActive: true,
     authProvider: 'local',
     passwordHash: MANUAL_TEST_PASSWORD_HASH,
@@ -378,7 +378,7 @@ const USER_SEEDS: UserSeed[] = [
     displayName: 'Agent User',
     role: 'agent',
     assignedRoles: ['agent'],
-    zoneCode: 'ZONE-DOWNTOWN',
+    zoneCode: 'ZONE-PARIS-01',
     isActive: true,
     authProvider: 'local',
     passwordHash: MANUAL_TEST_PASSWORD_HASH,
@@ -453,12 +453,12 @@ const resolveSeedLastMeasurementAt = (code: string) => {
 const ZONE_SEEDS: ZoneSeed[] = [
   {
     name: 'Paris 1er - Louvre',
-    code: 'ZONE-DOWNTOWN',
+    code: 'ZONE-PARIS-01',
     description: 'Operational collection zone for Louvre, Palais-Royal, and Les Halles.',
   },
   {
     name: 'Paris 2e - Bourse',
-    code: 'ZONE-HARBOR',
+    code: 'ZONE-PARIS-02',
     description: 'Operational collection zone for Bourse, Montorgueil, and Sentier.',
   },
   {
@@ -519,7 +519,7 @@ const ZONE_SEEDS: ZoneSeed[] = [
   {
     name: 'Paris 14e - Observatoire',
     code: 'ZONE-PARIS-14',
-    description: 'Operational collection zone for Montparnasse south, Denfert-Rochereau, and Alésia.',
+    description: 'Operational collection zone for Montparnasse south, Denfert-Rochereau, and Alesia.',
   },
   {
     name: 'Paris 15e - Vaugirard',
@@ -603,48 +603,28 @@ const CONTAINER_SEEDS: ContainerSeed[] = CONTAINER_SEED_BLUEPRINTS.map(({ addres
   lastCollectedAt: seed.fillLevelPercent === 0 ? resolveSeedLastMeasurementAt(seed.code) : null,
 }));
 
-const formatDepotCoordinate = (value: number) => value.toFixed(6);
-
-const ZONE_DEPOT_COORDINATES_BY_CODE: Record<string, { latitude: string; longitude: string }> = {
-  'ZONE-DOWNTOWN': { latitude: '48.864360', longitude: '2.334760' },
-  'ZONE-HARBOR': { latitude: '48.868312', longitude: '2.343263' },
-  'ZONE-PARIS-03': { latitude: '48.866000', longitude: '2.356000' },
-  'ZONE-PARIS-04': { latitude: '48.852000', longitude: '2.362000' },
-  'ZONE-PARIS-05': { latitude: '48.844000', longitude: '2.350000' },
-  'ZONE-PARIS-06': { latitude: '48.849000', longitude: '2.334000' },
-  'ZONE-PARIS-07': { latitude: '48.856000', longitude: '2.312000' },
-  'ZONE-PARIS-08': { latitude: '48.872000', longitude: '2.312000' },
-  'ZONE-PARIS-09': { latitude: '48.876000', longitude: '2.340000' },
-  'ZONE-PARIS-10': { latitude: '48.876000', longitude: '2.360000' },
-  'ZONE-PARIS-11': { latitude: '48.861000', longitude: '2.379000' },
-  'ZONE-PARIS-12': { latitude: '48.840000', longitude: '2.397000' },
-  'ZONE-PARIS-13': { latitude: '48.832000', longitude: '2.356000' },
-  'ZONE-PARIS-14': { latitude: '48.833000', longitude: '2.326000' },
-  'ZONE-PARIS-15': { latitude: '48.840000', longitude: '2.300000' },
-  'ZONE-PARIS-16': { latitude: '48.865000', longitude: '2.285000' },
-  'ZONE-PARIS-17': { latitude: '48.883000', longitude: '2.306000' },
-  'ZONE-PARIS-18': { latitude: '48.892000', longitude: '2.345000' },
-  'ZONE-PARIS-19': { latitude: '48.881000', longitude: '2.379000' },
-  'ZONE-PARIS-20': { latitude: '48.849000', longitude: '2.410000' },
-};
-
-const ZONE_DEPOT_SEEDS = new Map<string, ZoneDepotSeed>(
-  ZONE_SEEDS.map((zone) => {
-    const coordinates = ZONE_DEPOT_COORDINATES_BY_CODE[zone.code] ?? {
-      latitude: '48.856600',
-      longitude: '2.352200',
-    };
-
-    return [
-      zone.code,
-      {
-        label: `Depot ${zone.name}`,
-        latitude: formatDepotCoordinate(Number(coordinates.latitude)),
-        longitude: formatDepotCoordinate(Number(coordinates.longitude)),
-      },
-    ] satisfies [string, ZoneDepotSeed];
-  }),
-);
+const ZONE_DEPOT_SEEDS = new Map<string, ZoneDepotSeed>([
+  ['ZONE-PARIS-01', { label: 'Depot Paris 1er - Louvre', latitude: '48.863735', longitude: '2.338321' }],
+  ['ZONE-PARIS-02', { label: 'Depot Paris 2e - Bourse', latitude: '48.868884', longitude: '2.343380' }],
+  ['ZONE-PARIS-03', { label: 'Depot Paris 3e - Temple', latitude: '48.866299', longitude: '2.355614' }],
+  ['ZONE-PARIS-04', { label: 'Depot Paris 4e - Hotel-de-Ville', latitude: '48.851630', longitude: '2.364043' }],
+  ['ZONE-PARIS-05', { label: 'Depot Paris 5e - Pantheon', latitude: '48.844527', longitude: '2.353178' }],
+  ['ZONE-PARIS-06', { label: 'Depot Paris 6e - Luxembourg', latitude: '48.849647', longitude: '2.336317' }],
+  ['ZONE-PARIS-07', { label: 'Depot Paris 7e - Palais-Bourbon', latitude: '48.852069', longitude: '2.319796' }],
+  ['ZONE-PARIS-08', { label: 'Depot Paris 8e - Elysee', latitude: '48.877334', longitude: '2.314464' }],
+  ['ZONE-PARIS-09', { label: 'Depot Paris 9e - Opera', latitude: '48.877369', longitude: '2.338890' }],
+  ['ZONE-PARIS-10', { label: 'Depot Paris 10e - Entrepot', latitude: '48.877730', longitude: '2.365295' }],
+  ['ZONE-PARIS-11', { label: 'Depot Paris 11e - Popincourt', latitude: '48.864805', longitude: '2.379546' }],
+  ['ZONE-PARIS-12', { label: 'Depot Paris 12e - Reuilly', latitude: '48.841977', longitude: '2.398608' }],
+  ['ZONE-PARIS-13', { label: 'Depot Paris 13e - Gobelins', latitude: '48.823809', longitude: '2.359219' }],
+  ['ZONE-PARIS-14', { label: 'Depot Paris 14e - Observatoire', latitude: '48.830181', longitude: '2.328160' }],
+  ['ZONE-PARIS-15', { label: 'Depot Paris 15e - Vaugirard', latitude: '48.837760', longitude: '2.302848' }],
+  ['ZONE-PARIS-16', { label: 'Depot Paris 16e - Passy', latitude: '48.867791', longitude: '2.289519' }],
+  ['ZONE-PARIS-17', { label: 'Depot Paris 17e - Batignolles-Monceau', latitude: '48.884711', longitude: '2.301703' }],
+  ['ZONE-PARIS-18', { label: 'Depot Paris 18e - Buttes-Montmartre', latitude: '48.891572', longitude: '2.346511' }],
+  ['ZONE-PARIS-19', { label: 'Depot Paris 19e - Buttes-Chaumont', latitude: '48.879481', longitude: '2.373110' }],
+  ['ZONE-PARIS-20', { label: 'Depot Paris 20e - Menilmontant', latitude: '48.848128', longitude: '2.410432' }],
+]);
 
 const TOUR_SEEDS: TourSeed[] = [];
 

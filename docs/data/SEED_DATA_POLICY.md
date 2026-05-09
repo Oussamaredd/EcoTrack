@@ -48,3 +48,20 @@ They must be inserted through the application workflow, an explicit import scrip
 The project now uses Supabase/managed PostgreSQL with real operational data. Seeding fake containers such as `CTR-*` risks polluting production-like environments and confusing API/dashboard validation.
 
 Zones and container types remain seeded because they are reference/master data required before real containers can be imported.
+
+## Paris arrondissement zone baseline
+
+The database seed keeps the 20 Paris arrondissement zones as stable reference data.
+
+Seeded zone codes use the canonical pattern:
+
+```text
+ZONE-PARIS-01
+ZONE-PARIS-02
+...
+ZONE-PARIS-20
+```
+
+Operational containers are not seed data. They are live Supabase data and use `PAR-*` business codes.
+
+The seed must not recreate demo `CTR-*`, `CTR-P*`, or placeholder `REAL-*` containers.
