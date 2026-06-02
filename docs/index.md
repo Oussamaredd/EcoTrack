@@ -8,8 +8,8 @@ title: EcoTrack Documentation
 EcoTrack est un projet de gestion et de coordination de signalements, tournées et opérations liées aux déchets urbains. Ce portail regroupe la documentation technique, les guides produit, les runbooks et le dossier de preuves Bloc A2 destiné au jury.
 
 <div class="portal-actions">
-  <a class="primary" href="documentation-index.md">Parcourir la documentation complète</a>
-  <a class="secondary" href="jury/bloc-a2/index.md">Consulter le dossier de preuves - Bloc A2</a>
+  <a class="primary" href="{{ '/documentation-index.html' | relative_url }}">Parcourir la documentation complète</a>
+  <a class="secondary" href="{{ '/jury/bloc-a2/' | relative_url }}">Consulter le dossier de preuves - Bloc A2</a>
   <a class="secondary" href="https://github.com/Oussamaredd/EcoTrack">Voir le repository GitHub</a>
   <a class="secondary" href="https://ecotrack-jmj.pages.dev">Voir l'application déployée</a>
 </div>

@@ -91,6 +91,7 @@ export default defineConfig({
         'src/modules/iot/ingestion/ingestion.queue.ts',
         'src/modules/iot/ingestion/ingestion.repository.ts',
         'src/modules/iot/ingestion/ingestion.service.ts',
+        'src/modules/iot/container-fill-simulation.service.ts',
         'src/modules/iot/validated-consumer/validated-consumer.processor.ts',
         'src/modules/iot/validated-consumer/validated-consumer.queue.ts',
         'src/modules/iot/validated-consumer/validated-consumer.service.ts',

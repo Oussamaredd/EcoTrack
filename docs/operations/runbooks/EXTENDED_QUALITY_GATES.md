@@ -1,6 +1,6 @@
 # Quality Gates And Extended Lanes
 
-Last updated: 2026-05-07
+Last updated: 2026-06-02
 
 This runbook describes the repo-owned Development quality bar plus the optional extended lanes available through manual CI dispatch.
 
@@ -42,6 +42,17 @@ npm run quality:mobile-readiness
   - Lighthouse: `lighthouse`
   - bundle budgets: `bundle-budgets`
   - mobile readiness: `mobile-readiness`
+
+## Docker Image Scan
+
+The default CI Docker lane builds the API and frontend images, then scans them with Trivy for fixed `HIGH` and `CRITICAL` vulnerabilities.
+
+- Workflow: `.github/workflows/CI.yaml`
+- API image: `infrastructure/Dockerfile`
+- Frontend image: `app/Dockerfile`
+- Artifact: `docker-image-scan-report`
+
+The API runtime image applies Debian security updates during the final runtime stage before application files are copied. Node package remediation must be committed through `package.json` and `package-lock.json`, because the Trivy scan reads the production dependency tree installed into the image.
 
 ## Lighthouse
 

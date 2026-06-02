@@ -6,9 +6,9 @@ title: "Bloc A2 - Fonctionnalités"
 # Bloc A2 - Preuves fonctionnelles
 
 <nav class="proof-nav">
-  <a href="index.md">Retour Bloc A2</a>
-  <a href="annexe-preuves.md">Annexe preuves</a>
-  <a href="../../index.md">Accueil documentation</a>
+  <a href="{{ '/jury/bloc-a2/' | relative_url }}">Retour Bloc A2</a>
+  <a href="{{ '/jury/bloc-a2/annexe-preuves.html' | relative_url }}">Annexe preuves</a>
+  <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
 </nav>
 
 Cette page prépare les preuves des parcours fonctionnels. Chaque section devra recevoir des captures, chemins de code, exemples d'appels API et références de commit lorsque les preuves seront fournies.

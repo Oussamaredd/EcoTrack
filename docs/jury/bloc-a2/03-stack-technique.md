@@ -6,9 +6,9 @@ title: "Bloc A2 - Stack technique"
 # Bloc A2 - Preuves de stack technique
 
 <nav class="proof-nav">
-  <a href="index.md">Retour Bloc A2</a>
-  <a href="annexe-preuves.md">Annexe preuves</a>
-  <a href="../../index.md">Accueil documentation</a>
+  <a href="{{ '/jury/bloc-a2/' | relative_url }}">Retour Bloc A2</a>
+  <a href="{{ '/jury/bloc-a2/annexe-preuves.html' | relative_url }}">Annexe preuves</a>
+  <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
 </nav>
 
 Cette page prépare les preuves de stack technique. Les fichiers cités sont les sources attendues à capturer ou lier précisément lors de l'ajout des preuves.

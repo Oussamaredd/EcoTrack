@@ -6,9 +6,9 @@ title: "Dossier de preuves - Bloc A2"
 # Dossier de preuves - Bloc A2 : Concevoir et développer une application
 
 <nav class="proof-nav">
-  <a href="../../index.md">Accueil documentation</a>
-  <a href="../../documentation-index.md">Documentation complète</a>
-  <a href="annexe-preuves.md">Annexe preuves</a>
+  <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
+  <a href="{{ '/documentation-index.html' | relative_url }}">Documentation complète</a>
+  <a href="{{ '/jury/bloc-a2/annexe-preuves.html' | relative_url }}">Annexe preuves</a>
 </nav>
 
 Ce dossier sert de point d'entrée jury pour rattacher les preuves du Bloc A2 aux éléments évalués : architecture, fonctionnalités, stack technique, qualité de code, tests, CI/CD et déploiement.

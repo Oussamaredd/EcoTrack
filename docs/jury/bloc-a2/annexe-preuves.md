@@ -6,13 +6,13 @@ title: "Annexe preuves - Bloc A2"
 # Annexe preuves - Bloc A2
 
 <nav class="proof-nav">
-  <a href="index.md">Retour Bloc A2</a>
-  <a href="01-architecture.md">Architecture</a>
-  <a href="02-fonctionnalites.md">Fonctionnalités</a>
-  <a href="03-stack-technique.md">Stack</a>
-  <a href="04-qualite-code-tests.md">Qualité</a>
-  <a href="05-ci-cd-deploiement.md">CI/CD</a>
-  <a href="../../index.md">Accueil documentation</a>
+  <a href="{{ '/jury/bloc-a2/' | relative_url }}">Retour Bloc A2</a>
+  <a href="{{ '/jury/bloc-a2/01-architecture.html' | relative_url }}">Architecture</a>
+  <a href="{{ '/jury/bloc-a2/02-fonctionnalites.html' | relative_url }}">Fonctionnalités</a>
+  <a href="{{ '/jury/bloc-a2/03-stack-technique.html' | relative_url }}">Stack</a>
+  <a href="{{ '/jury/bloc-a2/04-qualite-code-tests.html' | relative_url }}">Qualité</a>
+  <a href="{{ '/jury/bloc-a2/05-ci-cd-deploiement.html' | relative_url }}">CI/CD</a>
+  <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
 </nav>
 
 Cette annexe centralise la lecture des IDs de preuves, la matrice complète et les pièces à intégrer lors de la prochaine passe.

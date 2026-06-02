@@ -56,6 +56,10 @@ LABEL org.opencontainers.image.title="EcoTrack API" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.created="${BUILD_DATE}"
 
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=prod-deps --chown=node:node /workspace/node_modules ./node_modules
 COPY --from=builder --chown=node:node /workspace/package*.json ./
 COPY --from=builder --chown=node:node /workspace/api ./api
