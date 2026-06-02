@@ -1,0 +1,1218 @@
+sofca@DESKTOP-S61VUQB:/mnt/c/Users/sofca/source/repos/EcoTrack$ npm run test
+
+> ecotrack@1.0.0 test
+> npm run validate:workspace-toolchain && npm run test:app && npm run test:mobile && npm run test:api
+
+
+> ecotrack@1.0.0 validate:workspace-toolchain
+> node ./infrastructure/scripts/validate-workspace-toolchain.mjs
+
+[validate-workspace-toolchain] Root lockfile and required toolchain packages are present for workspaces: root, app, mobile, api, database. Use repo-root installs only.
+
+> ecotrack@1.0.0 test:app
+> npm run test --workspace=ecotrack-app
+
+
+> ecotrack-app@0.0.0 test
+> npm run test:fast && npm run test:isolated && npm run test:ui
+
+
+> ecotrack-app@0.0.0 test:fast
+> node ./scripts/run-vitest-suite.mjs fast --configLoader runner --run
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/apiBase.test.ts (3 tests) 5ms
+   ✓ resolveApiBase (3)
+     ✓ honors an explicit loopback API origin instead of rewriting to the active page origin 2ms
+     ✓ keeps explicit non-loopback api origins intact 1ms
+     ✓ uses the active page origin when the edge proxy is enabled 0ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:41:15
+   Duration  21.06s (transform 567ms, setup 16.51s, import 303ms, tests 5ms, environment 0ms)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/apiClient.test.ts (5 tests) 19ms
+   ✓ api client error handling (5)
+     ✓ omits browser cookies for direct cross-origin API requests 2ms
+     ✓ omits browser cookies for same-origin edge proxy API requests 1ms
+     ✓ does not add a JSON content-type header to GET requests 7ms
+     ✓ uses the current Supabase browser session when the cached API token is missing 4ms
+     ✓ does not clear the browser session for ordinary API 401 responses 3ms
+
+ Test Files  1 passed (1)
+
+ ❯ src/tests/AgentTourPage.test.tsx [queued]
+
+ Test Files 0 passed (1)
+      Tests 0 passed (0)
+   Start at 15:52:46
+   Duration 41.00s
+
+   ✓ auth redirect intent (4)
+     ✓ defaults fresh login attempts to the role hub 3ms
+     ✓ keeps legitimate protected-route deep links from the next parameter 1ms
+     ✓ keeps oauth pending redirects until callback completion clears them 1ms
+     ✓ rejects unsafe external redirect values 1ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  15:43:20
+   Duration  45.03s (transform 411ms, setup 9.64s, import 364ms, tests 7ms, environment 32.29s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/authz.test.ts (10 tests) 8ms
+   ✓ authz role helpers (10)
+     ✓ grants admin access from singular role field 2ms
+     ✓ grants admin access from roles array 1ms
+     ✓ does not grant admin access for non-admin role names 0ms
+     ✓ grants manager access to manager and admin roles 1ms
+     ✓ returns false for empty or missing user roles 1ms
+     ✓ normalizes role names before matching 0ms
+     ✓ grants citizen access to citizen and elevated admin roles 0ms
+     ✓ grants agent access to agent and elevated admin roles 0ms
+     ✓ grants support workspace access to support-facing roles only 0ms
+     ✓ does not grant citizen or agent access to unrelated roles 0ms
+
+
+ Test Files 0 passed (1)
+
+ Test Files 0 passed (1)
+      Tests 0 passed (0)
+   Start at 15:52:46
+   Duration 12.97s/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/ecotrack-map-sw.test.ts (3 tests) 41ms
+   ✓ ecotrack service worker cache policy (3)
+     ✓ pre-caches the app shell during install and cleans stale caches on activate 33ms
+     ✓ serves cached app shell content when navigation requests fail offline 4ms
+     ✓ does not intercept Vite dev asset requests 2ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:45:00
+   Duration  11.45s (transform 351ms, setup 8.16s, import 377ms, tests 41ms, environment 0ms)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/LogoutButton.test.tsx (1 test) 103ms
+   ✓ LogoutButton (1)
+     ✓ clears pending auth redirect intent before leaving a protected route 100ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  15:45:33
+   Duration  47.34s (transform 842ms, setup 8.39s, import 4.23s, tests 103ms, environment 31.99s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/runtimeFeatures.test.ts (3 tests) 8ms
+
+ Test Files 0 passed (1)en optional VITE runtime flags are absent or invalid 4ms
+
+ ❯ src/tests/AgentTourPage.test.tsx [queued]
+ ❯ src/tests/AgentTourPage.test.tsx [queued]
+ Test Files 0 passed (1)
+      Tests 0 passed (0)
+   Start at 15:52:46 (0)
+   Duration 42.01s46 (0)
+
+
+
+
+ ✓ src/tests/stateArchitecture.test.tsx (3 tests) 9ms
+   ✓ frontend state architecture (3)
+     ✓ resets optimization state when key planning inputs change 3ms
+     ✓ reorders route items deterministically 1ms
+     ✓ invalidates planning dashboard, heatmap, tours, and notifications together 3ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:47:12
+   Duration  11.08s (transform 477ms, setup 8.09s, import 351ms, tests 9ms, environment 0ms)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/supabaseStorage.test.ts (5 tests) 9ms
+   ✓ Supabase auth storage migration (5)
+
+ Test Files 0 passed (1)
+      Tests 0 passed (0)
+   Start at 15:52:46
+   Duration 8.95s
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  15:47:45
+   Duration  47.25s (transform 452ms, setup 8.51s, import 3.60s, tests 9ms, environment 32.52s)
+
+
+> ecotrack-app@0.0.0 test:isolated
+> node ./scripts/run-vitest-suite.mjs isolated --configLoader runner --run
+
+
+ Test Files 0 passed (1)
+      Tests 0 passed (0)
+   Start at 15:52:46
+   Duration 37.96s
+
+
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+
+ Test Files 0 passed (1)
+      Tests 0 passed (0)
+   Start at 15:52:46
+   Duration 7.94s
+
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+
+ Test Files 0 passed (1)
+      Tests 0 passed (0)alStorage.test.tsx (8 tests) 282ms
+   Start at 15:52:46ets.test.tsx (8 tests) 259ms
+   Duration 15.99sshboard.test.tsx (2 tests) 121ms
+
+ Test Files  3 passed (3)
+      Tests  18 passed (18)
+   Start at  15:48:57
+
+ Test Files 0 passed (1)
+      Tests 0 passed (0)
+   Start at 15:52:46
+   Duration 6.94s
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+
+ Test Files 0 passed (1)
+      Tests 0 passed (0)
+   Start at 15:52:46
+   Duration 36.96s
+
+ Test Files 0 passed (1)
+      Tests 0 passed (0)
+   Start at 15:52:46
+   Duration 5.93s
+
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/AdvancedTicketList.test.tsx (16 tests) 796ms
+   ✓ AdvancedTicketList Component (16)
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/AgentTourPage.test.tsx (6 tests) 1669ms
+   ✓ AgentTourPage (6)
+     ✓ shows the unassigned empty state and refreshes the assigned tour 281ms
+     ✓ shows a clear retry state when the assigned tour query fails 75ms
+     ✓ submits validation with manual fallback and captured device coordinates  324ms
+     ✓ surfaces start, validation, and anomaly submission errors  793ms
+     ✓ renders activity summaries and handles device location capture failures 119ms
+     ✓ offers a cache-bypass reload path for overdue cached runs 74ms
+     ✓ pagination navigation works 38ms
+ Test Files  1 passed (1)lays correctly 223ms
+      Tests  6 passed (6)ys correctly 12ms
+   Start at  15:52:46splays correctly 3ms
+   Duration  62.84s (transform 2.90s, setup 9.23s, import 13.75s, tests 1.67s, environment 35.24s)
+
+ Test Files  1 passed (1)
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+   Start at  15:51:29
+ ✓ src/tests/App.integration.test.tsx (3 tests) 548ms
+   ✓ App Integration (3)
+     ✓ renders landing screen when not authenticated 200ms
+     ✓ renders authenticated role hub when user opens `/app` 241ms
+     ✓ navigation links work correctly 103ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:54:07
+   Duration  56.68s (transform 5.14s, setup 8.33s, import 12.76s, tests 548ms, environment 32.37s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/App.test.tsx (2 tests) 363ms
+   ✓ renders navigation buttons 187ms
+   ✓ mobile drawer toggle supports click and escape dismissal 174ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  15:55:23
+   Duration  54.64s (transform 4.84s, setup 8.68s, import 9.89s, tests 363ms, environment 32.98s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/AppHomePage.test.tsx (2 tests) 262ms
+   ✓ AppHomePage (2)
+     ✓ uses the shared role hub panel for the citizen lane 210ms
+     ✓ keeps the shared workspace host behavior for non-citizen roles 50ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  15:56:35
+   Duration  47.66s (transform 1.09s, setup 8.57s, import 3.57s, tests 262ms, environment 32.51s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/AuditLogs.test.tsx (2 tests) 176ms
+   ✓ AuditLogs (2)
+     ✓ shows info toast when export is triggered with no logs 128ms
+     ✓ exports csv and shows success toast when logs exist 45ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  15:57:42
+   Duration  48.99s (transform 1.45s, setup 8.29s, import 5.48s, tests 176ms, environment 32.30s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/AuthCallbackPage.test.tsx (2 tests) 206ms
+   ✓ AuthCallbackPage (2)
+     ✓ restarts the exchange flow when the callback query changes from an error to a code 160ms
+     ✓ shows the retry action after an exchange failure and retries the sign-in flow 43ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  15:58:51
+   Duration  46.29s (transform 891ms, setup 8.40s, import 920ms, tests 206ms, environment 34.09s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/CitizenChallengesPage.test.tsx (2 tests) 298ms
+   ✓ CitizenChallengesPage (2)
+     ✓ uses the shared EcoTrack loading state while challenge data loads 144ms
+     ✓ enrolls and updates progress through challenge actions 152ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  15:59:57
+   Duration  49.64s (transform 2.02s, setup 8.33s, import 5.88s, tests 298ms, environment 32.32s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/CitizenProfilePage.test.tsx (2 tests) 383ms
+   ✓ CitizenProfilePage (2)
+     ✓ uses the shared EcoTrack loading state while citizen follow-up data loads 146ms
+     ✓ renders profile KPIs and navigates history pagination 234ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:01:03
+   Duration  51.53s (transform 2.66s, setup 8.44s, import 7.25s, tests 383ms, environment 32.83s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/CitizenReportPage.test.tsx (8 tests) 1225ms
+   ✓ CitizenReportPage (8)
+     ✓ uses the shared EcoTrack loading state while report workspace data loads 139ms
+     ✓ shows a browser geolocation warning and clears it after manual coordinate edits 278ms
+     ✓ shows selected container context before submission 85ms
+     ✓ shows location capture failures and API submission errors  523ms
+     ✓ uses the default confirmation text when the API does not return one 92ms
+     ✓ shows a clear error banner when container options cannot be loaded 16ms
+     ✓ maps duplicate-report conflicts to explicit recovery guidance 75ms
+     ✓ shows an explicit blocked state when no mapped containers are available 15ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  16:02:14
+   Duration  54.07s (transform 2.24s, setup 8.47s, import 9.60s, tests 1.22s, environment 32.07s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/Components.test.tsx (2 tests) 49ms
+   ✓ Ticket Components (2)
+     ✓ TicketList shows loading state 31ms
+     ✓ BrandLogo uses width-based responsive image candidates 15ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:03:27
+   Duration  55.70s (transform 1.98s, setup 8.40s, import 5.88s, tests 49ms, environment 37.29s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/CreateTicket.test.tsx (1 test) 69ms
+   ✓ CreateTicket (1)
+     ✓ submits a new ticket 67ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  16:04:39
+   Duration  49.66s (transform 1.18s, setup 8.44s, import 5.16s, tests 69ms, environment 33.25s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/Dashboard.realtimeTransport.test.tsx (3 tests) 277ms
+   ✓ Dashboard realtime transport precedence (3)
+     ✓ disables SSE path when websocket is connected 172ms
+     ✓ keeps SSE path enabled when websocket is not connected 55ms
+     ✓ maps full push outage to polling fallback mode 47ms
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:05:48
+   Duration  48.32s (transform 3.17s, setup 8.42s, import 4.37s, tests 277ms, environment 31.94s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/Dashboard.test.tsx (2 tests) 457ms
+   ✓ Dashboard Component (2)
+     ✓ renders an EcoTrack activity dashboard  375ms
+     ✓ does not render dashboard quick links that redirect to other pages 80ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:06:55
+   Duration  48.51s (transform 3.89s, setup 8.64s, import 4.09s, tests 457ms, environment 31.96s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/errorHandling.test.tsx (15 tests) 142ms
+   ✓ Error Handling (15)
+     ✓ useErrorHandler (7)
+       ✓ should classify network errors correctly 17ms
+       ✓ should classify auth errors correctly 3ms
+       ✓ should classify permission errors correctly 3ms
+       ✓ should classify validation errors correctly 3ms
+       ✓ should classify server errors correctly 3ms
+       ✓ should handle async errors correctly 17ms
+       ✓ surfaces handled errors through toast and telemetry 5ms
+     ✓ Error Boundary Fallback (3)
+       ✓ should render error details in development mode 13ms
+       ✓ should call resetErrorBoundary when Try Again is clicked 30ms
+       ✓ resets the error boundary and renders recovered content 25ms
+     ✓ utility helpers (5)
+       ✓ formats API payload and status text errors consistently 1ms
+       ✓ suggests recovery actions for auth, session expiry, and unknown failures 4ms
+       ✓ retries recoverable operations with exponential backoff 5ms
+       ✓ stops retrying client errors immediately 1ms
+       ✓ tracks browser online and offline events 10ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  16:08:03
+   Duration  44.36s (transform 791ms, setup 8.41s, import 653ms, tests 142ms, environment 32.37s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/HeroSection.test.tsx (1 test) 122ms
+   ✓ HeroSection (1)
+     ✓ renders the primary landing actions and navigates to the how-it-works section 120ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  16:09:08
+   Duration  50.12s (transform 1.52s, setup 8.69s, import 6.11s, tests 122ms, environment 32.44s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/LandingBranding.test.tsx (1 test) 111ms
+   ✓ Landing branding (1)
+     ✓ navbar logo advertises the mobile-sized asset hint 109ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  16:10:17
+   Duration  49.05s (transform 1.61s, setup 8.39s, import 5.59s, tests 111ms, environment 32.28s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/LoginPage.test.tsx (6 tests) 336ms
+   ✓ LoginPage (6)
+     ✓ does not render an API connection warning while idle 83ms
+     ✓ starts google sign-in immediately without a health precheck 95ms
+     ✓ stores the requested deep link before starting google sign-in 32ms
+     ✓ submits email sign-in without a preflight health gate 57ms
+     ✓ returns to a protected deep link only when login was reached with an explicit next parameter 27ms
+     ✓ surfaces auth failures through an accessible alert banner 39ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  16:11:23
+   Duration  49.09s (transform 1.27s, setup 8.33s, import 5.21s, tests 336ms, environment 32.51s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/ManagerPlanningPage.test.tsx (6 tests) 1244ms
+   ✓ ManagerPlanningPage (6)
+     ✓ shows planning metadata error and empty states 268ms
+     ✓ validates required planning inputs before optimization 180ms
+     ✓ explains when nearby tours already reserve all matching containers 93ms
+     ✓ allows route reordering after optimization 208ms
+     ✓ limits agent assignment choices to the selected zone 170ms
+     ✓ surfaces create and rebuild failures with clear status messages  322ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  16:12:32
+   Duration  55.07s (transform 2.14s, setup 8.63s, import 9.52s, tests 1.24s, environment 32.95s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/ManagerReportsPage.test.tsx (8 tests) 957ms
+   ✓ ManagerReportsPage (8)
+     ✓ uses previous-month defaults and supports the manager generate/regenerate workflow  508ms
+     ✓ shows inline validation when email delivery is enabled without a valid recipient 85ms
+     ✓ filters history to exports that need attention 100ms
+     ✓ surfaces history errors with a retry action 37ms
+     ✓ shows loading and empty states for report history 12ms
+     ✓ shows the empty-state copy when no reports exist 13ms
+     ✓ surfaces info delivery messaging and download behavior 168ms
+     ✓ filters history searches down to matching formats and recipients 30ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  16:13:46
+   Duration  51.45s (transform 2.02s, setup 8.52s, import 5.87s, tests 957ms, environment 33.44s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/ManagerToursPage.test.tsx (2 tests) 306ms
+   ✓ ManagerToursPage (2)
+     ✓ renders listed tours and rebuilds a selected stored route 287ms
+     ✓ shows a retry action when the tours list cannot be loaded 17ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:14:55
+   Duration  50.40s (transform 2.09s, setup 8.57s, import 6.03s, tests 306ms, environment 32.81s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/registerMapServiceWorker.test.tsx (3 tests) 188ms
+   ✓ registerMapServiceWorker (3)
+     ✓ registers the service worker once and posts the tile-cache config 129ms
+     ✓ defers registration until the window load event when the document is still loading 55ms
+     ✓ swallows registration failures 2ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:16:05
+   Duration  44.40s (transform 514ms, setup 8.63s, import 297ms, tests 188ms, environment 32.57s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/ResetPasswordPage.test.tsx (1 test) 196ms
+   ✓ ResetPasswordPage (1)
+     ✓ submits the query token and redirects to login after a successful reset 193ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  16:17:10
+   Duration  45.83s (transform 673ms, setup 8.50s, import 638ms, tests 196ms, environment 33.70s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/Routing.test.tsx (27 tests) 6233ms
+   ✓ Routing Matrix (27)
+     ✓ `/` renders landing when unauthenticated 192ms
+     ✓ `/` keeps the public landing page when authenticated 37ms
+     ✓ `/` still renders landing while auth status is unresolved 30ms
+     ✓ `/app` renders the shared workspace home when authenticated 169ms
+     ✓ public, auth, role hub, and settings routes do not probe product API readiness 241ms
+     ✓ product/data routes probe API readiness before rendering their product surface 255ms
+     ✓ `/login` renders login page when unauthenticated 47ms
+     ✓ `/login` renders immediately while auth status is unresolved 26ms
+     ✓ `/signup` renders signup page when unauthenticated  427ms
+     ✓ `/forgot-password` renders forgot-password page when unauthenticated  941ms
+     ✓ `/reset-password` renders reset-password page when unauthenticated 167ms
+     ✓ `/auth/callback` renders callback status page 182ms
+     ✓ guest auth routes redirect to `/app` when authenticated 145ms
+     ✓ `/app/*` redirects unauthenticated users to `/login` 22ms
+     ✓ unauthenticated support deep links preserve the protected route as the login next target 31ms
+     ✓ `/app/*` keeps the session gate visible while auth status is unresolved 21ms
+     ✓ sidebar toggle works consistently across app routes  2236ms
+     ✓ `/app/agent/tour` denies users without agent access 36ms
+     ✓ `/app/agent/tour` allows agent access 39ms
+     ✓ `/app/citizen/report` denies users without citizen access 27ms
+     ✓ `/app/citizen/report` allows citizen access 29ms
+     ✓ `/app/support` redirects citizen users to public support 25ms
+     ✓ `/app/dashboard` redirects users without manager access to `/app` 27ms
+     ✓ legacy ticket app routes redirect to support workspace views 123ms
+     ✓ public marketing pages render concrete content  528ms
+     ✓ `/faq` redirects to `/support` 77ms
+     ✓ removed legacy routes fall back to landing when unauthenticated 149ms
+
+ Test Files  1 passed (1)
+      Tests  27 passed (27)
+   Start at  16:18:15
+   Duration  60.74s (transform 18.16s, setup 8.43s, import 11.02s, tests 6.23s, environment 32.47s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/scrollPageToTop.test.ts (2 tests) 12ms
+   ✓ scrollPageToTop (2)
+     ✓ scrolls window and scrolling element with provided behavior 6ms
+     ✓ falls back to document element and body when no scrolling element API exists 2ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:19:33
+   Duration  44.07s (transform 363ms, setup 8.53s, import 298ms, tests 12ms, environment 32.60s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/SettingsPage.test.tsx (5 tests) 336ms
+   ✓ SettingsPage (5)
+     ✓ renders improved account settings sections 168ms
+     ✓ shows validation message when display name is too short 65ms
+     ✓ submits profile update and refreshes auth state 48ms
+     ✓ blocks inline avatar uploads that would bloat auth tokens 23ms
+     ✓ submits local password change 31ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  16:20:37
+   Duration  47.68s (transform 1.08s, setup 8.41s, import 3.25s, tests 336ms, environment 33.01s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/SystemSettings.test.tsx (2 tests) 350ms
+   ✓ SystemSettings (2)
+     ✓ announces successful save and dispatch actions through live status messaging 248ms
+     ✓ surfaces save failures through an explicit alert region 99ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:21:44
+   Duration  45.04s (transform 823ms, setup 8.44s, import 1.10s, tests 350ms, environment 32.50s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/TicketDetails.test.tsx (3 tests) 174ms
+   ✓ TicketDetails Component (3)
+     ✓ renders ticket details page 102ms
+     ✓ passes commentsPage query parameter into the comments hook 39ms
+     ✓ does not crash when currentUser localStorage value is malformed JSON 31ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:22:45
+   Duration  49.26s (transform 2.02s, setup 8.37s, import 5.88s, tests 174ms, environment 32.18s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/TicketList.test.tsx (2 tests) 150ms
+   ✓ TicketList (2)
+     ✓ renders ticket list 41ms
+     ✓ calls delete mutation when deleting a ticket 106ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:23:54
+   Duration  53.80s (transform 1.41s, setup 8.63s, import 8.90s, tests 150ms, environment 32.89s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/TicketsContext.test.tsx (1 test) 29ms
+   ✓ Tickets hooks (1)
+     ✓ returns a query result 26ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  16:25:08
+   Duration  49.13s (transform 1.19s, setup 8.51s, import 5.06s, tests 29ms, environment 32.61s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/UserCreateModal.test.tsx (2 tests) 294ms
+   ✓ UserCreateModal (2)
+     ✓ shows validation error when submitting empty form 147ms
+     ✓ submits normalized payload for valid form input 145ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:26:14
+   Duration  57.77s (transform 1.47s, setup 9.09s, import 6.14s, tests 294ms, environment 39.50s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/useAgentTours.test.tsx (8 tests) 319ms
+   ✓ useAgentTour cache behavior (8)
+     ✓ does not hydrate the agent view from cached seed fallback geometry before refetch completes 85ms
+     ✓ ignores cached seed fallback routes and surfaces the live fetch error 58ms
+     ✓ reuses cached non-seed routes when the live fetch fails 8ms
+     ✓ ignores cache entries older than the freshness window 16ms
+     ✓ does not reuse an overdue cached active run after the short grace window 16ms
+     ✓ loads all paginated containers for the assigned zone 57ms
+     ✓ supports agent tour mutations and related queries 67ms
+     ✓ clears the cached agent tour before a forced refetch 8ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  16:27:33
+   Duration  54.38s (transform 885ms, setup 8.56s, import 2.85s, tests 319ms, environment 39.69s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/useApiReady.test.tsx (8 tests) 61ms
+   ✓ useApiReady (8)
+     ✓ returns ready state when /api/health/ready responds successfully 27ms
+     ✓ marks connection failures as degraded until a retry succeeds 5ms
+     ✓ treats HTTP 500 readiness responses as expected cold-start not-ready states 5ms
+     ✓ treats HTTP 502 readiness responses as expected cold-start not-ready states 3ms
+     ✓ treats HTTP 503 readiness responses as expected cold-start not-ready states 7ms
+     ✓ treats HTTP 504 readiness responses as expected cold-start not-ready states 5ms
+     ✓ dedupes active probe loops by API base in dev StrictMode 5ms
+     ✓ online and visible-tab events reprobe the shared readiness state 3ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  16:28:44
+   Duration  45.50s (transform 434ms, setup 8.58s, import 415ms, tests 61ms, environment 33.66s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/usePlanningRealtimeSocket.test.tsx (3 tests) 155ms
+   ✓ usePlanningRealtimeSocket (3)
+     ✓ connects websocket and invalidates queries on realtime events 87ms
+     ✓ falls back without retry storms on non-retriable session errors 10ms
+     ✓ falls back to legacy websocket session endpoint when preferred path is missing 57ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:29:51
+   Duration  50.90s (transform 1.08s, setup 8.70s, import 4.82s, tests 155ms, environment 34.22s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+
+ ✓ src/tests/usePlanningRealtimeStream.test.tsx (5 tests) 76ms
+   ✓ usePlanningRealtimeStream (5)
+     ✓ connects to stream and invalidates related queries on events 39ms
+     ✓ falls back to the secondary stream-session endpoint after a 404 5ms
+     ✓ switches to fallback mode when session issuance is unauthorized 5ms
+     ✓ reconnects after connection errors and reuses the last event id 20ms
+     ✓ reports disabled and unsupported transports without opening a stream 4ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  16:31:02
+   Duration  49.61s (transform 1.13s, setup 8.55s, import 4.92s, tests 76ms, environment 33.14s)
+
+
+> ecotrack@1.0.0 test:mobile
+> npm run test --workspace=ecotrack-mobile
+
+
+> ecotrack-mobile@0.1.0 test
+> npm run test:fast && npm run test:ui
+
+
+> ecotrack-mobile@0.1.0 test:fast
+> node ./scripts/run-vitest-suite.mjs fast --configLoader runner --run
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/agentActivity.test.ts (4 tests) 9ms
+   ✓ agentActivity helpers (4)
+     ✓ normalizes operational status strings 3ms
+     ✓ prefers the active stop and falls back to the first pending stop 1ms
+     ✓ resolves the next actionable stop after the active stop 0ms
+     ✓ describes collection and anomaly activities using platform details 2ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  16:31:52
+   Duration  43.89s (transform 510ms, setup 8.59s, import 79ms, tests 9ms, environment 32.59s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/architecture.test.ts (2 tests) 5ms
+   ✓ mobileFeatureBlueprint (2)
+     ✓ declares the starter shell routes we expect to wire first 3ms
+     ✓ keeps route declarations unique 0ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:32:37
+   Duration  43.40s (transform 457ms, setup 7.87s, import 82ms, tests 5ms, environment 32.62s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/citizenReports.test.ts (4 tests) 11ms
+   ✓ citizenReports helpers (4)
+     ✓ builds a data URL from captured photo evidence 3ms
+     ✓ creates a map region and resolves the nearest container 3ms
+     ✓ merges containers and formats known report types 2ms
+     ✓ tracks recent selections and detects duplicate reports within one hour 1ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  16:33:19
+   Duration  44.21s (transform 542ms, setup 8.28s, import 122ms, tests 11ms, environment 33.22s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/geo.test.ts (6 tests) 15ms
+   ✓ geo helpers (6)
+     ✓ calculates a finite distance for valid coordinates 4ms
+     ✓ ranks containers from nearest to farthest 3ms
+     ✓ calculates a valid compass bearing between two coordinates 1ms
+     ✓ projects visible coordinates into the current viewport 1ms
+     ✓ clamps offscreen coordinates to the viewport edge 1ms
+     ✓ clusters overlapping viewport targets and keeps the nearest target as primary 3ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  16:34:05
+   Duration  43.72s (transform 476ms, setup 7.90s, import 101ms, tests 15ms, environment 33.29s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/http.advanced.test.ts (5 tests) 30ms
+   ✓ mobile http client (5)
+     ✓ builds URLs and default headers from the mobile API base 3ms
+     ✓ parses JSON payloads defensively and handles empty or invalid responses 7ms
+     ✓ invalidates the persisted session for 401 responses 5ms
+     ✓ reports server errors and throws request errors for failed responses 3ms
+     ✓ sends GET, POST, and PUT requests with the normalized headers and bodies 8ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  16:34:47
+   Duration  43.48s (transform 767ms, setup 7.87s, import 476ms, tests 30ms, environment 32.71s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/http.test.ts (2 tests) 6ms
+   ✓ createApiHeaders (2)
+     ✓ injects a bearer token and request id when a session token exists 4ms
+     ✓ preserves explicit authorization headers 1ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:35:32
+   Duration  44.20s (transform 856ms, setup 7.78s, import 484ms, tests 6ms, environment 33.67s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/layout.test.ts (5 tests) 6ms
+   ✓ citizen tab layout (5)
+     ✓ uses compact navigation on narrow phones 3ms
+     ✓ keeps five primary tabs on wider phones 0ms
+     ✓ includes the safe-area inset in the tab bar height 0ms
+     ✓ uses a minimum top padding for the shared header 0ms
+     ✓ adds the safe-area inset to the shared header offset 0ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  16:36:15
+   Duration  43.54s (transform 389ms, setup 7.72s, import 69ms, tests 6ms, environment 33.34s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/location.test.ts (3 tests) 212ms
+   ✓ location helpers (3)
+     ✓ returns null from the optional helper when access is denied 207ms
+     ✓ returns rounded coordinates when access is granted 1ms
+     ✓ keeps the strict helper behavior for flows that require location 1ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:37:00
+   Duration  43.22s (transform 620ms, setup 7.93s, import 120ms, tests 212ms, environment 32.46s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/loginValidation.test.ts (3 tests) 7ms
+   ✓ loginValidation (3)
+     ✓ trims email input before validation 3ms
+     ✓ returns field errors for empty or malformed credentials 2ms
+     ✓ accepts a valid email and password combination 1ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:37:42
+   Duration  43.81s (transform 457ms, setup 8.03s, import 126ms, tests 7ms, environment 33.00s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/media.test.ts (2 tests) 5ms
+   ✓ resolvePhotoPreviewAspectRatio (2)
+     ✓ falls back to a square preview when there is no photo 2ms
+     ✓ keeps the aspect ratio inside a safe preview range 0ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:38:27
+   Duration  44.00s (transform 427ms, setup 7.94s, import 73ms, tests 5ms, environment 33.58s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/notifications.test.ts (2 tests) 5ms
+   ✓ mobile notifications helpers (2)
+     ✓ extracts deep-link routing metadata from notification payloads 3ms
+     ✓ formats non-granted permission states for the settings UI 1ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:39:09
+   Duration  43.16s (transform 528ms, setup 7.92s, import 174ms, tests 5ms, environment 32.50s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/reportFlow.test.ts (6 tests) 8ms
+   ✓ reportFlow helpers (6)
+     ✓ builds discover and composer GPS statuses from nearby container counts 3ms
+     ✓ builds camera statuses without changing the existing discover or composer semantics 1ms
+     ✓ exposes the report status constants used by the screen 1ms
+     ✓ shows status copy only when no error is active 0ms
+     ✓ builds the exact citizen report payload expected by the API 1ms
+     ✓ omits optional payload fields when description and photo evidence are empty 0ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  16:39:54
+   Duration  42.96s (transform 447ms, setup 7.79s, import 116ms, tests 8ms, environment 32.59s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/reporting.test.ts (5 tests) 8ms
+   ✓ manager reporting helpers (5)
+     ✓ formats and parses YYYY-MM-DD values 3ms
+     ✓ builds stable preset ranges from a reference date 1ms
+     ✓ converts report boundaries into a full-day ISO window 1ms
+     ✓ validates manager report inputs 0ms
+     ✓ normalizes report delivery statuses for UI labels 0ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  16:40:36
+   Duration  43.52s (transform 469ms, setup 7.87s, import 100ms, tests 8ms, environment 33.01s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/roleRoutes.test.ts (3 tests) 6ms
+   ✓ resolveAuthenticatedHomeRoute (3)
+     ✓ prefers the manager lane when the user can access planning 2ms
+     ✓ routes agents to the field lane when no manager access exists 0ms
+     ✓ falls back to the citizen tabs for citizen-only accounts 0ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:41:21
+   Duration  44.27s (transform 470ms, setup 7.92s, import 97ms, tests 6ms, environment 33.88s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/sessionBootstrap.test.ts (4 tests) 7ms
+   ✓ bootstrapSession (4)
+     ✓ returns anonymous and clears stale storage when Supabase has no active session 4ms
+     ✓ returns the resolved Supabase session user when a live session exists 0ms
+     ✓ falls back to the persisted snapshot when Supabase session discovery errors 0ms
+     ✓ stays anonymous when Supabase session discovery errors and no snapshot exists 1ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  16:42:03
+   Duration  43.34s (transform 423ms, setup 7.92s, import 73ms, tests 7ms, environment 32.88s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/theme.test.ts (3 tests) 7ms
+   ✓ mobile theme system (3)
+     ✓ resolves the expected theme mode from preference and system appearance 3ms
+     ✓ accepts only supported theme preferences 1ms
+     ✓ keeps distinct light and dark palette roles 1ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:42:48
+   Duration  43.53s (transform 468ms, setup 8.25s, import 83ms, tests 7ms, environment 32.76s)
+
+
+> ecotrack-mobile@0.1.0 test:ui
+> node ./scripts/run-vitest-suite.mjs ui --configLoader runner --run
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/AgentHomeScreen.test.tsx (1 test) 403ms
+   ✓ AgentHomeScreen (1)
+     ✓ walks the agent through start, validation, and anomaly reporting  401ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  16:43:31
+   Duration  45.80s (transform 1.37s, setup 7.79s, import 1.12s, tests 403ms, environment 34.02s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/LoginScreen.test.tsx (3 tests) 258ms
+   ✓ LoginScreen (3)
+     ✓ validates input and submits normalized credentials 149ms
+     ✓ redirects authenticated users to the neutral post-auth hub 7ms
+     ✓ clears server errors, supports keyboard submission, and routes secondary auth actions 101ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  16:44:18
+   Duration  43.95s (transform 976ms, setup 8.03s, import 672ms, tests 258ms, environment 32.57s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/ManagerHomeScreen.test.tsx (2 tests) 393ms
+   ✓ ManagerHomeScreen (2)
+     ✓ shows the manager loading state while the dashboard is still resolving 53ms
+     ✓ generates reports, exposes status messaging, and downloads history artifacts  338ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:45:00
+   Duration  44.54s (transform 1.63s, setup 7.87s, import 1.34s, tests 393ms, environment 32.34s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/ReactQueryLifecycleProvider.test.tsx (2 tests) 36ms
+   ✓ ReactQueryLifecycleProvider (2)
+     ✓ syncs focus state with native app lifecycle events 31ms
+     ✓ maps NetInfo reachability changes into the online manager listener 4ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  16:45:47
+   Duration  43.28s (transform 630ms, setup 7.75s, import 292ms, tests 36ms, environment 32.74s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/ReportScreen.test.tsx (1 test) 300ms
+   ✓ ReportScreen (1)
+     ✓ supports the citizen search, select, and report submission journey 298ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  16:46:29
+   Duration  44.91s (transform 1.74s, setup 7.94s, import 1.56s, tests 300ms, environment 32.57s)
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/mobile
+
+ ✓ src/tests/SessionProvider.test.tsx (4 tests) 189ms
+   ✓ SessionProvider (4)
+     ✓ hydrates the bootstrap result and persists a fresh authenticated user when required 50ms
+     ✓ signs in directly when the login response already contains a session 73ms
+     ✓ exchanges a login code, signs up, signs out, and responds to invalidation events 57ms
+     ✓ throws when useSession is consumed outside the provider 6ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  16:47:15
+   Duration  43.57s (transform 789ms, setup 7.81s, import 528ms, tests 189ms, environment 32.60s)
+
+
+> ecotrack@1.0.0 test:api
+> npm run build:database:if-needed && npm run test --workspace=ecotrack-api
+
+
+> ecotrack@1.0.0 build:database:if-needed
+> node ./infrastructure/scripts/build-database-if-needed.mjs
+
+[build-database-if-needed] Database sources changed or dist artifacts are missing; rebuilding.
+
+> ecotrack-database@0.1.0 build
+> tsc -p tsconfig.json
+
+
+> ecotrack-api@0.1.0 test
+> node ./scripts/run-vitest.mjs --configLoader runner --run
+
+
+ RUN  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/api
+
+ ✓ src/tests/tours.service.test.ts (11 tests) 22ms
+ ✓ src/tests/planning.repository.test.ts (9 tests) 19ms
+ ✓ src/tests/iot-ingestion.repository.test.ts (20 tests) 17ms
+ ✓ src/tests/auth.service.test.ts (19 tests) 1295ms
+     ✓ changes password for local bearer user and revokes reset tokens  394ms
+ ✓ src/tests/iot-ingestion.test.ts (13 tests) 19ms
+ ✓ src/tests/planning-operations.test.ts (8 tests) 38646ms
+     ✓ optimizes tour candidates from zone/threshold payload  573ms
+ ✓ src/tests/routing-client.test.ts (14 tests) 15ms
+ ✓ src/tests/tours.repository.test.ts (6 tests) 8ms
+ ✓ src/tests/citizen.repository.test.ts (4 tests) 7ms
+ ✓ src/tests/users.repository.test.ts (5 tests) 10ms
+ ✓ src/tests/admin-and-citizen-http-smoke.test.ts (3 tests) 180ms
+ ✓ src/tests/billing.repository.test.ts (2 tests) 5ms
+ ✓ src/tests/domain-write-http-smoke.test.ts (4 tests) 55ms
+ ✓ src/tests/internal-events.test.ts (8 tests) 8ms
+ ✓ src/tests/validated-consumer.processor.test.ts (10 tests) 15ms
+ ✓ src/tests/monitoring.test.ts (3 tests) 42ms
+ ✓ src/tests/iot-ingestion.processor.test.ts (8 tests) 23ms
+ ✓ src/tests/planning-stream.controller.test.ts (7 tests) 45ms
+ ✓ src/tests/protected-routes-authz.test.ts (7 tests) 56ms
+ ✓ src/tests/health.service.test.ts (5 tests) 11ms
+ ✓ src/tests/auth.controller.test.ts (12 tests) 18ms
+ ✓ src/tests/oauth-callback-config.test.ts (18 tests) 21ms
+ ✓ src/tests/planning.service.test.ts (4 tests) 5ms
+ ✓ src/tests/tours-agent-operations.test.ts (6 tests) 52ms
+ ✓ src/tests/planning-websocket.integration.test.ts (3 tests) 6486ms
+     ✓ issues an authorized websocket session and accepts a Socket.IO connection on the planning path  1071ms
+ ✓ src/tests/admin-operations.test.ts (5 tests) 116ms
+ ✓ src/tests/monitoring-http-metrics.test.ts (1 test) 28ms
+ ✓ src/tests/validated-consumer.service.test.ts (7 tests) 20ms
+ ✓ src/tests/configuration.test.ts (4 tests) 5ms
+ ✓ src/tests/planning.gateway.test.ts (5 tests) 9ms
+ ✓ src/tests/monitoring.service.branches.test.ts (2 tests) 6ms
+ ✓ src/tests/admin-event-workflow.service.test.ts (4 tests) 11ms
+ ✓ src/tests/iot-ingestion-http.test.ts (3 tests) 33ms
+ ✓ src/tests/tickets-comments-activity.test.ts (6 tests) 38ms
+ ✓ src/tests/billing.service.test.ts (5 tests) 17ms
+ ✓ src/tests/ecotrack-contract.test.ts (6 tests) 32ms
+ ✓ src/tests/tickets-query-pagination.test.ts (6 tests) 43ms
+ ✓ src/tests/containers.repository.test.ts (3 tests) 6ms
+ ✓ src/tests/security-negative-input.test.ts (3 tests) 32ms
+ ✓ src/tests/planning.service.branches.test.ts (3 tests) 4ms
+ ✓ src/tests/tickets.controller.test.ts (7 tests) 15ms
+ ✓ src/tests/local-auth.controller.test.ts (9 tests) 20ms
+ ✓ src/tests/iot-modules.test.ts (4 tests) 2ms
+ ✓ src/tests/supabase-jwt.test.ts (3 tests) 23ms
+ ✓ src/tests/iot-ingestion.queue.test.ts (4 tests) 31ms
+ ✓ src/tests/iot-ingestion-support.test.ts (3 tests) 1ms
+ ✓ src/tests/admin.settings.repository.test.ts (3 tests) 3ms
+ ✓ src/tests/billing.controller.test.ts (3 tests) 6ms
+ ✓ src/tests/root-health-routes.test.ts (3 tests) 3ms
+ ✓ src/tests/citizen-operations.test.ts (5 tests) 15ms
+ ✓ src/tests/validated-consumer.queue.test.ts (3 tests) 5ms
+ ✓ src/tests/admin.settings.repository.branches.test.ts (4 tests) 3ms
+ ✓ src/tests/cors-origins.test.ts (10 tests) 4ms
+ ✓ src/tests/admin-query-validation.test.ts (3 tests) 31ms
+ ✓ src/tests/authenticated-user.guard.test.ts (4 tests) 3ms
+ ✓ src/tests/admin-event-workflow.controller.test.ts (3 tests) 9ms
+ ✓ src/tests/health-routes.test.ts (3 tests) 41ms
+ ✓ src/tests/health.controller.test.ts (5 tests) 2ms
+ ✓ src/tests/rate-limiting.test.ts (3 tests) 55ms
+ ✓ src/tests/trace-context.test.ts (5 tests) 4ms
+ ✓ src/tests/ecotrack-extended-contract.test.ts (2 tests) 14ms
+ ✓ src/tests/iot-ingestion.config.test.ts (3 tests) 2ms
+ ✓ src/tests/report-artifact.utils.test.ts (5 tests) 5ms
+ ✓ src/tests/permissions.guard.test.ts (4 tests) 2ms
+ ✓ src/tests/admin.roles.repository.test.ts (2 tests) 3ms
+ ✓ src/tests/cache.service.test.ts (2 tests) 4ms
+ ✓ src/tests/validation.test.ts (4 tests) 2ms
+ ✓ src/tests/iot-ingestion.dto.test.ts (2 tests) 7ms
+ ✓ src/tests/runtime-features.test.ts (4 tests) 2ms
+ ✓ src/tests/env-file.test.ts (2 tests) 34ms
+ ✓ src/tests/request-id.test.ts (6 tests) 1ms
+ ✓ src/tests/report-delivery.utils.test.ts (1 test) 79ms
+ ✓ src/tests/http-exception.filter.test.ts (1 test) 2ms
+ ✓ src/tests/citizen-report.dto.test.ts (3 tests) 4ms
+ ✓ src/tests/citizen-reports.service.test.ts (2 tests) 5ms
+ ✓ src/tests/api-port.test.ts (5 tests) 2ms
+ ✓ src/tests/tracing.bootstrap.test.ts (3 tests) 2ms
+ ✓ src/tests/pagination.test.ts (5 tests) 1ms
+ ✓ src/tests/internal-events.partitioning.test.ts (2 tests) 1ms
+ ✓ src/tests/response-compression.test.ts (2 tests) 1ms
+ ✓ src/tests/smoke.test.ts (1 test) 1ms
+
+ Test Files  81 passed (81)
+      Tests  420 passed (420)
+   Start at  16:48:10
+   Duration  168.91s (transform 13.12s, setup 19.26s, import 98.39s, tests 47.93s, environment 0ms)

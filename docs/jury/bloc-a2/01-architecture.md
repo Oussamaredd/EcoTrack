@@ -11,120 +11,111 @@ title: "Bloc A2 - Architecture"
   <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
 </nav>
 
-Cette page prépare les preuves d'architecture à rattacher au dossier Bloc A2. Les références listées sont des emplacements candidats du dépôt ; elles ne remplacent pas les captures, sorties ou liens de preuve à fournir.
+Cette page rattache les preuves `A2-ARCH-*` au dossier jury. Les captures sont conservees dans `docs/assets/proofs/bloc-a2/architecture/` et les liens source pointent vers les fichiers du depot lorsque la preuve porte sur du code.
 
 <a id="a2-arch-01"></a>
 ## A2-ARCH-01: Structure monorepo
 
-**Claim**  
-EcoTrack est organisé comme un monorepo séparant les surfaces applicatives, l'API, la base de données et l'infrastructure.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Evidence expected**
-- Capture de l'arborescence racine.
-- Extrait du `package.json` racine montrant les workspaces.
-- Lien GitHub vers le commit ou la vue du dépôt.
+EcoTrack est organise comme un monorepo avec des workspaces separes pour les surfaces applicatives, l'API, la base de donnees et l'infrastructure.
 
-**Current repository references**
-- `package.json`
-- `app/`
-- `mobile/`
-- `api/`
-- `database/`
-- `infrastructure/`
-- [Architecture overview](../../architecture/ARCHITECTURE_OVERVIEW.md)
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-ARCH-01-github-repo-root.png]({{ '/assets/proofs/bloc-a2/architecture/A2-ARCH-01-github-repo-root.png' | relative_url }}) | Vue GitHub de la racine du depot EcoTrack, utile pour verifier l'organisation monorepo presentee au jury. |
 
-**Files / links to attach later**
-- Screenshot placeholder: capture de l'arborescence racine.
-- Code reference placeholder: extrait `workspaces` du `package.json`.
-- GitHub link placeholder: lien vers le commit ou dossier racine.
+**Liens source**
+- [Racine du depot](https://github.com/Oussamaredd/EcoTrack/tree/main)
+- [package.json racine](https://github.com/Oussamaredd/EcoTrack/blob/main/package.json)
+- [AGENTS.md](https://github.com/Oussamaredd/EcoTrack/blob/main/AGENTS.md)
 
-**Jury explanation**  
-Cette preuve doit montrer que le projet n'est pas un ensemble de fichiers isolés, mais une structure organisée par responsabilité, ce qui facilite la maintenance, les validations ciblées et le déploiement par surface.
-
-<div class="placeholder"><strong>Pièce à joindre :</strong> capture ou lien GitHub de la structure monorepo.</div>
+**Lecture jury**  
+Cette preuve montre que les couches du projet sont separees dans un depot unique, ce qui facilite les validations par workspace et la maintenance.
 
 <a id="a2-arch-02"></a>
-## A2-ARCH-02: Schéma d'architecture logicielle
+## A2-ARCH-02: Arborescence locale et couches du projet
 
-**Claim**  
-EcoTrack documente une architecture logicielle composée de clients, API, persistance, infrastructure et observabilité.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Evidence expected**
-- Schéma d'architecture lisible pour le jury.
-- Lien vers la page d'architecture existante.
-- Explication courte des flux entre frontend, mobile, backend et base de données.
+L'arborescence locale confirme le decoupage `app`, `mobile`, `api`, `database`, `infrastructure` et `docs`.
 
-**Current repository references**
-- [Architecture overview](../../architecture/ARCHITECTURE_OVERVIEW.md)
-- [API documentation](../../api/API_DOCUMENTATION.md)
-- [DB schema namespace plan](../../data/DB_SCHEMA_NAMESPACE_PLAN.md)
-- [ELK observability](../../operations/observability/ELK.md)
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-ARCH-02-local-tree.png]({{ '/assets/proofs/bloc-a2/architecture/A2-ARCH-02-local-tree.png' | relative_url }}) | Capture synthetique de l'arborescence locale du projet. |
+| [A2-ARCH-02-local-tree.txt]({{ '/assets/proofs/bloc-a2/architecture/A2-ARCH-02-local-tree.txt' | relative_url }}) | Sortie texte de l'arborescence, conservée comme preuve lisible et réutilisable. |
 
-**Files / links to attach later**
-- Screenshot placeholder: rendu du schéma d'architecture.
-- Code reference placeholder: fichiers illustrant les frontières entre couches.
-- GitHub link placeholder: lien vers la documentation ou le commit du schéma.
+**Liens source**
+- [app/](https://github.com/Oussamaredd/EcoTrack/tree/main/app)
+- [mobile/](https://github.com/Oussamaredd/EcoTrack/tree/main/mobile)
+- [api/](https://github.com/Oussamaredd/EcoTrack/tree/main/api)
+- [database/](https://github.com/Oussamaredd/EcoTrack/tree/main/database)
+- [infrastructure/](https://github.com/Oussamaredd/EcoTrack/tree/main/infrastructure)
+- [docs/](https://github.com/Oussamaredd/EcoTrack/tree/main/docs)
 
-**Jury explanation**  
-Cette preuve doit permettre au jury de comprendre rapidement les composants principaux, leurs responsabilités et les échanges applicatifs sans devoir explorer tout le code.
-
-<div class="placeholder"><strong>Pièce à joindre :</strong> image ou rendu du schéma d'architecture logicielle.</div>
+**Lecture jury**  
+La preuve permet de relier chaque dossier a une responsabilite technique precise : client web, client mobile, API, persistance, orchestration et documentation.
 
 <a id="a2-arch-03"></a>
-## A2-ARCH-03: Découpage frontend / mobile / backend / database / infrastructure
+## A2-ARCH-03: Vue d'ensemble de l'architecture
 
-**Claim**  
-Le découpage du dépôt isole les responsabilités entre interface web, application mobile, API backend, couche de données et infrastructure.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Evidence expected**
-- Capture ou extrait montrant les dossiers `app/`, `mobile/`, `api/`, `database/` et `infrastructure/`.
-- Référence aux scripts de build/test par workspace.
-- Explication du rôle de chaque couche.
+Le projet maintient une documentation d'architecture qui decrit les couches applicatives et leurs interactions.
 
-**Current repository references**
-- `app/package.json`
-- `mobile/package.json`
-- `api/package.json`
-- `database/package.json`
-- `infrastructure/package.json`
-- [Frontend routes](../../product/FRONTEND_ROUTES.md)
-- [Environment setup](../../environment/setup/ENVIRONMENT_SETUP.md)
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-ARCH-03-architecture-overview.png]({{ '/assets/proofs/bloc-a2/architecture/A2-ARCH-03-architecture-overview.png' | relative_url }}) | Capture de la documentation d'architecture, utilisée comme point d'entree pour comprendre les flux entre clients, API et donnees. |
 
-**Files / links to attach later**
-- Screenshot placeholder: capture des dossiers par couche.
-- Code reference placeholder: extraits des `package.json` workspace.
-- GitHub link placeholder: liens vers chaque dossier applicatif.
+**Liens source**
+- [docs/architecture/ARCHITECTURE_OVERVIEW.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/architecture/ARCHITECTURE_OVERVIEW.md)
+- [docs/api/API_DOCUMENTATION.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/api/API_DOCUMENTATION.md)
+- [docs/data/DB_SCHEMA_NAMESPACE_PLAN.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/data/DB_SCHEMA_NAMESPACE_PLAN.md)
 
-**Jury explanation**  
-Cette preuve doit montrer que chaque responsabilité technique a un emplacement clair, ce qui réduit le couplage et facilite l'évaluation du travail de développement.
-
-<div class="placeholder"><strong>Pièce à joindre :</strong> vue annotée du découpage par couche.</div>
+**Lecture jury**  
+Cette preuve documente la structure logique d'EcoTrack et complete les captures d'arborescence par une lecture fonctionnelle des flux.
 
 <a id="a2-arch-04"></a>
-## A2-ARCH-04: Patterns appliqués
+## A2-ARCH-04: Pattern controller, service, repository
 
-**Claim**  
-Le projet applique des patterns explicites pour la séparation des responsabilités, la gestion d'état, la validation et les contrats d'API.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Evidence expected**
-- Extraits de code ou de documentation montrant les patterns utilisés.
-- Lien vers l'ADR frontend state architecture.
-- Références aux modules backend, DTO, services, guards ou hooks selon la preuve fournie.
+Le backend suit le flux `controller -> service -> repository -> database`. Les captures montrent ce decoupage, et les liens GitHub renvoient aux fichiers source plutot qu'a des captures de code a recopier.
 
-**Current repository references**
-- [ADR 0002 - Frontend state architecture](../../architecture/ADR-0002_FRONTEND_STATE_ARCHITECTURE.md)
-- `api/src/modules/`
-- `api/src/common/`
-- `app/src/state/`
-- `app/src/hooks/`
-- `mobile/src/features/`
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-ARCH-04-api-controller.png]({{ '/assets/proofs/bloc-a2/architecture/A2-ARCH-04-api-controller.png' | relative_url }}) | Capture d'un controleur API illustrant l'entree HTTP du module. |
+| [A2-ARCH-04-api-service.png]({{ '/assets/proofs/bloc-a2/architecture/A2-ARCH-04-api-service.png' | relative_url }}) | Capture d'un service applicatif qui orchestre la logique metier. |
+| [A2-ARCH-04-api-repository.png]({{ '/assets/proofs/bloc-a2/architecture/A2-ARCH-04-api-repository.png' | relative_url }}) | Capture d'un repository qui isole les acces aux donnees. |
 
-**Files / links to attach later**
-- Screenshot placeholder: capture d'un exemple de structure ou diagramme pattern.
-- Code reference placeholder: liens vers fichiers précis démontrant le pattern.
-- GitHub link placeholder: lien vers le commit ou la PR associée.
+**Liens source**
+- [api/src/modules/reports/citizen-reports.controller.ts](https://github.com/Oussamaredd/EcoTrack/blob/main/api/src/modules/reports/citizen-reports.controller.ts)
+- [api/src/modules/reports/citizen-reports.service.ts](https://github.com/Oussamaredd/EcoTrack/blob/main/api/src/modules/reports/citizen-reports.service.ts)
+- [api/src/modules/reports/citizen-reports.repository.ts](https://github.com/Oussamaredd/EcoTrack/blob/main/api/src/modules/reports/citizen-reports.repository.ts)
+- [api/src/modules/tickets/tickets.controller.ts](https://github.com/Oussamaredd/EcoTrack/blob/main/api/src/modules/tickets/tickets.controller.ts)
+- [api/src/modules/tickets/tickets.service.ts](https://github.com/Oussamaredd/EcoTrack/blob/main/api/src/modules/tickets/tickets.service.ts)
+- [api/src/modules/tickets/tickets.repository.ts](https://github.com/Oussamaredd/EcoTrack/blob/main/api/src/modules/tickets/tickets.repository.ts)
 
-**Jury explanation**  
-Cette preuve doit expliquer comment les choix de structure et de patterns servent la lisibilité, la maintenabilité et la robustesse de l'application.
+**Lecture jury**  
+La preuve montre que l'API n'execute pas les requetes directement dans les controleurs : les responsabilites sont separees pour garder un code maintenable et testable.
 
-<div class="placeholder"><strong>Pièce à joindre :</strong> extrait commenté ou lien GitHub d'un pattern représentatif.</div>
+<a id="a2-arch-05"></a>
+## A2-ARCH-05: Structure frontend
+
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
+
+Le frontend est organise autour de pages, routes, hooks, composants, services et etat applicatif.
+
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-ARCH-05-frontend-structure.png]({{ '/assets/proofs/bloc-a2/architecture/A2-ARCH-05-frontend-structure.png' | relative_url }}) | Capture de la structure frontend, utile pour verifier l'organisation de l'interface web et des points d'integration. |
+
+**Liens source**
+- [app/src/pages/](https://github.com/Oussamaredd/EcoTrack/tree/main/app/src/pages)
+- [app/src/routes/AppRouter.tsx](https://github.com/Oussamaredd/EcoTrack/blob/main/app/src/routes/AppRouter.tsx)
+- [app/src/hooks/](https://github.com/Oussamaredd/EcoTrack/tree/main/app/src/hooks)
+- [app/src/services/](https://github.com/Oussamaredd/EcoTrack/tree/main/app/src/services)
+- [app/src/state/](https://github.com/Oussamaredd/EcoTrack/tree/main/app/src/state)
+- [docs/architecture/ADR-0002_FRONTEND_STATE_ARCHITECTURE.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/architecture/ADR-0002_FRONTEND_STATE_ARCHITECTURE.md)
+
+**Lecture jury**  
+Cette preuve complete le decoupage backend en montrant que l'interface web applique aussi une separation claire entre routes, pages, composants et logique d'acces aux donnees.

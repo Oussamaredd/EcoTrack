@@ -11,181 +11,175 @@ title: "Bloc A2 - CI/CD et déploiement"
   <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
 </nav>
 
-Cette page prépare les preuves CI/CD et déploiement. Les workflows existants sont référencés comme éléments documentaires ; les exécutions réussies, captures et validations runtime restent à joindre.
+Cette page rattache les preuves `A2-CICD-*` et `A2-DEPLOY-*` aux workflows, runs et captures de déploiement fournis. Les statuts ne reprennent que ce qui est visible dans les fichiers attachés.
 
 <a id="a2-cicd-01"></a>
-## A2-CICD-01: CI workflow
+## A2-CICD-01: Inventaire GitHub Actions
 
-**What the jury should verify**
-- Le workflow CI existe dans le dépôt.
-- Les jobs couvrent les validations attendues du projet.
-- Une exécution GitHub Actions réussie est rattachée à un commit précis.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Workflow file**
-- [`.github/workflows/CI.yaml`](https://github.com/Oussamaredd/EcoTrack/blob/develop/.github/workflows/CI.yaml)
+La preuve montre la liste des workflows GitHub Actions disponibles pour le dépôt EcoTrack.
 
-**GitHub Actions run URL placeholder**
-- À compléter avec l'URL d'un run CI pertinent.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-CICD-01-actions-workflows-list.png]({{ '/assets/proofs/bloc-a2/ci-cd-deploiement/A2-CICD-01-actions-workflows-list.png' | relative_url }}) | Capture de l'onglet Actions listant les workflows du dépôt. |
 
-**Deployment / CI screenshot placeholder**
-- À compléter avec une capture du run CI.
+**Liens source**
+- [.github/workflows/CI.yaml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/CI.yaml)
+- [.github/workflows/CD.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/CD.yml)
+- [.github/workflows/docs-pages.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/docs-pages.yml)
+- [.github/workflows/synthetic-monitoring.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/synthetic-monitoring.yml)
 
-**Commit SHA and date placeholder**
-- Commit SHA : à compléter.
-- Date : à compléter.
-
-**Interpretation placeholder**
-- À compléter avec les jobs réellement exécutés et leur résultat observé.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> lien du run CI, capture et commit associé.</div>
+**Lecture jury**  
+Cette preuve documente l'existence d'une automatisation CI/CD structurée dans GitHub Actions.
 
 <a id="a2-cicd-02"></a>
-## A2-CICD-02: CD workflow
+## A2-CICD-02: Détail des jobs CI
 
-**What the jury should verify**
-- Le workflow CD existe dans le dépôt.
-- Le workflow documente les étapes de build, déploiement ou vérification applicative.
-- Un run CD pertinent est rattaché à un commit et à une cible.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Workflow file**
-- [`.github/workflows/CD.yml`](https://github.com/Oussamaredd/EcoTrack/blob/develop/.github/workflows/CD.yml)
+La preuve montre un détail de jobs CI. Elle documente l'organisation du pipeline, sans inventer de résultat qui ne serait pas visible dans la capture.
 
-**GitHub Actions run URL placeholder**
-- À compléter avec l'URL d'un run CD pertinent.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-CICD-02-ci-jobs-detail.png]({{ '/assets/proofs/bloc-a2/ci-cd-deploiement/A2-CICD-02-ci-jobs-detail.png' | relative_url }}) | Capture du détail des jobs CI dans GitHub Actions. |
 
-**Deployment screenshot placeholder**
-- À compléter avec une capture du run ou de la cible de déploiement.
+**Liens source**
+- [.github/workflows/CI.yaml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/CI.yaml)
+- [infrastructure/scripts/ci/](https://github.com/Oussamaredd/EcoTrack/tree/main/infrastructure/scripts/ci)
+- [infrastructure/scripts/validate-workspace-toolchain.mjs](https://github.com/Oussamaredd/EcoTrack/blob/main/infrastructure/scripts/validate-workspace-toolchain.mjs)
 
-**Commit SHA and date placeholder**
-- Commit SHA : à compléter.
-- Date : à compléter.
-
-**Interpretation placeholder**
-- À compléter avec les étapes réellement validées par le workflow.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> lien du run CD, capture et cible concernée.</div>
+**Lecture jury**  
+Cette preuve permet de vérifier que la CI est découpée en jobs lisibles pour les validations frontend, mobile, backend, database, sécurité et images.
 
 <a id="a2-cicd-03"></a>
-## A2-CICD-03: GitHub Actions successful run
+## A2-CICD-03: Workflow CD
 
-**What the jury should verify**
-- Le run GitHub Actions est terminé avec succès.
-- Le run correspond au commit ou à la branche présentée au jury.
-- Les artefacts ou logs nécessaires sont consultables.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Workflow files candidates**
-- [CI workflow](https://github.com/Oussamaredd/EcoTrack/blob/develop/.github/workflows/CI.yaml)
-- [CD workflow](https://github.com/Oussamaredd/EcoTrack/blob/develop/.github/workflows/CD.yml)
-- [Docs Pages workflow](https://github.com/Oussamaredd/EcoTrack/blob/develop/.github/workflows/docs-pages.yml)
-- [Synthetic monitoring workflow](https://github.com/Oussamaredd/EcoTrack/blob/develop/.github/workflows/synthetic-monitoring.yml)
+La preuve montre le fichier workflow CD dans GitHub.
 
-**GitHub Actions run URL placeholder**
-- À compléter avec l'URL exacte du run réussi.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-CICD-03-cd-workflow-file.png]({{ '/assets/proofs/bloc-a2/ci-cd-deploiement/A2-CICD-03-cd-workflow-file.png' | relative_url }}) | Capture du workflow CD, utilisée comme preuve d'existence et de lisibilité du fichier. |
 
-**Screenshot placeholder**
-- À compléter avec une capture du statut réussi.
+**Liens source**
+- [.github/workflows/CD.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/CD.yml)
+- [infrastructure/scripts/ci/pre-deploy-validation.sh](https://github.com/Oussamaredd/EcoTrack/blob/main/infrastructure/scripts/ci/pre-deploy-validation.sh)
+- [infrastructure/scripts/ci/run-release-smoke.mjs](https://github.com/Oussamaredd/EcoTrack/blob/main/infrastructure/scripts/ci/run-release-smoke.mjs)
 
-**Commit SHA and date placeholder**
-- Commit SHA : à compléter.
-- Date : à compléter.
+**Lecture jury**  
+Cette preuve documente l'automatisation de livraison, avec le fichier source consultable directement par le jury.
 
-**Interpretation placeholder**
-- À compléter avec la lecture du run et les jobs passés.
+<a id="a2-cicd-04"></a>
+## A2-CICD-04: Workflow Docs Pages
 
-<div class="placeholder"><strong>Preuve attendue :</strong> URL GitHub Actions d'un run réussi et capture associée.</div>
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
+
+La preuve montre le workflow de publication de la documentation GitHub Pages.
+
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-CICD-04-docs-pages-workflow-file.png]({{ '/assets/proofs/bloc-a2/ci-cd-deploiement/A2-CICD-04-docs-pages-workflow-file.png' | relative_url }}) | Capture du workflow `docs-pages.yml`, responsable de la publication du site documentaire. |
+
+**Liens source**
+- [.github/workflows/docs-pages.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/docs-pages.yml)
+- [docs/_config.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/_config.yml)
+- [docs/jury/bloc-a2/](https://github.com/Oussamaredd/EcoTrack/tree/main/docs/jury/bloc-a2)
+
+**Lecture jury**  
+Cette preuve relie le dossier de preuves à son mécanisme de publication documentaire.
+
+<a id="a2-cicd-05"></a>
+## A2-CICD-05: Run Docs Pages réussi
+
+<p class="proof-status"><strong>Statut :</strong> <span class="status validated">Validé</span></p>
+
+La capture montre un run `Docs Pages` en statut `Success`, avec les jobs `Build Docs Site` et `Deploy Docs Site` réussis.
+
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-CICD-05-docs-pages-success-run.png]({{ '/assets/proofs/bloc-a2/ci-cd-deploiement/A2-CICD-05-docs-pages-success-run.png' | relative_url }}) | Capture GitHub Actions montrant le run Docs Pages réussi et l'URL du site publié. |
+
+**Liens source**
+- [Run GitHub Actions visible dans la capture](https://github.com/Oussamaredd/EcoTrack/actions/runs/25606959572)
+- [.github/workflows/docs-pages.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/docs-pages.yml)
+
+**Lecture jury**  
+Cette preuve valide la publication GitHub Pages pour le run capturé. Elle ne remplace pas une vérification en temps réel du site le jour du jury.
 
 <a id="a2-deploy-01"></a>
-## A2-DEPLOY-01: Deployed application
+## A2-DEPLOY-01: Application déployée
 
-**What the jury should verify**
-- L'application déployée s'ouvre depuis l'URL publique.
-- Les écrans présentés correspondent au périmètre EcoTrack.
-- Les preuves de smoke test ou captures sont datées.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Existing documentation references**
-- URL applicative référencée dans les notes existantes : [https://ecotrack-jmj.pages.dev](https://ecotrack-jmj.pages.dev)
-- [Deployment platform rollout plan](../../operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md)
-- [PR tasks](../../planning/tasks/PR_TASKS.md)
+La preuve montre la page d'accueil applicative chargée depuis l'URL publique Cloudflare Pages.
 
-**Deployment screenshot placeholder**
-- À compléter avec une capture de l'application déployée.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-DEPLOY-01-live-app-homepage.png]({{ '/assets/proofs/bloc-a2/ci-cd-deploiement/A2-DEPLOY-01-live-app-homepage.png' | relative_url }}) | Capture de l'application EcoTrack ouverte depuis `ecotrack-jmj.pages.dev`. |
 
-**Smoke / health proof placeholder**
-- À compléter avec la sortie d'un smoke test ou d'une vérification manuelle documentée.
+**Liens source**
+- [app/Dockerfile](https://github.com/Oussamaredd/EcoTrack/blob/main/app/Dockerfile)
+- [app/src/pages/landing/LandingPage.tsx](https://github.com/Oussamaredd/EcoTrack/blob/main/app/src/pages/landing/LandingPage.tsx)
+- [docs/operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md)
 
-**Commit SHA and date placeholder**
-- Commit SHA : à compléter.
-- Date : à compléter.
-
-**Interpretation placeholder**
-- À compléter avec le périmètre réellement vérifié sur l'application.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> capture de l'application déployée et vérification datée.</div>
+**Lecture jury**  
+Cette preuve documente une application accessible publiquement. Un smoke test daté reste nécessaire pour passer cette preuve en validation runtime complète.
 
 <a id="a2-deploy-02"></a>
-## A2-DEPLOY-02: Docs Pages deployment
+## A2-DEPLOY-02: Smoke test de déploiement
 
-**What the jury should verify**
-- Le site documentaire est déployé via GitHub Pages.
-- Le workflow utilise Jekyll avec `source: ./docs` et `destination: ./_site`.
-- Les liens fonctionnent sous le chemin projet `/EcoTrack`.
+<p class="proof-status"><strong>Statut :</strong> <span class="status todo">À compléter</span></p>
 
-**Workflow file**
-- [`.github/workflows/docs-pages.yml`](https://github.com/Oussamaredd/EcoTrack/blob/develop/.github/workflows/docs-pages.yml)
+Aucun fichier `A2-DEPLOY-02-*` n'était présent dans le proof pack. Les preuves API `A2-FUNC-API-*` documentent des endpoints en HTTP 200, mais elles sont conservées dans la page Fonctionnalités selon leur préfixe.
 
-**Existing docs URL**
-- [https://oussamaredd.github.io/EcoTrack/](https://oussamaredd.github.io/EcoTrack/)
+| Pièce | Légende jury |
+| --- | --- |
+| À fournir | Sortie datée d'un smoke test applicatif ou API, avec URL, statut HTTP et contexte d'exécution. |
 
-**GitHub Actions run URL placeholder**
-- À compléter avec l'URL d'un run Docs Pages réussi.
+**Liens source**
+- [infrastructure/scripts/smoke-docker.mjs](https://github.com/Oussamaredd/EcoTrack/blob/main/infrastructure/scripts/smoke-docker.mjs)
+- [infrastructure/scripts/ci/run-release-smoke.mjs](https://github.com/Oussamaredd/EcoTrack/blob/main/infrastructure/scripts/ci/run-release-smoke.mjs)
+- [.github/workflows/synthetic-monitoring.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/synthetic-monitoring.yml)
 
-**Deployment screenshot placeholder**
-- À compléter avec une capture du site documentation déployé.
-
-**Commit SHA and date placeholder**
-- Commit SHA : à compléter.
-- Date : à compléter.
-
-**Interpretation placeholder**
-- À compléter avec la validation réelle du déploiement Pages et de la navigation.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> run Docs Pages, capture du site déployé et commit associé.</div>
+**Lecture jury**  
+Cette preuve reste à compléter si le jury attend une validation runtime distincte des captures navigateur et des endpoints documentés.
 
 <a id="a2-deploy-03"></a>
-## A2-DEPLOY-03: Smoke test / health check
+## A2-DEPLOY-03: Site documentaire déployé
 
-**What the jury should verify**
-- Un test minimal confirme que l'application et/ou l'API répondent.
-- Les commandes, URLs et résultats sont fournis sans modification.
-- La date, le commit et l'environnement sont identifiés.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Current repository references**
-- `package.json`
-- `.github/workflows/synthetic-monitoring.yml`
-- [Deployment platform rollout plan](../../operations/runbooks/DEPLOYMENT_PLATFORM_ROLLOUT_PLAN.md)
-- [Observability and reliability](../../operations/runbooks/OBSERVABILITY_AND_RELIABILITY.md)
+La preuve montre la page d'accueil du site documentaire GitHub Pages.
 
-**Command / URL placeholders**
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-DEPLOY-03-docs-site-homepage.png]({{ '/assets/proofs/bloc-a2/ci-cd-deploiement/A2-DEPLOY-03-docs-site-homepage.png' | relative_url }}) | Capture de la page d'accueil de la documentation publiée. |
 
-```bash
-npm run smoke-test
-```
+**Liens source**
+- [docs/index.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/index.md)
+- [docs/documentation-index.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/documentation-index.md)
+- [https://oussamaredd.github.io/EcoTrack/](https://oussamaredd.github.io/EcoTrack/)
 
-```bash
-curl -f <application-or-api-health-url>
-```
+**Lecture jury**  
+Cette preuve documente l'accès au site de documentation public et son intégration au dossier de preuves.
 
-**Terminal output placeholder**
-- À compléter avec la sortie réelle.
+<a id="a2-deploy-04"></a>
+## A2-DEPLOY-04: Portail de preuves Bloc A2 déployé
 
-**Screenshot placeholder**
-- À compléter avec une capture terminal, navigateur ou monitoring.
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Commit SHA and date placeholder**
-- Commit SHA : à compléter.
-- Date : à compléter.
+La preuve montre le portail Bloc A2 publié dans le site documentaire.
 
-**Interpretation placeholder**
-- À compléter avec le résultat observé et les limites du test.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-DEPLOY-04-docs-proof-portal.png]({{ '/assets/proofs/bloc-a2/ci-cd-deploiement/A2-DEPLOY-04-docs-proof-portal.png' | relative_url }}) | Capture du portail de preuves Bloc A2 dans GitHub Pages. |
 
-<div class="placeholder"><strong>Preuve attendue :</strong> sortie de smoke test ou health check datée.</div>
+**Liens source**
+- [docs/jury/bloc-a2/index.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/jury/bloc-a2/index.md)
+- [docs/jury/bloc-a2/annexe-preuves.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/jury/bloc-a2/annexe-preuves.md)
+- [https://oussamaredd.github.io/EcoTrack/jury/bloc-a2/](https://oussamaredd.github.io/EcoTrack/jury/bloc-a2/)
+
+**Lecture jury**  
+Cette preuve documente l'accès public au dossier jury Bloc A2 et prépare la navigation vers les pages de preuve détaillées.

@@ -15,78 +15,93 @@ title: "Annexe preuves - Bloc A2"
   <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
 </nav>
 
-Cette annexe centralise la lecture des IDs de preuves, la matrice complète et les pièces à intégrer lors de la prochaine passe.
+Cette annexe centralise la lecture des IDs, les emplacements d'actifs et la matrice de rattachement des preuves Bloc A2. Les actifs du proof pack ont été copiés dans le dépôt afin que GitHub Pages reste autonome.
+
+## Emplacement des actifs
+
+| Catégorie | Dossier GitHub Pages | Contenu importé |
+| --- | --- | --- |
+| Architecture | `docs/assets/proofs/bloc-a2/architecture/` | Captures monorepo, arborescence, architecture overview, pattern API, structure frontend. |
+| Fonctionnalités | `docs/assets/proofs/bloc-a2/fonctionnalites/` | Captures des parcours citoyen, agent, gestionnaire, administrateur et authentification. |
+| Fonctionnalités API | `docs/assets/proofs/bloc-a2/fonctionnalites/api/` | Captures et sorties texte des endpoints health, zones et citizen reports. |
+| Stack | `docs/assets/proofs/bloc-a2/stack/` | Captures des `package.json` root, frontend, API, mobile et database. |
+| Qualité/tests | `docs/assets/proofs/bloc-a2/qualite-tests/` | Captures et sorties texte pour Git, install, lint, typecheck, tests, coverage et build. |
+| CI/CD et déploiement | `docs/assets/proofs/bloc-a2/ci-cd-deploiement/` | Captures GitHub Actions, workflows, application publique et site documentaire. |
 
 ## Comment lire les IDs de preuve
 
 | Segment | Signification | Exemple |
 | --- | --- | --- |
-| `A2` | Bloc évalué : Concevoir et développer une application. | `A2-ARCH-01` |
-| `ARCH` | Catégorie architecture. | `A2-ARCH-02` |
-| `FUNC` | Catégorie fonctionnalités. | `A2-FUNC-01` |
-| `STACK` | Catégorie stack technique. | `A2-STACK-03` |
-| `QUAL` | Catégorie qualité, code et tests. | `A2-QUAL-04` |
-| `CICD` | Catégorie intégration et livraison continues. | `A2-CICD-01` |
-| `DEPLOY` | Catégorie déploiement et vérification runtime. | `A2-DEPLOY-01` |
-| Numéro final | Ordre de la preuve dans sa catégorie. | `01`, `02`, `03` |
+| `A2` | Bloc évalué : concevoir et développer une application. | `A2-ARCH-01` |
+| `ARCH` | Architecture et structure du projet. | `A2-ARCH-04` |
+| `FUNC` | Fonctionnalités applicatives visibles. | `A2-FUNC-03` |
+| `FUNC-API` | Preuves API rattachées aux fonctionnalités. | `A2-FUNC-API-02` |
+| `STACK` | Stack technique et workspaces. | `A2-STACK-05` |
+| `QUAL` | Qualité, code, tests, coverage et build. | `A2-QUAL-06` |
+| `CICD` | Intégration et livraison continues. | `A2-CICD-05` |
+| `DEPLOY` | Déploiement et exposition publique. | `A2-DEPLOY-04` |
 
 ## Matrice complète
 
-| ID preuve | Élément démontré | Page | Preuve à attacher | Statut |
+| ID preuve | Élément démontré | Page | Pièces rattachées | Statut |
 | --- | --- | --- | --- | --- |
-| A2-ARCH-01 | Structure monorepo | [Architecture](01-architecture.md#a2-arch-01) | Capture arborescence, extrait `package.json`, lien GitHub | <span class="status todo">À compléter</span> |
-| A2-ARCH-02 | Schéma d'architecture logicielle | [Architecture](01-architecture.md#a2-arch-02) | Schéma, explication des flux, lien documentation | <span class="status todo">À compléter</span> |
-| A2-ARCH-03 | Découpage par couche | [Architecture](01-architecture.md#a2-arch-03) | Capture dossiers, extraits workspace, explication | <span class="status todo">À compléter</span> |
-| A2-ARCH-04 | Patterns appliqués | [Architecture](01-architecture.md#a2-arch-04) | Extraits de code, ADR, lien commit | <span class="status todo">À compléter</span> |
-| A2-FUNC-01 | Parcours citoyen | [Fonctionnalités](02-fonctionnalites.md#a2-func-01) | Captures, code, endpoints API | <span class="status todo">À compléter</span> |
-| A2-FUNC-02 | Parcours agent | [Fonctionnalités](02-fonctionnalites.md#a2-func-02) | Captures, code, endpoints API | <span class="status todo">À compléter</span> |
-| A2-FUNC-03 | Parcours gestionnaire | [Fonctionnalités](02-fonctionnalites.md#a2-func-03) | Captures, code, endpoints API | <span class="status todo">À compléter</span> |
-| A2-FUNC-04 | Parcours administrateur | [Fonctionnalités](02-fonctionnalites.md#a2-func-04) | Captures, code, endpoints API | <span class="status todo">À compléter</span> |
-| A2-FUNC-05 | Fonctionnalités transverses | [Fonctionnalités](02-fonctionnalites.md#a2-func-05) | Captures, guards, auth, validation, support | <span class="status todo">À compléter</span> |
-| A2-STACK-01 | Root workspaces | [Stack technique](03-stack-technique.md#a2-stack-01) | Extrait `package.json` racine | <span class="status todo">À compléter</span> |
-| A2-STACK-02 | Frontend stack | [Stack technique](03-stack-technique.md#a2-stack-02) | Extrait `app/package.json`, config Vite | <span class="status todo">À compléter</span> |
-| A2-STACK-03 | Backend stack | [Stack technique](03-stack-technique.md#a2-stack-03) | Extrait `api/package.json`, config TS/Nest | <span class="status todo">À compléter</span> |
-| A2-STACK-04 | Mobile stack | [Stack technique](03-stack-technique.md#a2-stack-04) | Extrait `mobile/package.json`, config Expo | <span class="status todo">À compléter</span> |
-| A2-STACK-05 | Database stack | [Stack technique](03-stack-technique.md#a2-stack-05) | Extrait `database/package.json`, schéma/migration | <span class="status todo">À compléter</span> |
-| A2-STACK-06 | Infrastructure/tooling | [Stack technique](03-stack-technique.md#a2-stack-06) | Docker Compose, workflow, script qualité | <span class="status todo">À compléter</span> |
-| A2-QUAL-01 | Lint | [Qualité](04-qualite-code-tests.md#a2-qual-01) | Sortie `npm run lint` | <span class="status todo">À compléter</span> |
-| A2-QUAL-02 | Typecheck | [Qualité](04-qualite-code-tests.md#a2-qual-02) | Sortie `npm run typecheck` | <span class="status todo">À compléter</span> |
-| A2-QUAL-03 | Tests unitaires / intégration | [Qualité](04-qualite-code-tests.md#a2-qual-03) | Sortie `npm run test` | <span class="status todo">À compléter</span> |
-| A2-QUAL-04 | Coverage | [Qualité](04-qualite-code-tests.md#a2-qual-04) | Sortie `npm run test:coverage` ou rapport | <span class="status todo">À compléter</span> |
-| A2-QUAL-05 | Analyse statique / scripts qualité | [Qualité](04-qualite-code-tests.md#a2-qual-05) | Sortie build, doc-sync, affected ou full validation | <span class="status todo">À compléter</span> |
-| A2-QUAL-06 | Anomalies corrigées | [Qualité](04-qualite-code-tests.md#a2-qual-06) | Lien commit/PR, description et validation | <span class="status todo">À compléter</span> |
-| A2-CICD-01 | CI workflow | [CI/CD](05-ci-cd-deploiement.md#a2-cicd-01) | Workflow + run CI | <span class="status documented">Documenté</span> |
-| A2-CICD-02 | CD workflow | [CI/CD](05-ci-cd-deploiement.md#a2-cicd-02) | Workflow + run CD | <span class="status documented">Documenté</span> |
-| A2-CICD-03 | GitHub Actions successful run | [CI/CD](05-ci-cd-deploiement.md#a2-cicd-03) | URL run réussi, capture, commit | <span class="status todo">À compléter</span> |
-| A2-DEPLOY-01 | Application déployée | [CI/CD](05-ci-cd-deploiement.md#a2-deploy-01) | URL, capture, vérification runtime | <span class="status todo">À compléter</span> |
-| A2-DEPLOY-02 | Docs Pages deployment | [CI/CD](05-ci-cd-deploiement.md#a2-deploy-02) | Workflow Docs Pages + run + capture | <span class="status documented">Documenté</span> |
-| A2-DEPLOY-03 | Smoke test / health check | [CI/CD](05-ci-cd-deploiement.md#a2-deploy-03) | Commande, sortie, date, environnement | <span class="status todo">À compléter</span> |
+| A2-ARCH-01 | Structure monorepo | [Architecture](01-architecture.html#a2-arch-01) | `A2-ARCH-01-github-repo-root.png` | <span class="status documented">Documenté</span> |
+| A2-ARCH-02 | Arborescence locale et couches | [Architecture](01-architecture.html#a2-arch-02) | `A2-ARCH-02-local-tree.png`, `.txt` | <span class="status documented">Documenté</span> |
+| A2-ARCH-03 | Vue d'ensemble architecture | [Architecture](01-architecture.html#a2-arch-03) | `A2-ARCH-03-architecture-overview.png` | <span class="status documented">Documenté</span> |
+| A2-ARCH-04 | Pattern API controller/service/repository | [Architecture](01-architecture.html#a2-arch-04) | `A2-ARCH-04-api-controller.png`, `api-service.png`, `api-repository.png` | <span class="status documented">Documenté</span> |
+| A2-ARCH-05 | Structure frontend | [Architecture](01-architecture.html#a2-arch-05) | `A2-ARCH-05-frontend-structure.png` | <span class="status documented">Documenté</span> |
+| A2-FUNC-01 | Signalement citoyen | [Fonctionnalités](02-fonctionnalites.html#a2-func-01) | 3 captures citoyen report | <span class="status validated">Validé</span> |
+| A2-FUNC-02 | Suivi citoyen, profil, gamification | [Fonctionnalités](02-fonctionnalites.html#a2-func-02) | 3 captures citoyen suivi/profil | <span class="status documented">Documenté</span> |
+| A2-FUNC-03 | Parcours agent | [Fonctionnalités](02-fonctionnalites.html#a2-func-03) | 3 captures agent | <span class="status documented">Documenté</span> |
+| A2-FUNC-04 | Parcours gestionnaire | [Fonctionnalités](02-fonctionnalites.html#a2-func-04) | 5 captures manager | <span class="status documented">Documenté</span> |
+| A2-FUNC-05 | Parcours administrateur | [Fonctionnalités](02-fonctionnalites.html#a2-func-05) | 3 captures admin | <span class="status documented">Documenté</span> |
+| A2-FUNC-06 | Authentification et route protégée | [Fonctionnalités](02-fonctionnalites.html#a2-func-06) | 3 captures auth/routing | <span class="status documented">Documenté</span> |
+| A2-FUNC-API-01 | Health readiness HTTP 200 | [Fonctionnalités](02-fonctionnalites.html#a2-func-api-01) | Capture + sortie texte | <span class="status validated">Validé</span> |
+| A2-FUNC-API-02 | Endpoint zones HTTP 200 | [Fonctionnalités](02-fonctionnalites.html#a2-func-api-02) | Capture + sortie texte | <span class="status validated">Validé</span> |
+| A2-FUNC-API-03 | Endpoint citizen reports HTTP 200 | [Fonctionnalités](02-fonctionnalites.html#a2-func-api-03) | Capture + sortie texte | <span class="status validated">Validé</span> |
+| A2-STACK-01 | Root workspaces | [Stack](03-stack-technique.html#a2-stack-01) | `A2-STACK-01-root-workspaces.png` | <span class="status documented">Documenté</span> |
+| A2-STACK-02 | Frontend stack | [Stack](03-stack-technique.html#a2-stack-02) | `A2-STACK-02-frontend-package.png` | <span class="status documented">Documenté</span> |
+| A2-STACK-03 | Backend stack | [Stack](03-stack-technique.html#a2-stack-03) | `A2-STACK-03-api-package.png` | <span class="status documented">Documenté</span> |
+| A2-STACK-04 | Mobile stack | [Stack](03-stack-technique.html#a2-stack-04) | `A2-STACK-04-mobile-package.png` | <span class="status documented">Documenté</span> |
+| A2-STACK-05 | Database stack | [Stack](03-stack-technique.html#a2-stack-05) | `A2-STACK-05-database-package.png` | <span class="status documented">Documenté</span> |
+| A2-STACK-06 | Infrastructure et tooling | [Stack](03-stack-technique.html#a2-stack-06) | Liens source vers Docker, scripts et workflows | <span class="status documented">Documenté</span> |
+| A2-QUAL-00 | Contexte Git | [Qualité](04-qualite-code-tests.html#a2-qual-00) | 2 captures Git | <span class="status documented">Documenté</span> |
+| A2-QUAL-01 | Installation des dépendances | [Qualité](04-qualite-code-tests.html#a2-qual-01) | Capture + sortie `npm ci` | <span class="status documented">Documenté</span> |
+| A2-QUAL-02 | Lint | [Qualité](04-qualite-code-tests.html#a2-qual-02) | Capture + sortie lint | <span class="status validated">Validé</span> |
+| A2-QUAL-03 | Typecheck | [Qualité](04-qualite-code-tests.html#a2-qual-03) | Capture + sortie typecheck | <span class="status validated">Validé</span> |
+| A2-QUAL-04 | Tests automatisés | [Qualité](04-qualite-code-tests.html#a2-qual-04) | Capture + sortie tests | <span class="status validated">Validé</span> |
+| A2-QUAL-05 | Coverage | [Qualité](04-qualite-code-tests.html#a2-qual-05) | Capture + sortie coverage | <span class="status documented">Documenté</span> |
+| A2-QUAL-06 | Build | [Qualité](04-qualite-code-tests.html#a2-qual-06) | Capture + sortie build | <span class="status validated">Validé</span> |
+| A2-CICD-01 | Inventaire GitHub Actions | [CI/CD](05-ci-cd-deploiement.html#a2-cicd-01) | `A2-CICD-01-actions-workflows-list.png` | <span class="status documented">Documenté</span> |
+| A2-CICD-02 | Détail jobs CI | [CI/CD](05-ci-cd-deploiement.html#a2-cicd-02) | `A2-CICD-02-ci-jobs-detail.png` | <span class="status documented">Documenté</span> |
+| A2-CICD-03 | Workflow CD | [CI/CD](05-ci-cd-deploiement.html#a2-cicd-03) | `A2-CICD-03-cd-workflow-file.png` | <span class="status documented">Documenté</span> |
+| A2-CICD-04 | Workflow Docs Pages | [CI/CD](05-ci-cd-deploiement.html#a2-cicd-04) | `A2-CICD-04-docs-pages-workflow-file.png` | <span class="status documented">Documenté</span> |
+| A2-CICD-05 | Run Docs Pages réussi | [CI/CD](05-ci-cd-deploiement.html#a2-cicd-05) | `A2-CICD-05-docs-pages-success-run.png` | <span class="status validated">Validé</span> |
+| A2-DEPLOY-01 | Application publique | [CI/CD](05-ci-cd-deploiement.html#a2-deploy-01) | `A2-DEPLOY-01-live-app-homepage.png` | <span class="status documented">Documenté</span> |
+| A2-DEPLOY-02 | Smoke test de déploiement | [CI/CD](05-ci-cd-deploiement.html#a2-deploy-02) | Aucun fichier `A2-DEPLOY-02-*` fourni | <span class="status todo">À compléter</span> |
+| A2-DEPLOY-03 | Site documentaire public | [CI/CD](05-ci-cd-deploiement.html#a2-deploy-03) | `A2-DEPLOY-03-docs-site-homepage.png` | <span class="status documented">Documenté</span> |
+| A2-DEPLOY-04 | Portail preuves Bloc A2 | [CI/CD](05-ci-cd-deploiement.html#a2-deploy-04) | `A2-DEPLOY-04-docs-proof-portal.png` | <span class="status documented">Documenté</span> |
 
-## Emplacements pour futures pièces jointes
+## Preuves validées
 
-| Type de preuve | Emplacement cible | Format attendu |
-| --- | --- | --- |
-| Capture écran | Section de preuve correspondante | Image, lien ou chemin validé. |
-| Sortie terminal | Pages qualité ou déploiement | Bloc de sortie daté, non réécrit. |
-| URL GitHub Actions | Pages CI/CD ou annexe | Lien exact du run. |
-| Lien GitHub fichier/commit | Toutes catégories | Lien vers fichier ou commit précis. |
-| Exemple API | Pages fonctionnalités ou déploiement | Requête, réponse réelle si disponible, date. |
-| Capture application déployée | Page CI/CD et fonctionnalités | Capture navigateur avec URL visible si possible. |
+- `A2-FUNC-01`
+- `A2-FUNC-API-01`
+- `A2-FUNC-API-02`
+- `A2-FUNC-API-03`
+- `A2-QUAL-02`
+- `A2-QUAL-03`
+- `A2-QUAL-04`
+- `A2-QUAL-06`
+- `A2-CICD-05`
 
-## À intégrer lors de la prochaine passe
+## Preuves à compléter ou à surveiller
 
-- Captures d'écran des parcours citoyen, agent, gestionnaire et administrateur.
-- Liens des runs GitHub Actions réussis.
-- Résultats de coverage réels.
-- Captures de l'application déployée.
-- Exemples API réels.
-- Références de commit SHA.
+| ID | Point d'attention |
+| --- | --- |
+| A2-DEPLOY-02 | Aucun smoke test de déploiement dédié n'a été fourni avec ce préfixe. |
+| A2-QUAL-01 | La sortie `npm ci` est documentée, mais elle contient des vulnérabilités `npm audit`; ne pas la présenter comme preuve sécurité. |
+| A2-QUAL-05 | Les pourcentages de coverage sont documentés depuis la sortie fournie ; aucun seuil de Quality Gate n'est ajouté ici. |
 
-## Checklist des preuves manquantes
+## Règle de mise à jour
 
-- [ ] screenshots
-- [ ] GitHub Actions run links
-- [ ] coverage results
-- [ ] deployed app screenshots
-- [ ] API examples
-- [ ] commit SHA references
+Pour ajouter une nouvelle preuve, nommer le fichier avec l'ID correspondant, le placer dans le dossier de catégorie associé, puis mettre à jour la page détaillée et cette annexe. Un statut ne doit passer à `Validé` que si la pièce montre explicitement le résultat attendu.

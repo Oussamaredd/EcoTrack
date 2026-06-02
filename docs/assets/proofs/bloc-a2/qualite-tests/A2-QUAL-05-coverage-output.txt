@@ -1,0 +1,160 @@
+sofca@DESKTOP-S61VUQB:/mnt/c/Users/sofca/source/repos/EcoTrack$ npm run test:coverage
+
+> ecotrack@1.0.0 test:coverage
+> npm run validate:workspace-toolchain && npm run test:coverage --workspace=ecotrack-app && npm run test:coverage:mobile && npm run test:coverage:api
+
+
+> ecotrack@1.0.0 validate:workspace-toolchain
+> node ./infrastructure/scripts/validate-workspace-toolchain.mjs
+
+[validate-workspace-toolchain] Root lockfile and required toolchain packages are present for workspaces: root, app, mobile, api, database. Use repo-root installs only.
+
+> ecotrack-app@0.0.0 test:coverage
+> ECOTRACK_INCLUDE_APP_E2E=1 node ./scripts/run-vitest.mjs --configLoader runner --coverage
+
+
+ DEV  v4.0.17 /mnt/c/Users/sofca/source/repos/EcoTrack/app
+      Coverage enabled with v8
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/tests/Routing.test.tsx (27 tests) 7416ms
+     ✓ public, auth, role hub, and settings routes do not probe product API readiness  345ms
+     ✓ product/data routes probe API readiness before rendering their product surface  327ms
+     ✓ `/signup` renders signup page when unauthenticated  1278ms
+     ✓ `/forgot-password` renders forgot-password page when unauthenticated  366ms
+     ✓ sidebar toggle works consistently across app routes  2969ms
+     ✓ public marketing pages render concrete content  401ms
+ ✓ src/tests/e2e.key-journeys.test.tsx (6 tests) 2504ms
+     ✓ covers citizen report keyboard submission journey  1190ms
+     ✓ covers agent start, validate, and anomaly reporting journey  607ms
+     ✓ covers manager optimization and assignment journey  315ms
+ ✓ src/tests/AgentTourPage.test.tsx (6 tests) 2311ms
+     ✓ shows the unassigned empty state and refreshes the assigned tour  321ms
+     ✓ submits validation with manual fallback and captured device coordinates  378ms
+     ✓ surfaces start, validation, and anomaly submission errors  1275ms
+ ✓ src/tests/ManagerPlanningPage.test.tsx (6 tests) 2151ms
+     ✓ validates required planning inputs before optimization  453ms
+     ✓ allows route reordering after optimization  436ms
+     ✓ surfaces create and rebuild failures with clear status messages  567ms
+ ✓ src/tests/CitizenReportPage.test.tsx (8 tests) 1455ms
+     ✓ shows a browser geolocation warning and clears it after manual coordinate edits  322ms
+     ✓ shows location capture failures and API submission errors  585ms
+ ✓ src/tests/ManagerReportsPage.test.tsx (8 tests) 1058ms
+     ✓ uses previous-month defaults and supports the manager generate/regenerate workflow  450ms
+ ✓ src/tests/AdvancedTicketList.test.tsx (16 tests) 676ms
+ ✓ src/tests/App.integration.test.tsx (3 tests) 499ms
+ ✓ src/tests/Dashboard.test.tsx (2 tests) 382ms
+ ✓ src/tests/CitizenProfilePage.test.tsx (2 tests) 361ms
+ ✓ src/tests/App.test.tsx (2 tests) 328ms
+ ✓ src/tests/SystemSettings.test.tsx (2 tests) 415ms
+     ✓ announces successful save and dispatch actions through live status messaging  307ms
+ ✓ src/tests/SettingsPage.test.tsx (5 tests) 451ms
+ ✓ src/tests/LoginPage.test.tsx (6 tests) 411ms
+ ✓ src/tests/useAgentTours.test.tsx (8 tests) 301ms
+ ✓ src/tests/ManagerToursPage.test.tsx (2 tests) 329ms
+ ✓ src/tests/CitizenChallengesPage.test.tsx (2 tests) 307ms
+ ✓ src/tests/UserCreateModal.test.tsx (2 tests) 321ms
+stderr | src/tests/useAuth.localStorage.test.tsx > useAuth local storage > invalidating the session clears auth state and signs out the local Supabase client
+Warning: An update to AuthProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AuthProvider (/mnt/c/Users/sofca/source/repos/EcoTrack/app/src/hooks/useAuth.tsx:14:25)
+Warning: An update to AuthProvider inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://reactjs.org/link/wrap-tests-with-act
+    at AuthProvider (/mnt/c/Users/sofca/source/repos/EcoTrack/app/src/hooks/useAuth.tsx:14:25)
+
+ ✓ src/tests/useAuth.localStorage.test.tsx (8 tests) 235ms
+ ✓ src/tests/Dashboard.realtimeTransport.test.tsx (3 tests) 180ms
+ ✓ src/tests/AdminTicketManagement.test.tsx (1 test) 171ms
+ ✓ src/tests/AppHomePage.test.tsx (2 tests) 287ms
+ ✓ src/tests/useTickets.test.tsx (8 tests) 289ms
+ ✓ src/tests/AuthCallbackPage.test.tsx (2 tests) 280ms
+ ✓ src/tests/ResetPasswordPage.test.tsx (1 test) 193ms
+ ✓ src/tests/registerMapServiceWorker.test.tsx (3 tests) 161ms
+ ✓ src/tests/AuditLogs.test.tsx (2 tests) 341ms
+ ✓ src/tests/TicketDetails.test.tsx (3 tests) 136ms
+ ✓ src/tests/usePlanningRealtimeSocket.test.tsx (3 tests) 165ms
+ ✓ src/tests/TicketList.test.tsx (2 tests) 258ms
+ ✓ src/tests/errorHandling.test.tsx (15 tests) 136ms
+ ✓ src/tests/HeroSection.test.tsx (1 test) 143ms
+ ✓ src/tests/useDashboard.test.tsx (2 tests) 148ms
+ ✓ src/tests/LandingBranding.test.tsx (1 test) 118ms
+ ✓ src/tests/LogoutButton.test.tsx (1 test) 128ms
+ ✓ src/tests/usePlanningRealtimeStream.test.tsx (5 tests) 66ms
+ ✓ src/tests/CreateTicket.test.tsx (1 test) 133ms
+ ✓ src/tests/useApiReady.test.tsx (8 tests) 61ms
+ ✓ src/tests/Components.test.tsx (2 tests) 57ms
+ ✓ src/tests/ecotrack-map-sw.test.ts (3 tests) 54ms
+ ✓ src/tests/TicketsContext.test.tsx (1 test) 37ms
+ ✓ src/tests/apiClient.test.ts (5 tests) 19ms
+ ✓ src/tests/scrollPageToTop.test.ts (2 tests) 23ms
+ ✓ src/tests/stateArchitecture.test.tsx (3 tests) 16ms
+ ✓ src/tests/supabaseStorage.test.ts (5 tests) 10ms
+ ✓ src/tests/runtimeFeatures.test.ts (3 tests) 11ms
+ ✓ src/tests/authz.test.ts (10 tests) 8ms
+ ✓ src/tests/authRedirect.test.ts (4 tests) 8ms
+ ✓ src/tests/apiBase.test.ts (3 tests) 6ms
+
+ Test Files  49 passed (49)
+      Tests  226 passed (226)
+   Start at  16:55:29
+   Duration  2164.35s (transform 22.24s, setup 404.38s, import 165.89s, tests 25.55s, environment 1425.48s)
+
+ % Coverage report from v8
+---------------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------
+File                             | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+---------------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------
+All files                        |   86.35 |    75.35 |   88.14 |   86.44 |
+ src                             |   78.57 |       50 |   66.66 |    90.9 |
+  App.tsx                        |   78.57 |       50 |   66.66 |    90.9 | 34
+ src/components/admin            |   81.96 |     62.5 |   83.33 |   81.66 |
+  UserCreateModal.tsx            |   81.96 |     62.5 |   83.33 |   81.66 | 21,26,31,59-60,67,79,83,87,113,220
+ src/components/landing          |      60 |       50 |   33.33 |      60 |
+  Navbar.tsx                     |      60 |       50 |   33.33 |      60 | 37-38,42-43,75,126-139
+ src/components/landing/sections |     100 |      100 |     100 |     100 |
+  HeroSection.tsx                |     100 |      100 |     100 |     100 |
+ src/config                      |   96.29 |    95.65 |     100 |   96.15 |
+  runtimeFeatures.ts             |   96.29 |    95.65 |     100 |   96.15 | 17
+ src/hooks                       |   88.59 |    77.14 |   94.39 |   88.49 |
+  useAgentTours.tsx              |   90.97 |    76.81 |     100 |   90.78 | 48,59,67,73,90,102,107,123,131,145,165,231-232
+  usePlanningRealtimeSocket.tsx  |   82.72 |    72.54 |   81.81 |   82.72 | 55,77,99,133,138-139,149,155,161,177-178,202-203,207-212,224-225
+  usePlanningRealtimeStream.tsx  |   84.73 |    71.01 |      92 |   84.73 | 23-24,63,74,82,98,105,154,159-160,176,182,196-208,237-239
+  useTickets.tsx                 |     100 |    89.28 |     100 |     100 | 51-52,69,80-86
+ src/lib                         |   86.04 |    72.72 |     100 |   86.04 |
+  apiBase.ts                     |   82.14 |    68.96 |     100 |   82.14 | 7,15,20,35,58
+  scrollPageToTop.ts             |   93.33 |       80 |     100 |   93.33 | 3
+ src/pages                       |   82.72 |    74.31 |   84.15 |      83 |
+  Dashboard.tsx                  |   96.62 |    72.97 |     100 |   96.51 | 113,181,262
+  ManagerPlanningPage.tsx        |   86.55 |    80.68 |      88 |   86.32 | 30,42-48,102,203-204,213-214,221-222,252-253,505-506
+  ManagerReportsPage.tsx         |   76.24 |     70.1 |      74 |   76.95 | ...4-147,169,175,182,191,207,219,238-254,312,314,318,320,324,328,349,365,393-394,399-405,409-410,417-418,426-428,435-437,456-457,482-483,501,518-519,552-599,626
+ src/pages/auth                  |   86.88 |    77.14 |   88.88 |   86.44 |
+  AuthCallbackPage.tsx           |    86.9 |       75 |   94.11 |   86.41 | 22,37,42,98,104,113,121,126-129,147
+  ResetPasswordPage.tsx          |   86.84 |    81.81 |      80 |   86.48 | 41-42,56,92-105
+ src/state                       |   86.66 |    79.41 |   92.85 |   86.04 |
+  AppStateProvider.tsx           |     100 |      100 |     100 |     100 |
+  invalidation.ts                |   83.33 |      100 |   66.66 |   83.33 | 6
+  planningDraft.ts               |   83.87 |    77.27 |     100 |   82.75 | 120,126,171-178
+  queryKeys.ts                   |     100 |    83.33 |     100 |     100 | 7-8
+ src/utils                       |   93.18 |    75.86 |   94.28 |   93.41 |
+  authz.ts                       |     100 |     90.9 |     100 |     100 | 34-36
+  errorHandlers.tsx              |   90.32 |    73.17 |   92.85 |   90.51 | 52,66,180,198,216,327,382,399-406,429,439
+---------------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ PASS  Waiting for file changes...
+       press h to show help, press q to quit

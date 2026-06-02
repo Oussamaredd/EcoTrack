@@ -1,0 +1,46 @@
+sofca@DESKTOP-S61VUQB:/mnt/c/Users/sofca/source/repos/EcoTrack$ npm run typecheck
+
+> ecotrack@1.0.0 typecheck
+> npm run validate:workspace-toolchain && concurrently --kill-others-on-fail -n app,mobile,api,database "npm:typecheck:app" "npm:typecheck:mobile" "npm:typecheck:api" "npm:typecheck:database"
+
+
+> ecotrack@1.0.0 validate:workspace-toolchain
+> node ./infrastructure/scripts/validate-workspace-toolchain.mjs
+
+[validate-workspace-toolchain] Root lockfile and required toolchain packages are present for workspaces: root, app, mobile, api, database. Use repo-root installs only.
+[app]
+[app] > ecotrack@1.0.0 typecheck:app
+[app] > npm run typecheck --workspace=ecotrack-app
+[app]
+[database]
+[database] > ecotrack@1.0.0 typecheck:database
+[database] > npm run typecheck --workspace=ecotrack-database
+[database]
+[api]
+[api] > ecotrack@1.0.0 typecheck:api
+[api] > npm run typecheck --workspace=ecotrack-api
+[api]
+[mobile]
+[mobile] > ecotrack@1.0.0 typecheck:mobile
+[mobile] > npm run typecheck --workspace=ecotrack-mobile
+[mobile]
+[app]
+[app] > ecotrack-app@0.0.0 typecheck
+[app] > node ./scripts/run-tsc.mjs --noEmit
+[app]
+[mobile]
+[mobile] > ecotrack-mobile@0.1.0 typecheck
+[mobile] > tsc --noEmit
+[mobile]
+[api]
+[api] > ecotrack-api@0.1.0 typecheck
+[api] > tsc --noEmit
+[api]
+[database]
+[database] > ecotrack-database@0.1.0 typecheck
+[database] > tsc --noEmit
+[database]
+[database] npm run typecheck:database exited with code 0
+[app] npm run typecheck:app exited with code 0
+[mobile] npm run typecheck:mobile exited with code 0
+[api] npm run typecheck:api exited with code 0

@@ -11,143 +11,123 @@ title: "Bloc A2 - Stack technique"
   <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
 </nav>
 
-Cette page prépare les preuves de stack technique. Les fichiers cités sont les sources attendues à capturer ou lier précisément lors de l'ajout des preuves.
+Cette page rattache les preuves `A2-STACK-*` aux fichiers de configuration qui définissent la stack EcoTrack. Les captures documentent les dépendances et les scripts ; les liens GitHub permettent au jury de consulter les sources à jour.
 
 <a id="a2-stack-01"></a>
 ## A2-STACK-01: Root workspaces
 
-**Expected source file**
-- `package.json`
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Technology / configuration to show**
-- NPM workspaces déclarant `app`, `mobile`, `api`, `database` et `infrastructure`.
-- Scripts racine de développement, build, lint, typecheck, test et coverage.
+Le `package.json` racine pilote les workspaces et les commandes transverses du monorepo.
 
-**Why this technology is used**  
-Les workspaces permettent de piloter plusieurs surfaces applicatives depuis un dépôt unique tout en conservant des commandes dédiées par couche.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-STACK-01-root-workspaces.png]({{ '/assets/proofs/bloc-a2/stack/A2-STACK-01-root-workspaces.png' | relative_url }}) | Capture du `package.json` racine montrant les workspaces et scripts principaux. |
 
-**Room for evidence**
-- Screenshot placeholder: extrait du `package.json` racine.
-- Code excerpt placeholder: bloc `workspaces` et scripts principaux.
-- GitHub link placeholder: lien vers le fichier à un commit donné.
+**Liens source**
+- [package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/package.json)
+- [package-lock.json](https://github.com/Oussamaredd/EcoTrack/blob/main/package-lock.json)
 
-<div class="placeholder"><strong>Preuve attendue :</strong> extrait `package.json` racine avec workspaces et commandes.</div>
+**Lecture jury**  
+Cette preuve montre que les commandes racine coordonnent les validations des workspaces sans mélanger les responsabilités de chaque couche.
 
 <a id="a2-stack-02"></a>
 ## A2-STACK-02: Frontend stack
 
-**Expected source files**
-- `app/package.json`
-- `app/vite.config.js`
-- `app/tsconfig.json`
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Technology / configuration to show**
-- React, React DOM et Vite.
-- React Router, TanStack Query, Supabase client, Socket.IO client.
-- ESLint, TypeScript, Vitest et Testing Library.
+Le workspace frontend s'appuie sur React, Vite, TypeScript, Vitest et les bibliothèques d'interface nécessaires au portail web.
 
-**Why this technology is used**  
-La stack frontend sert l'interface web manager/admin et les parcours web de démonstration avec une base TypeScript testable, routée et compatible avec des appels API asynchrones.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-STACK-02-frontend-package.png]({{ '/assets/proofs/bloc-a2/stack/A2-STACK-02-frontend-package.png' | relative_url }}) | Capture du `app/package.json`, centrée sur les scripts et dépendances frontend. |
 
-**Room for evidence**
-- Screenshot placeholder: dépendances frontend dans `app/package.json`.
-- Code excerpt placeholder: configuration Vite ou scripts `build`, `lint`, `typecheck`, `test`.
-- GitHub link placeholder: lien vers le workspace `app`.
+**Liens source**
+- [app/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/app/package.json)
+- [app/vite.config.js](https://github.com/Oussamaredd/EcoTrack/blob/main/app/vite.config.js)
+- [app/tsconfig.json](https://github.com/Oussamaredd/EcoTrack/blob/main/app/tsconfig.json)
 
-<div class="placeholder"><strong>Preuve attendue :</strong> extrait des dépendances et scripts frontend.</div>
+**Lecture jury**  
+La stack frontend fournit une application web routée, typée et testable pour les parcours citoyen, agent, gestionnaire et administrateur.
 
 <a id="a2-stack-03"></a>
 ## A2-STACK-03: Backend stack
 
-**Expected source files**
-- `api/package.json`
-- `api/tsconfig.json`
-- `api/tsconfig.build.json`
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Technology / configuration to show**
-- NestJS, Express, TypeScript et RxJS.
-- Drizzle ORM, validation DTO, JWT/OAuth, WebSocket et observabilité.
-- Vitest, Supertest, ESLint et TypeScript pour les validations.
+Le workspace API utilise NestJS, TypeScript, Drizzle, validation DTO, observabilité et tests automatisés.
 
-**Why this technology is used**  
-La stack backend fournit une API structurée par modules, avec validation, authentification, orchestration métier et tests automatisables.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-STACK-03-api-package.png]({{ '/assets/proofs/bloc-a2/stack/A2-STACK-03-api-package.png' | relative_url }}) | Capture du `api/package.json`, centrée sur les dépendances et scripts backend. |
 
-**Room for evidence**
-- Screenshot placeholder: dépendances backend dans `api/package.json`.
-- Code excerpt placeholder: scripts `build`, `lint`, `typecheck`, `test`, `test:coverage`.
-- GitHub link placeholder: lien vers le workspace `api`.
+**Liens source**
+- [api/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/api/package.json)
+- [api/tsconfig.json](https://github.com/Oussamaredd/EcoTrack/blob/main/api/tsconfig.json)
+- [api/tsconfig.build.json](https://github.com/Oussamaredd/EcoTrack/blob/main/api/tsconfig.build.json)
+- [api/src/modules/](https://github.com/Oussamaredd/EcoTrack/tree/main/api/src/modules)
 
-<div class="placeholder"><strong>Preuve attendue :</strong> extrait des dépendances et scripts backend.</div>
+**Lecture jury**  
+Cette preuve relie la stack backend aux modules applicatifs et aux validations techniques attendues dans une API structurée.
 
 <a id="a2-stack-04"></a>
 ## A2-STACK-04: Mobile stack
 
-**Expected source files**
-- `mobile/package.json`
-- `mobile/tsconfig.json`
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Technology / configuration to show**
-- Expo, React Native, Expo Router et React Navigation.
-- Supabase client, TanStack Query, Sentry React Native, React Native Maps.
-- ESLint, TypeScript, Vitest et Testing Library.
+Le workspace mobile s'appuie sur Expo, React Native, TypeScript et des fonctionnalités orientées terrain.
 
-**Why this technology is used**  
-La stack mobile sert les usages terrain et mobile-first, notamment les parcours citoyen et agent.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-STACK-04-mobile-package.png]({{ '/assets/proofs/bloc-a2/stack/A2-STACK-04-mobile-package.png' | relative_url }}) | Capture du `mobile/package.json`, centrée sur la stack Expo/React Native et les scripts de validation. |
 
-**Room for evidence**
-- Screenshot placeholder: dépendances mobile dans `mobile/package.json`.
-- Code excerpt placeholder: scripts `start`, `android`, `ios`, `lint`, `typecheck`, `test`.
-- GitHub link placeholder: lien vers le workspace `mobile`.
+**Liens source**
+- [mobile/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/mobile/package.json)
+- [mobile/tsconfig.json](https://github.com/Oussamaredd/EcoTrack/blob/main/mobile/tsconfig.json)
+- [mobile/src/features/](https://github.com/Oussamaredd/EcoTrack/tree/main/mobile/src/features)
 
-<div class="placeholder"><strong>Preuve attendue :</strong> extrait des dépendances et scripts mobile.</div>
+**Lecture jury**  
+Cette preuve montre que les usages mobiles sont isolés dans un workspace dédié tout en restant intégrés au monorepo.
 
 <a id="a2-stack-05"></a>
 ## A2-STACK-05: Database stack
 
-**Expected source files**
-- `database/package.json`
-- `database/tsconfig.json`
-- `database/schema/`
-- `database/migrations/`
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Technology / configuration to show**
-- Drizzle ORM et Drizzle Kit.
-- PostgreSQL via dépendance `postgres`.
-- Supabase client lorsque pertinent.
-- Scripts de génération, migration, seed et export/import de données.
+Le workspace database centralise Drizzle, les migrations, le schéma et les opérations de seed.
 
-**Why this technology is used**  
-La couche database centralise le schéma, les migrations et les opérations de seed pour rendre la persistance contrôlable et vérifiable.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-STACK-05-database-package.png]({{ '/assets/proofs/bloc-a2/stack/A2-STACK-05-database-package.png' | relative_url }}) | Capture du `database/package.json`, centrée sur les scripts schema, migration et seed. |
 
-**Room for evidence**
-- Screenshot placeholder: scripts DB dans `database/package.json`.
-- Code excerpt placeholder: migration ou schéma représentatif.
-- GitHub link placeholder: lien vers le workspace `database`.
+**Liens source**
+- [database/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/database/package.json)
+- [database/schema/](https://github.com/Oussamaredd/EcoTrack/tree/main/database/schema)
+- [database/migrations/](https://github.com/Oussamaredd/EcoTrack/tree/main/database/migrations)
+- [docs/data/DB_SCHEMA_NAMESPACE_STATUS.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/data/DB_SCHEMA_NAMESPACE_STATUS.md)
 
-<div class="placeholder"><strong>Preuve attendue :</strong> extrait des scripts DB et référence de schéma/migration.</div>
+**Lecture jury**  
+Cette preuve montre que la persistance n'est pas dispersée dans l'API : elle est gouvernée par un workspace de base de données.
 
 <a id="a2-stack-06"></a>
-## A2-STACK-06: Infrastructure/tooling
+## A2-STACK-06: Infrastructure et tooling
 
-**Expected source files**
-- `infrastructure/package.json`
-- `infrastructure/docker-compose.yml`
-- `infrastructure/environments/`
-- `.github/workflows/CI.yaml`
-- `.github/workflows/CD.yml`
-- `.github/workflows/docs-pages.yml`
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-**Technology / configuration to show**
-- Docker Compose pour l'environnement local.
-- Scripts de smoke test, health check et tooling CI.
-- GitHub Actions pour CI, CD, monitoring synthétique et déploiement Pages.
+Aucun fichier `A2-STACK-06-*` n'était présent dans le pack. La preuve est donc documentée par les fichiers source d'infrastructure et les workflows GitHub Actions existants.
 
-**Why this technology is used**  
-L'infrastructure et le tooling rendent les environnements reproductibles, automatisent les validations et structurent les déploiements.
+| Pièce | Légende jury |
+| --- | --- |
+| Source code | Configuration Docker, scripts CI et workflows consultables directement dans le dépôt. |
 
-**Room for evidence**
-- Screenshot placeholder: extrait `docker-compose.yml` ou workflow GitHub Actions.
-- Code excerpt placeholder: script ou job CI/CD représentatif.
-- GitHub link placeholder: lien vers le workflow ou fichier d'infrastructure.
+**Liens source**
+- [infrastructure/docker-compose.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/infrastructure/docker-compose.yml)
+- [infrastructure/Dockerfile](https://github.com/Oussamaredd/EcoTrack/blob/main/infrastructure/Dockerfile)
+- [app/Dockerfile](https://github.com/Oussamaredd/EcoTrack/blob/main/app/Dockerfile)
+- [.github/workflows/CI.yaml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/CI.yaml)
+- [.github/workflows/CD.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/CD.yml)
+- [.github/workflows/docs-pages.yml](https://github.com/Oussamaredd/EcoTrack/blob/main/.github/workflows/docs-pages.yml)
+- [infrastructure/scripts/](https://github.com/Oussamaredd/EcoTrack/tree/main/infrastructure/scripts)
 
-<div class="placeholder"><strong>Preuve attendue :</strong> extrait d'un workflow et/ou de la configuration Docker Compose.</div>
+**Lecture jury**  
+Cette preuve couvre l'outillage par lien source plutôt que par capture : le jury peut ouvrir les workflows et scripts exacts qui pilotent les environnements, contrôles et déploiements.

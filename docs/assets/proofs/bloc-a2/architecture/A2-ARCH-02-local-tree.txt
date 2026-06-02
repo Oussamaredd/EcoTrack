@@ -1,0 +1,105 @@
+EcoTrack local project tree
+Root: /mnt/c/Users/sofca/source/repos/EcoTrack
+
+.github
+└── workflows
+api
+├── scripts
+└── src
+    ├── common
+    ├── config
+    ├── database
+    ├── modules
+    ├── observability
+    ├── tests
+    └── types
+app
+├── public
+│   └── branding
+├── scripts
+└── src
+    ├── assets
+    ├── components
+    ├── config
+    ├── context
+    ├── hooks
+    ├── layouts
+    ├── lib
+    ├── monitoring
+    ├── pages
+    ├── routes
+    ├── services
+    ├── state
+    ├── styles
+    ├── tests
+    └── utils
+database
+├── migrations
+│   ├── baselines
+│   └── meta
+├── schema
+├── scripts
+└── seeds
+docs
+├── api
+│   └── openapi
+├── architecture
+├── assets
+│   └── css
+├── baselines
+│   └── phase0
+├── data
+├── environment
+│   ├── reference
+│   └── setup
+├── governance
+│   └── checklists
+├── jury
+│   └── bloc-a2
+├── operations
+│   ├── observability
+│   └── runbooks
+├── planning
+│   ├── plans
+│   ├── roadmaps
+│   └── tasks
+├── product
+│   ├── features
+│   └── guides
+└── specs
+    └── inputs
+infrastructure
+├── environments
+├── performance
+│   ├── k6
+│   └── postgresql
+├── scripts
+│   ├── ci
+│   ├── host-bash
+│   ├── node-preload
+│   └── performance
+└── tooling
+    ├── haproxy
+    ├── kubernetes
+    ├── monitoring
+    ├── pgbouncer
+    ├── quality
+    └── terraform
+mobile
+├── app
+│   ├── (agent)
+│   ├── (manager)
+│   └── (tabs)
+├── scripts
+└── src
+    ├── api
+    ├── components
+    ├── device
+    ├── features
+    ├── lib
+    ├── monitoring
+    ├── providers
+    ├── tests
+    └── theme
+
+100 directories

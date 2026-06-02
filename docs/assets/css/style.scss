@@ -138,6 +138,12 @@ body {
   color: #374151;
 }
 
+.status.review {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #9a3412;
+}
+
 .status.documented,
 .status.validated {
   background: var(--ecotrack-green-soft);
@@ -159,4 +165,21 @@ body {
 .proof-nav a {
   margin-right: 0.85rem;
   white-space: nowrap;
+}
+
+.proof-status {
+  margin: 0.75rem 0 1rem;
+}
+
+.proof-assets {
+  margin: 1rem 0 1.5rem;
+}
+
+.proof-assets td:first-child {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.proof-source-list {
+  margin-bottom: 1.25rem;
 }

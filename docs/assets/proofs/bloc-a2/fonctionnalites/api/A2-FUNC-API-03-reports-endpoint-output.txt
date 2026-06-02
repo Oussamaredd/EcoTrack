@@ -1,0 +1,4 @@
+sofca@DESKTOP-S61VUQB:/mnt/c/Users/sofca/source/repos/EcoTrack$ curl -sS -w "\nHTTP_STATUS:%{http_code}\n" \
+/ecotr>   "https://ecotrack-3ggh.onrender.com/api/citizen-reports?page=1&pageSize=5"
+{"citizenReports":[{"id":"6b3f3ad2-29ea-4ac8-a4a3-60fba6238219","status":"submitted","description":"[container_full] Container is full !","photoUrl":null,"latitude":null,"longitude":null,"reportedAt":"2026-06-02T11:25:30.826Z","containerId":"dde2e73f-c7bb-43b0-b852-d1b823d72fbe","containerCode":"PAR-01-003","containerLabel":"Angle Rue Du Bouloi / Rue Du Colonel Driant - Ordures menageres","reporterUserId":"8171b1e7-5162-4ab9-8c6d-6fbded7d850b","reporterEmail":"citizen@example.com"}],"pagination":{"total":1,"page":1,"pageSize":5,"hasNext":false}}
+HTTP_STATUS:200

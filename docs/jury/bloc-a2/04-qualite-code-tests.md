@@ -11,199 +11,148 @@ title: "Bloc A2 - Qualité, code et tests"
   <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
 </nav>
 
-Cette page prépare les preuves de qualité. Les commandes ci-dessous sont des commandes attendues à exécuter et documenter ; aucune réussite n'est affirmée tant qu'une sortie terminal datée n'est pas attachée.
+Cette page rattache les preuves `A2-QUAL-*` aux commandes et sorties fournies dans le proof pack. Les résultats ci-dessous reprennent uniquement ce qui est visible dans les captures ou fichiers texte attachés.
 
-## Commandes à préparer
+<a id="a2-qual-00"></a>
+## A2-QUAL-00: Contexte Git de la preuve
 
-```bash
-npm run lint
-npm run typecheck
-npm run test
-npm run test:coverage
-npm run build
-```
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
+
+Le pack contient des captures de contexte Git. Elles servent à situer les commandes, sans remplacer un lien de commit ou de run CI.
+
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-QUAL-00-git-status.png]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-00-git-status.png' | relative_url }}) | Capture du statut Git local au moment de constitution du pack. |
+| [A2-QUAL-00-latest-commit.png]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-00-latest-commit.png' | relative_url }}) | Capture du dernier commit visible au moment de constitution du pack. |
+
+**Liens source**
+- [Historique du dépôt](https://github.com/Oussamaredd/EcoTrack/commits/main)
+
+**Lecture jury**  
+Ces pièces aident à rattacher les sorties terminal à un état de travail, mais le commit exact doit rester vérifié avec l'historique GitHub si nécessaire.
 
 <a id="a2-qual-01"></a>
-## A2-QUAL-01: Lint
+## A2-QUAL-01: Installation des dépendances
 
-**Command expected**
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-```bash
-npm run lint
-```
+La sortie fournie montre l'exécution de `npm ci --include=dev`. Elle indique l'installation de paquets et signale aussi des vulnérabilités `npm audit`; cette preuve ne doit donc pas être lue comme une validation sécurité.
 
-**Current repository references**
-- `package.json`
-- `app/package.json`
-- `mobile/package.json`
-- `api/package.json`
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-QUAL-01-npm-ci-success.png]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-01-npm-ci-success.png' | relative_url }}) | Capture terminal de l'installation des dépendances. |
+| [A2-QUAL-01-npm-ci-output.txt]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-01-npm-ci-output.txt' | relative_url }}) | Sortie brute `npm ci --include=dev`, avec warnings et audit report conservés. |
 
-**Terminal output placeholder**  
-À compléter avec la sortie réelle de la commande.
+**Liens source**
+- [package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/package.json)
+- [package-lock.json](https://github.com/Oussamaredd/EcoTrack/blob/main/package-lock.json)
+- [infrastructure/scripts/install-git-hooks.mjs](https://github.com/Oussamaredd/EcoTrack/blob/main/infrastructure/scripts/install-git-hooks.mjs)
 
-**Screenshot placeholder**  
-À compléter avec une capture terminal ou CI.
-
-**Date / commit SHA placeholder**  
-Date : à compléter. Commit SHA : à compléter.
-
-**Interpretation placeholder**  
-À compléter avec l'interprétation de la sortie, sans modifier le résultat observé.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> sortie réelle de `npm run lint`.</div>
+**Lecture jury**  
+La preuve documente la reproductibilité de l'installation. Les vulnérabilités `npm audit` visibles dans la sortie restent à traiter ou à expliquer séparément.
 
 <a id="a2-qual-02"></a>
-## A2-QUAL-02: Typecheck
+## A2-QUAL-02: Lint
 
-**Command expected**
+<p class="proof-status"><strong>Statut :</strong> <span class="status validated">Validé</span></p>
 
-```bash
-npm run typecheck
-```
+La sortie fournie montre `npm run lint` avec les workspaces `app`, `mobile` et `api` terminés en code `0`.
 
-**Current repository references**
-- `package.json`
-- `app/tsconfig.json`
-- `mobile/tsconfig.json`
-- `api/tsconfig.json`
-- `database/tsconfig.json`
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-QUAL-02-lint-success.png]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-02-lint-success.png' | relative_url }}) | Capture terminal du lint réussi. |
+| [A2-QUAL-02-lint-output.txt]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-02-lint-output.txt' | relative_url }}) | Sortie brute montrant les validations lint par workspace et le theme contract frontend. |
 
-**Terminal output placeholder**  
-À compléter avec la sortie réelle de la commande.
+**Liens source**
+- [package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/package.json)
+- [app/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/app/package.json)
+- [mobile/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/mobile/package.json)
+- [api/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/api/package.json)
+- [app/scripts/validate-theme-contract.mjs](https://github.com/Oussamaredd/EcoTrack/blob/main/app/scripts/validate-theme-contract.mjs)
 
-**Screenshot placeholder**  
-À compléter avec une capture terminal ou CI.
-
-**Date / commit SHA placeholder**  
-Date : à compléter. Commit SHA : à compléter.
-
-**Interpretation placeholder**  
-À compléter avec l'interprétation de la sortie TypeScript.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> sortie réelle de `npm run typecheck`.</div>
+**Lecture jury**  
+Cette preuve valide que le contrôle lint s'est terminé sans erreur sur les workspaces listés dans la sortie.
 
 <a id="a2-qual-03"></a>
-## A2-QUAL-03: Unit/integration tests
+## A2-QUAL-03: Typecheck
 
-**Command expected**
+<p class="proof-status"><strong>Statut :</strong> <span class="status validated">Validé</span></p>
 
-```bash
-npm run test
-```
+La sortie fournie montre `npm run typecheck` avec `app`, `mobile`, `api` et `database` terminés en code `0`.
 
-**Current repository references**
-- `package.json`
-- `app/src/tests/`
-- `mobile/src/tests/`
-- `api/src/tests/`
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-QUAL-03-typecheck-success.png]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-03-typecheck-success.png' | relative_url }}) | Capture terminal du typecheck réussi. |
+| [A2-QUAL-03-typecheck-output.txt]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-03-typecheck-output.txt' | relative_url }}) | Sortie brute montrant le typecheck par workspace. |
 
-**Terminal output placeholder**  
-À compléter avec la sortie réelle de la commande.
+**Liens source**
+- [app/tsconfig.json](https://github.com/Oussamaredd/EcoTrack/blob/main/app/tsconfig.json)
+- [mobile/tsconfig.json](https://github.com/Oussamaredd/EcoTrack/blob/main/mobile/tsconfig.json)
+- [api/tsconfig.json](https://github.com/Oussamaredd/EcoTrack/blob/main/api/tsconfig.json)
+- [database/tsconfig.json](https://github.com/Oussamaredd/EcoTrack/blob/main/database/tsconfig.json)
 
-**Screenshot placeholder**  
-À compléter avec une capture terminal ou CI.
-
-**Date / commit SHA placeholder**  
-Date : à compléter. Commit SHA : à compléter.
-
-**Interpretation placeholder**  
-À compléter avec le nombre réel de suites/tests exécutés uniquement si présent dans la sortie fournie.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> sortie réelle de `npm run test`.</div>
+**Lecture jury**  
+Cette preuve valide que les surfaces TypeScript principales passent le contrôle de typage présenté dans la sortie.
 
 <a id="a2-qual-04"></a>
-## A2-QUAL-04: Coverage
+## A2-QUAL-04: Tests unitaires et intégration
 
-**Command expected**
+<p class="proof-status"><strong>Statut :</strong> <span class="status validated">Validé</span></p>
 
-```bash
-npm run test:coverage
-```
+La sortie fournie montre l'exécution de `npm run test`. La fin de la sortie jointe affiche notamment `Test Files 81 passed (81)` et `Tests 420 passed (420)` pour la suite API.
 
-**Current repository references**
-- `package.json`
-- `app/package.json`
-- `mobile/package.json`
-- `api/package.json`
-- [Quality scorecard](../../governance/QUALITY_SCORECARD.md)
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-QUAL-04-tests-success.png]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-04-tests-success.png' | relative_url }}) | Capture terminal du résultat de test fourni. |
+| [A2-QUAL-04-tests-output.txt]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-04-tests-output.txt' | relative_url }}) | Sortie brute de `npm run test`, conservée sans réécriture. |
 
-**Terminal output placeholder**  
-À compléter avec la sortie réelle de coverage.
+**Liens source**
+- [app/src/tests/](https://github.com/Oussamaredd/EcoTrack/tree/main/app/src/tests)
+- [mobile/src/tests/](https://github.com/Oussamaredd/EcoTrack/tree/main/mobile/src/tests)
+- [api/src/tests/](https://github.com/Oussamaredd/EcoTrack/tree/main/api/src/tests)
+- [api/vitest.config.ts](https://github.com/Oussamaredd/EcoTrack/blob/main/api/vitest.config.ts)
 
-**Screenshot placeholder**  
-À compléter avec une capture du terminal, rapport coverage ou artefact CI.
-
-**Date / commit SHA placeholder**  
-Date : à compléter. Commit SHA : à compléter.
-
-**Interpretation placeholder**  
-À compléter avec les pourcentages réels uniquement s'ils sont fournis dans la sortie ou le rapport.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> rapport ou sortie réelle de `npm run test:coverage`.</div>
+**Lecture jury**  
+Cette preuve valide l'exécution de tests automatisés visible dans la sortie jointe. Les nombres affichés doivent être lus depuis le fichier brut, car ils correspondent à la sortie fournie au moment de la capture.
 
 <a id="a2-qual-05"></a>
-## A2-QUAL-05: Static analysis / quality scripts
+## A2-QUAL-05: Coverage
 
-**Command expected**
+<p class="proof-status"><strong>Statut :</strong> <span class="status documented">Documenté</span></p>
 
-```bash
-npm run build
-```
+La sortie fournie montre `npm run test:coverage` et un rapport de coverage. Le résumé visible indique `All files` à `86.35%` statements, `75.35%` branches, `88.14%` functions et `86.44%` lines. Le fichier brut doit rester la source de vérité.
 
-Commandes complémentaires possibles à documenter si elles sont exécutées :
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-QUAL-05-coverage-summary.png]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-05-coverage-summary.png' | relative_url }}) | Capture du résumé de coverage fourni. |
+| [A2-QUAL-05-coverage-output.txt]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-05-coverage-output.txt' | relative_url }}) | Sortie brute de coverage, incluant les warnings et le tableau détaillé. |
 
-```bash
-npm run validate-doc-sync
-npm run validate:affected
-npm run validate:full
-```
+**Liens source**
+- [sonar-project.properties](https://github.com/Oussamaredd/EcoTrack/blob/main/sonar-project.properties)
+- [docs/governance/QUALITY_SCORECARD.md](https://github.com/Oussamaredd/EcoTrack/blob/main/docs/governance/QUALITY_SCORECARD.md)
+- [infrastructure/scripts/validate-sonar-coverage-alignment.mjs](https://github.com/Oussamaredd/EcoTrack/blob/main/infrastructure/scripts/validate-sonar-coverage-alignment.mjs)
 
-**Current repository references**
-- `package.json`
-- `sonar-project.properties`
-- `.github/workflows/CI.yaml`
-- [Extended quality gates](../../operations/runbooks/EXTENDED_QUALITY_GATES.md)
-- [Quality scorecard](../../governance/QUALITY_SCORECARD.md)
-
-**Terminal output placeholder**  
-À compléter avec la sortie réelle de build ou d'analyse statique.
-
-**Screenshot placeholder**  
-À compléter avec une capture terminal, CI ou outil qualité.
-
-**Date / commit SHA placeholder**  
-Date : à compléter. Commit SHA : à compléter.
-
-**Interpretation placeholder**  
-À compléter avec les contrôles réellement exécutés et leur résultat observé.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> sortie réelle de build ou d'un script qualité identifié.</div>
+**Lecture jury**  
+Cette preuve documente les valeurs de coverage visibles dans le rapport fourni. Elle n'invente pas de seuil de validation et ne remplace pas un Quality Gate SonarCloud.
 
 <a id="a2-qual-06"></a>
-## A2-QUAL-06: Anomalies corrected
+## A2-QUAL-06: Build
 
-**Command expected**
+<p class="proof-status"><strong>Statut :</strong> <span class="status validated">Validé</span></p>
 
-```bash
-npm run test
-npm run build
-```
+La sortie fournie montre `npm run build`, avec build API terminé en code `0`, build frontend terminé, puis `npm run build:app exited with code 0`.
 
-**Current repository references**
-- Historique Git à fournir lors de la prochaine passe.
-- Issues, PRs ou commits de correction à rattacher.
-- Tests ajoutés ou modifiés à préciser.
+| Pièce | Légende jury |
+| --- | --- |
+| [A2-QUAL-06-build-success.png]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-06-build-success.png' | relative_url }}) | Capture terminal du build réussi. |
+| [A2-QUAL-06-build-output.txt]({{ '/assets/proofs/bloc-a2/qualite-tests/A2-QUAL-06-build-output.txt' | relative_url }}) | Sortie brute du build, incluant les bundles générés et le bundle size check. |
 
-**Terminal output placeholder**  
-À compléter avec les sorties avant/après si disponibles.
+**Liens source**
+- [package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/package.json)
+- [app/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/app/package.json)
+- [api/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/api/package.json)
+- [database/package.json](https://github.com/Oussamaredd/EcoTrack/blob/main/database/package.json)
+- [app/scripts/run-bundle-size-check.mjs](https://github.com/Oussamaredd/EcoTrack/blob/main/app/scripts/run-bundle-size-check.mjs)
 
-**Screenshot placeholder**  
-À compléter avec une capture de l'anomalie, du correctif ou du résultat de validation.
-
-**Date / commit SHA placeholder**  
-Date : à compléter. Commit SHA : à compléter.
-
-**Interpretation placeholder**  
-À compléter avec le problème corrigé, l'impact et la validation associée.
-
-<div class="placeholder"><strong>Preuve attendue :</strong> lien commit/PR, description de l'anomalie et validation après correction.</div>
+**Lecture jury**  
+Cette preuve valide que la génération des artefacts applicatifs s'est terminée correctement dans la sortie fournie.

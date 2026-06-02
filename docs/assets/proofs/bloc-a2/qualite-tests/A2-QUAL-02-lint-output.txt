@@ -1,0 +1,42 @@
+sofca@DESKTOP-S61VUQB:/mnt/c/Users/sofca/source/repos/EcoTrack$ npm run lint
+
+> ecotrack@1.0.0 lint
+> npm run validate:workspace-toolchain && concurrently --kill-others-on-fail -n app,mobile,api "npm:lint:app" "npm:lint:mobile" "npm:lint:api"
+
+
+> ecotrack@1.0.0 validate:workspace-toolchain
+> node ./infrastructure/scripts/validate-workspace-toolchain.mjs
+
+[validate-workspace-toolchain] Root lockfile and required toolchain packages are present for workspaces: root, app, mobile, api, database. Use repo-root installs only.
+[mobile]
+[mobile] > ecotrack@1.0.0 lint:mobile
+[mobile] > npm run lint --workspace=ecotrack-mobile
+[mobile]
+[api]
+[api] > ecotrack@1.0.0 lint:api
+[api] > npm run lint --workspace=ecotrack-api
+[api]
+[app]
+[app] > ecotrack@1.0.0 lint:app
+[app] > npm run lint --workspace=ecotrack-app
+[app]
+[mobile]
+[mobile] > ecotrack-mobile@0.1.0 lint
+[mobile] > eslint . --cache --cache-strategy content --cache-location ../tmp/eslint/mobile --max-warnings 0
+[mobile]
+[api]
+[api] > ecotrack-api@0.1.0 lint
+[api] > eslint . --cache --cache-strategy content --cache-location ../tmp/eslint/api
+[api]
+[app]
+[app] > ecotrack-app@0.0.0 lint
+[app] > node ./scripts/run-eslint.mjs . --cache --cache-strategy content --cache-location ../tmp/eslint/app --ext ts,tsx --report-unused-disable-directives --max-warnings 0 && npm run lint:theme
+[app]
+[app]
+[app] > ecotrack-app@0.0.0 lint:theme
+[app] > node ./scripts/validate-theme-contract.mjs
+[app]
+[app] UI theme contract validation passed for app/src/pages, app/src/components/admin, and app/src/components/landing.
+[app] npm run lint:app exited with code 0
+[api] npm run lint:api exited with code 0
+[mobile] npm run lint:mobile exited with code 0
