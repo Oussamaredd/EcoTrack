@@ -1,5 +1,7 @@
-title: EcoTrack Docs
-description: Documentation portal for EcoTrack architecture, operations, and product guides.
+title: EcoTrack Documentation
+description: Documentation technique et dossier de preuves du projet EcoTrack
+url: https://oussamaredd.github.io
+baseurl: /EcoTrack
 theme: jekyll-theme-primer
 plugins:
   - jekyll-relative-links
