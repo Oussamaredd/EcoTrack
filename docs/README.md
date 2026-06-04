@@ -11,6 +11,7 @@ Documentation is organized by document type and responsibility so architecture, 
 - `planning/roadmaps/PLATFORM_MICRO_ROADMAP.md` - scoped platform and DevOps roadmap companion
 - `environment/setup/ENVIRONMENT_SETUP.md` - local, Docker, and deploy setup flow
 - `governance/RELEASE_VERSIONING.md` - semantic versioning and release bookkeeping process
+- `jury/final-reports/index.md` - final A1-A4 Word reports for the jury dossier
 
 ## Architecture
 - `architecture/ARCHITECTURE_OVERVIEW.md` - layer boundaries, architecture contract, and Mermaid system views
@@ -40,6 +41,11 @@ Documentation is organized by document type and responsibility so architecture, 
 - `planning/plans/landing-plan.md` - scoped landing-page execution plan
 - `planning/tasks/PR_TASKS.md` - active deployment rollout task tracker
 - `planning/tasks/PRODUCT_HARDENING_10_10_TASKS.md` - Development-only product hardening and quality task tracker
+
+## Jury
+- `jury/index.md` - jury support landing page
+- `jury/final-reports/` - final Word reports for Bloc A1, A2, A3, and A4
+- `jury/bloc-a2/` - detailed Bloc A2 evidence portal and proof matrix
 
 ## Governance And Standards
 - `governance/RELEASE_VERSIONING.md` - release bookkeeping and versioning policy

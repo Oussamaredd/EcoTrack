@@ -5,10 +5,11 @@ title: EcoTrack Documentation
 
 # EcoTrack Documentation
 
-EcoTrack est un projet de gestion et de coordination de signalements, tournées et opérations liées aux déchets urbains. Ce portail regroupe la documentation technique, les guides produit, les runbooks et le dossier de preuves Bloc A2 destiné au jury.
+EcoTrack est un projet de gestion et de coordination de signalements, tournées et opérations liées aux déchets urbains. Ce portail regroupe la documentation technique, les guides produit, les runbooks, les rapports finaux A1-A4 et le dossier de preuves Bloc A2 destiné au jury.
 
 <div class="portal-actions">
   <a class="primary" href="{{ '/documentation-index.html' | relative_url }}">Parcourir la documentation complète</a>
+  <a class="secondary" href="{{ '/jury/final-reports/' | relative_url }}">Télécharger les rapports finaux A1-A4</a>
   <a class="secondary" href="{{ '/jury/bloc-a2/' | relative_url }}">Consulter le dossier de preuves - Bloc A2</a>
   <a class="secondary" href="https://github.com/Oussamaredd/EcoTrack">Voir le repository GitHub</a>
   <a class="secondary" href="https://ecotrack-jmj.pages.dev">Voir l'application déployée</a>
@@ -21,6 +22,7 @@ EcoTrack est un projet de gestion et de coordination de signalements, tournées 
 | Section | Objectif | Entrée |
 | --- | --- | --- |
 | Documentation complète | Index maintenable de tous les fichiers documentaires. | [Documentation index](documentation-index.md) |
+| Jury et rapports finaux | Rapports Word finalisés pour les blocs A1, A2, A3 et A4. | [Rapports finaux](jury/final-reports/index.md) |
 | Dossier de preuves Bloc A2 | Matrice de preuves et pages d'évidence pour le jury. | [Dossier Bloc A2](jury/bloc-a2/index.md) |
 | Architecture | Architecture logicielle, découpage monorepo et décisions techniques. | [Architecture overview](architecture/ARCHITECTURE_OVERVIEW.md) |
 | API | Contrats REST, OpenAPI et comportements par domaine. | [API documentation](api/API_DOCUMENTATION.md) |
@@ -36,6 +38,7 @@ EcoTrack est un projet de gestion et de coordination de signalements, tournées 
 | Catégorie | Fichiers |
 | --- | --- |
 | Portail | [Project documentation](README.md), [Documentation index](documentation-index.md) |
+| Jury | [Accueil jury](jury/index.md), [Rapports finaux A1-A4](jury/final-reports/index.md), [Rapport A1](jury/final-reports/EcoTrack_Rapport_Bloc_A1_Planification_Organisation.docx), [Rapport A2](jury/final-reports/EcoTrack_Rapport_Bloc_A2_Dev.docx), [Rapport A3](jury/final-reports/EcoTrack_Rapport_Bloc_A3_Dev.docx), [Rapport A4](jury/final-reports/EcoTrack_Rapport_Bloc_A4_Pilotage_Equipe.docx) |
 | Bloc A2 | [Dossier de preuves](jury/bloc-a2/index.md), [Architecture](jury/bloc-a2/01-architecture.md), [Fonctionnalités](jury/bloc-a2/02-fonctionnalites.md), [Stack technique](jury/bloc-a2/03-stack-technique.md), [Qualité, code et tests](jury/bloc-a2/04-qualite-code-tests.md), [CI/CD et déploiement](jury/bloc-a2/05-ci-cd-deploiement.md), [Annexe preuves](jury/bloc-a2/annexe-preuves.md) |
 | Analyse | [EcoTrack project analysis](analysis/ECOTRACK_PROJECT_ANALYSIS.md) |
 | API | [API documentation](api/API_DOCUMENTATION.md), [OpenAPI README](api/openapi/README.md), [Domain modules OpenAPI](api/openapi/ecotrack-domain-modules.yaml), [Sprint 0 OpenAPI](api/openapi/ecotrack-sprint0.yaml) |

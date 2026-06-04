@@ -9,6 +9,17 @@ title: Documentation complète
 
 Cette page liste les fichiers documentaires du dossier `docs/` et les regroupe par catégorie pour faciliter la revue technique, produit et jury.
 
+## Jury / Rapports finaux
+
+| Document | Description |
+| --- | --- |
+| [Accueil jury](jury/index.md) | Point d'entrée des supports jury versionnés dans la documentation. |
+| [Rapports finaux A1-A4](jury/final-reports/index.md) | Page de téléchargement des quatre rapports Word finalisés. |
+| [Rapport Bloc A1 - Planification et organisation](jury/final-reports/EcoTrack_Rapport_Bloc_A1_Planification_Organisation.docx) | Rapport final sur le cadrage, la méthode, la planification, les risques et le bilan projet. |
+| [Rapport Bloc A2 - Développement](jury/final-reports/EcoTrack_Rapport_Bloc_A2_Dev.docx) | Rapport final sur la conception, le développement, la stack et les preuves techniques. |
+| [Rapport Bloc A3 - Qualité et maintenabilité](jury/final-reports/EcoTrack_Rapport_Bloc_A3_Dev.docx) | Rapport final sur les contrôles qualité, la sécurité applicative, la performance et la maintenabilité. |
+| [Rapport Bloc A4 - Pilotage d'équipe](jury/final-reports/EcoTrack_Rapport_Bloc_A4_Pilotage_Equipe.docx) | Rapport final sur le pilotage, les rôles, Jira, les rituels et le bilan collectif. |
+
 ## Architecture
 
 | Document | Description |

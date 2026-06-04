@@ -8,6 +8,7 @@ title: "Dossier de preuves - Bloc A2"
 <nav class="proof-nav">
   <a href="{{ '/index.html' | relative_url }}">Accueil documentation</a>
   <a href="{{ '/documentation-index.html' | relative_url }}">Documentation complète</a>
+  <a href="{{ '/jury/final-reports/' | relative_url }}">Rapports finaux A1-A4</a>
   <a href="{{ '/jury/bloc-a2/annexe-preuves.html' | relative_url }}">Annexe preuves</a>
 </nav>
 
