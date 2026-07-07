@@ -47,7 +47,7 @@ npm run dev
 
 ## Seeded Manual Test Credentials
 
-After `npm run db:seed`, the seeded manual test accounts are local email/password users. Each uses the same password: `Test!1234`.
+After `npm run db:seed`, the seeded manual test accounts are local users. To make them login-capable, set `ECOTRACK_SEED_AUTH_HASH` to a dev-only bcrypt auth hash before running the seed; do not commit the plaintext password or hash.
 
 - `super_admin`: `a@admin.fr`, `superadmin@example.com`
 - `admin`: `admin@example.com`

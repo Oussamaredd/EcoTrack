@@ -42,7 +42,6 @@ type UserSeed = {
   zoneCode?: string;
   isActive: boolean;
   authProvider: 'local' | 'google';
-  passwordHash?: string | null;
   googleId?: string | null;
 };
 
@@ -319,7 +318,9 @@ const ROLE_SEEDS: RoleSeed[] = [
   },
 ];
 
-const MANUAL_TEST_PASSWORD_HASH = '$2a$10$UQth0tiCN3PWdZN8C8pEeuFJ.6ceJ/MP46cz/TAxZ/r6EFjuifdv2';
+const MANUAL_TEST_AUTH_HASH_ENV = 'ECOTRACK_SEED_AUTH_HASH';
+
+const resolveManualTestAuthHash = () => process.env[MANUAL_TEST_AUTH_HASH_ENV]?.trim() || null;
 
 const USER_SEEDS: UserSeed[] = [
   {
@@ -330,7 +331,6 @@ const USER_SEEDS: UserSeed[] = [
     zoneCode: 'ZONE-PARIS-01',
     isActive: true,
     authProvider: 'local',
-    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -340,7 +340,6 @@ const USER_SEEDS: UserSeed[] = [
     assignedRoles: ['super_admin', 'admin'],
     isActive: true,
     authProvider: 'local',
-    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -350,7 +349,6 @@ const USER_SEEDS: UserSeed[] = [
     assignedRoles: ['super_admin', 'admin'],
     isActive: true,
     authProvider: 'local',
-    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -360,7 +358,6 @@ const USER_SEEDS: UserSeed[] = [
     assignedRoles: ['admin'],
     isActive: true,
     authProvider: 'local',
-    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -370,7 +367,6 @@ const USER_SEEDS: UserSeed[] = [
     assignedRoles: ['manager'],
     isActive: true,
     authProvider: 'local',
-    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -381,7 +377,6 @@ const USER_SEEDS: UserSeed[] = [
     zoneCode: 'ZONE-PARIS-01',
     isActive: true,
     authProvider: 'local',
-    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
   {
@@ -391,7 +386,6 @@ const USER_SEEDS: UserSeed[] = [
     assignedRoles: ['citizen'],
     isActive: true,
     authProvider: 'local',
-    passwordHash: MANUAL_TEST_PASSWORD_HASH,
     googleId: null,
   },
 ];
@@ -818,10 +812,15 @@ const buildPersistedRouteSeed = (
 export async function seedDatabase() {
   const { db, dispose } = createDatabaseInstance();
   const now = new Date();
+  const manualTestAuthHash = resolveManualTestAuthHash();
 
   try {
     if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DATABASE_SEED_IN_PROD !== 'true') {
       throw new Error('Refusing to run database seed in production without ALLOW_DATABASE_SEED_IN_PROD=true');
+    }
+
+    if (!manualTestAuthHash) {
+      console.info(`[seed] ${MANUAL_TEST_AUTH_HASH_ENV} is not set; local seeded users will not have login credentials.`);
     }
 
     await db.transaction(async (tx) => {
@@ -875,13 +874,15 @@ export async function seedDatabase() {
 
       const userIds = new Map<string, string>();
       for (const seed of USER_SEEDS) {
+        const seedAuthHash = seed.authProvider === 'local' ? manualTestAuthHash : null;
+
         await tx
         .insert(users)
         .values({
           email: seed.email,
           displayName: seed.displayName,
           authProvider: seed.authProvider,
-          passwordHash: seed.passwordHash ?? null,
+          passwordHash: seedAuthHash,
           googleId: seed.googleId ?? null,
           role: seed.role,
           isActive: seed.isActive,
@@ -891,7 +892,7 @@ export async function seedDatabase() {
           set: {
             displayName: seed.displayName,
             authProvider: seed.authProvider,
-            passwordHash: seed.passwordHash ?? null,
+            passwordHash: seedAuthHash,
             googleId: seed.googleId ?? null,
             role: seed.role,
             isActive: seed.isActive,
@@ -1837,4 +1838,3 @@ export async function seedDatabase() {
     await dispose();
   }
 }
-

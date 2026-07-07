@@ -209,7 +209,8 @@ Agent tour mapping note:
 
 - `DATABASE_POOLER_URL` points API runtime traffic at a PgBouncer or provider pooler while keeping regular migrations and base seeds on direct `DATABASE_URL`
 - `SOUTENANCE_DATABASE_URL` optionally overrides the DB URL used only by `npm run seed:soutenance`; it must point at a Supabase Session pooler host `pooler.supabase.com` on port `5432`
-- `SOUTENANCE_DEMO_PASSWORD_HASH` is required only by `npm run seed:soutenance` and must contain a dev-only bcrypt hash for local demo accounts; do not commit the plaintext demo password
+- `ECOTRACK_SEED_AUTH_HASH` optionally enables login for regular local seed accounts and must contain a dev-only bcrypt auth hash when used
+- `SOUTENANCE_DEMO_AUTH_HASH` is required only by `npm run seed:soutenance` and must contain a dev-only bcrypt auth hash for local demo accounts; do not commit the plaintext demo password or hash
 - `DATABASE_POOL_MAX` sets the postgres-js pool ceiling used by the API process (default `5`)
 - `CACHE_ENABLED` enables API read caching (default `true`)
 - `CACHE_PREFIX` scopes cache keys by environment or deployment slot (default `ecotrack`)

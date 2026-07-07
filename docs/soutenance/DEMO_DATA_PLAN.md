@@ -40,7 +40,7 @@ La commande :
 3. refuse les connexions qui ne pointent pas vers un host `pooler.supabase.com` en port `5432`,
 4. affiche uniquement le host, le port, la base, `NODE_ENV` et l'etat du flag,
 5. verifie `ALLOW_SOUTENANCE_SEED=true`,
-6. exige `SOUTENANCE_DEMO_PASSWORD_HASH` avec un hash bcrypt dev-only,
+6. exige `SOUTENANCE_DEMO_AUTH_HASH` avec un hash bcrypt dev-only,
 7. ajoute ou met a jour uniquement les donnees demo soutenance scopees.
 
 Le seed refuse toujours `NODE_ENV=production`. Il n'utilise pas `ALLOW_DATABASE_SEED_IN_PROD`.
@@ -75,7 +75,7 @@ Il ne doit pas utiliser un host direct de base de donnees pour la soutenance.
 | Tickets support | 8 tickets | Dashboard legacy et KPI support |
 | Exports / audits | exports + audit logs | Tracabilite, documentation, preuves |
 
-Mot de passe des comptes demo locaux : defini hors Git par le hash `SOUTENANCE_DEMO_PASSWORD_HASH`.
+Mot de passe des comptes demo locaux : defini hors Git par le hash `SOUTENANCE_DEMO_AUTH_HASH`.
 
 ## Comptes demo
 

@@ -106,6 +106,7 @@ Visibility legend:
 | ECOTRACK_LOGO_BUDGET_KB | infrastructure | private | local-dev, ci | optional brand-logo asset budget override |
 | ECOTRACK_MAPPING_VENDOR_GZIP_BUDGET_KB | infrastructure | private | local-dev, ci | optional mapping vendor gzip budget override |
 | ECOTRACK_QUALITY_OUTPUT_ROOT | infrastructure | private | local-dev, ci | optional override for the hardening artifact root |
+| ECOTRACK_SEED_AUTH_HASH | database | private | local-dev | optional dev-only bcrypt auth hash for regular local seed account login |
 | ECOTRACK_SKIP_LIGHTHOUSE_GATE | infrastructure | private | local-dev, ci | optional local fallback skip for the repo-owned Lighthouse gate |
 | EMAIL_FROM | api | private | deploy-prod | canonical |
 | ENABLE_2FA | api | private | deploy-dev, deploy-staging, deploy-prod | canonical |
@@ -172,6 +173,8 @@ Visibility legend:
 | SONAR_ORGANIZATION | infrastructure | private | ci | optional SonarCloud org override for manual/legacy scanner wiring |
 | SONAR_PROJECT_KEY | infrastructure | private | ci | optional SonarCloud project-key override for manual/legacy scanner wiring |
 | SONAR_TOKEN | infrastructure | private | ci | canonical SonarCloud CI analysis token |
+| SOUTENANCE_DEMO_AUTH_HASH | database | private | local-dev | required dev-only bcrypt auth hash for soutenance local demo account login |
+| SOUTENANCE_DATABASE_URL | database | private | local-dev | optional session-pooler URL for the soutenance demo seed only |
 | SMTP_HOST | infrastructure | private | deploy-prod | canonical |
 | SMTP_PASS | infrastructure | private | deploy-prod | canonical |
 | SMTP_PORT | infrastructure | private | deploy-prod | canonical |

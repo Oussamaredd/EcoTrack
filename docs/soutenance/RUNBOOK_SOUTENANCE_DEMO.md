@@ -54,7 +54,7 @@ ALLOW_SOUTENANCE_SEED=true npm run demo:seed
 Le seed :
 
 - exige `ALLOW_SOUTENANCE_SEED=true`,
-- exige `SOUTENANCE_DEMO_PASSWORD_HASH` avec un hash bcrypt dev-only pour les comptes demo locaux,
+- exige `SOUTENANCE_DEMO_AUTH_HASH` avec un hash bcrypt dev-only pour les comptes demo locaux,
 - refuse toujours `NODE_ENV=production`,
 - affiche le host, le port, la base, `NODE_ENV` et l'etat du flag sans afficher le mot de passe,
 - garde les donnees existantes,
@@ -67,10 +67,10 @@ Comptes demo locaux crees en base :
 
 | Role | Email | Password |
 | --- | --- | --- |
-| Citoyen | `soutenance.citizen1@ecotrack.local` | mot de passe correspondant a `SOUTENANCE_DEMO_PASSWORD_HASH` |
-| Agent | `soutenance.agent1@ecotrack.local` | mot de passe correspondant a `SOUTENANCE_DEMO_PASSWORD_HASH` |
-| Manager | `soutenance.manager1@ecotrack.local` | mot de passe correspondant a `SOUTENANCE_DEMO_PASSWORD_HASH` |
-| Admin | `soutenance.admin@ecotrack.local` | mot de passe correspondant a `SOUTENANCE_DEMO_PASSWORD_HASH` |
+| Citoyen | `soutenance.citizen1@ecotrack.local` | mot de passe correspondant a `SOUTENANCE_DEMO_AUTH_HASH` |
+| Agent | `soutenance.agent1@ecotrack.local` | mot de passe correspondant a `SOUTENANCE_DEMO_AUTH_HASH` |
+| Manager | `soutenance.manager1@ecotrack.local` | mot de passe correspondant a `SOUTENANCE_DEMO_AUTH_HASH` |
+| Admin | `soutenance.admin@ecotrack.local` | mot de passe correspondant a `SOUTENANCE_DEMO_AUTH_HASH` |
 
 Note importante : le frontend web utilise une session navigateur Supabase. Les comptes ci-dessus sont utilisables pour les preuves API locales via `/api/login`. Pour les captures UI web/mobile, utiliser une session Supabase configuree ou des comptes de demo deja disponibles dans l'environnement cible, puis verifier que l'API pointe vers la base seedee.
 

@@ -128,7 +128,7 @@ type SoutenanceDatabaseTarget = {
 
 const DEMO_BATCH_PREFIX = 'soutenance-demo';
 const SOUTENANCE_SEED_FLAG = 'ALLOW_SOUTENANCE_SEED';
-const SOUTENANCE_DEMO_PASSWORD_HASH_KEY = 'SOUTENANCE_DEMO_PASSWORD_HASH';
+const SOUTENANCE_DEMO_AUTH_HASH_ENV = 'SOUTENANCE_DEMO_AUTH_HASH';
 const DEMO_TELEMETRY_DAY_KEY = '20260629';
 const DEMO_TELEMETRY_WINDOW_START = new Date('2026-06-29T08:00:00.000Z');
 const AVERAGE_ROUTE_SPEED_KMH = 24;
@@ -641,15 +641,13 @@ const logSoutenanceDatabaseTarget = (target: SoutenanceDatabaseTarget) => {
   );
 };
 
-const resolveSoutenanceDemoPasswordHash = () => {
-  const passwordHash = process.env[SOUTENANCE_DEMO_PASSWORD_HASH_KEY]?.trim();
-  if (!passwordHash) {
-    throw new Error(
-      `Set ${SOUTENANCE_DEMO_PASSWORD_HASH_KEY} to a dev-only bcrypt password hash before running seed:soutenance.`,
-    );
+const resolveSoutenanceDemoAuthHash = () => {
+  const authHash = process.env[SOUTENANCE_DEMO_AUTH_HASH_ENV]?.trim();
+  if (!authHash) {
+    throw new Error(`Set ${SOUTENANCE_DEMO_AUTH_HASH_ENV} to a dev-only bcrypt auth hash before running seed:soutenance.`);
   }
 
-  return passwordHash;
+  return authHash;
 };
 
 export async function seedSoutenanceDemoDatabase() {
@@ -664,7 +662,7 @@ export async function seedSoutenanceDemoDatabase() {
     throw new Error(`Refusing to run soutenance seed without ${SOUTENANCE_SEED_FLAG}=true`);
   }
 
-  const demoPasswordHash = resolveSoutenanceDemoPasswordHash();
+  const demoAuthHash = resolveSoutenanceDemoAuthHash();
   const { db, dispose } = createDatabaseInstance({ url: databaseTarget.url, maxConnections: 1 });
   const dates = buildDateContext();
   const demoContainers = buildDemoContainers();
@@ -725,7 +723,7 @@ export async function seedSoutenanceDemoDatabase() {
             email: user.email,
             displayName: user.displayName,
             authProvider: 'local',
-            passwordHash: demoPasswordHash,
+            passwordHash: demoAuthHash,
             googleId: null,
             role: user.role,
             zoneId,
@@ -738,7 +736,7 @@ export async function seedSoutenanceDemoDatabase() {
             set: {
               displayName: user.displayName,
               authProvider: 'local',
-              passwordHash: demoPasswordHash,
+              passwordHash: demoAuthHash,
               googleId: null,
               role: user.role,
               zoneId,
