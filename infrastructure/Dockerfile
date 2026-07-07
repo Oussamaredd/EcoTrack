@@ -33,8 +33,11 @@ COPY infrastructure/scripts/install-git-hooks.mjs ./infrastructure/scripts/
 
 RUN node -e "const fs=require('fs'); const packageJson=JSON.parse(fs.readFileSync('package.json','utf8')); packageJson.workspaces=['api','database','infrastructure']; fs.writeFileSync('package.json', JSON.stringify(packageJson, null, 2)+'\n');" \
     && npm ci --omit=dev --workspace=ecotrack-api --workspace=ecotrack-database --include-workspace-root=false --install-strategy=nested \
-    && npm install --omit=dev --no-save multer@2.1.1 socket.io-parser@4.2.6 tar@7.5.11 \
+    && npm install --omit=dev --no-save multer@2.2.0 protobufjs@7.6.1 socket.io-parser@4.2.6 tar@7.5.11 ws@8.21.0 \
     && rm -rf /workspace/node_modules/@nestjs/platform-express/node_modules/multer \
+              /workspace/node_modules/@supabase/realtime-js/node_modules/ws \
+              /workspace/node_modules/engine.io/node_modules/ws \
+              /workspace/node_modules/socket.io-adapter/node_modules/ws \
               /workspace/node_modules/socket.io/node_modules/socket.io-parser \
               /workspace/node_modules/socket.io-client/node_modules/socket.io-parser
 

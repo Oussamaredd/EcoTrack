@@ -129,12 +129,21 @@
   "overrides": {
     "rollup": "4.59.0",
     "tar": "7.5.11",
-    "protobufjs": "7.5.6",
+    "protobufjs": "7.6.1",
     "express": {
       "path-to-regexp": "0.1.13"
     },
     "@nestjs/platform-express": {
-      "multer": "2.1.1"
+      "multer": "2.2.0"
+    },
+    "@supabase/realtime-js": {
+      "ws": "8.21.0"
+    },
+    "engine.io": {
+      "ws": "8.21.0"
+    },
+    "socket.io-adapter": {
+      "ws": "8.21.0"
     },
     "socket.io": {
       "socket.io-parser": "4.2.6"

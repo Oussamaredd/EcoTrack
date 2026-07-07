@@ -72,6 +72,7 @@ Runtime image note:
 
 - The repo-owned Docker images now use Debian-based runtime stages for CI release parity: the API image builds from `node:22-bookworm-slim` and the frontend image serves assets from `nginx:stable-bookworm`.
 - The API production-dependency stage narrows the workspace install to `api`, `database`, and `infrastructure` so release images do not inherit unrelated app/mobile packages from the monorepo root.
+- The API production-dependency stage also pins fixed transitive Node packages used by the runtime image; when the CI Trivy gate reports fixed `HIGH` or `CRITICAL` Node vulnerabilities, update `package.json`, `package-lock.json`, and the production image pins together.
 - The API runtime stage strips `npm`, `npx`, `corepack`, and bundled Yarn after the build; runtime health checks and process startup rely on `node` only.
 - The frontend runtime stage refreshes the vulnerable Debian security libraries used by `nginx:stable-bookworm` instead of running a blanket distro upgrade, which keeps the image aligned with the repo's `HIGH`/`CRITICAL` vulnerability gate without touching unrelated shell packages.
 
