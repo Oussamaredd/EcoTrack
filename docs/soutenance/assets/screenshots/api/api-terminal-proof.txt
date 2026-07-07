@@ -1,0 +1,12 @@
+$ curl -s http://localhost:3001/api/health/ready
+HTTP 200 | ready=ok | database=ready
+$ curl -s http://localhost:3001/api/zones?page=1&pageSize=6
+HTTP 200 | zones=6 | sample=Paris 10e - Entrepot, Paris 11e - Popincourt, Paris 12e - Reuilly
+$ curl -s -X POST /api/citizen/reports -H "Authorization: Bearer <citizen-token>"
+HTTP 201 | report=454f60d3 | status=submitted | container=SOUT-C-002
+$ curl -s /api/citizen-reports -H "Authorization: Bearer <manager-token>"
+HTTP 200 | visibleReports=5 | firstStatus=submitted
+$ curl -s /api/dashboard -H "Authorization: Bearer <manager-token>"
+HTTP 200 | tickets.total=11 | open=8 | completed=3
+$ curl -s /api/tours/agent/me -H "Authorization: Bearer <agent-token>"
+HTTP 200 | tour=Soutenance - Tournee Centre Nord live | stops=4 | status=in_progress

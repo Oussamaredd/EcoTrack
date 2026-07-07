@@ -22,11 +22,11 @@ const createStyles = (theme: AppTheme) =>
       shadowColor: theme.colors.shadow,
       shadowOffset: {
         width: 0,
-        height: 8
+        height: 4
       },
-      shadowOpacity: theme.dark ? 0.16 : 0.05,
-      shadowRadius: 16,
-      elevation: 2
+      shadowOpacity: theme.dark ? 0.12 : 0.03,
+      shadowRadius: 8,
+      elevation: 0
     },
     titleRow: {
       flexDirection: "row",
@@ -37,7 +37,8 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.primaryStrong
     },
     content: {
-      gap: theme.spacing.sm
+      gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.md
     },
     title: {
       color: theme.colors.onSurface,

@@ -98,6 +98,7 @@ describe('AuthService', () => {
       email: 'google@example.com',
       name: 'Google User',
       avatarUrl: 'https://example.com/avatar.png',
+      roleNames: [],
     });
 
     const service = new AuthService(usersServiceMock as any);
@@ -109,6 +110,7 @@ describe('AuthService', () => {
       email: 'google@example.com',
       name: 'Google User',
       avatarUrl: 'https://example.com/avatar.png',
+      roleNames: [],
     });
   });
 

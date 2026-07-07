@@ -130,5 +130,40 @@ describe("ReportScreen", () => {
     expect(await screen.findByText(/Report sent\. History and challenge points are refreshing/i)).toBeTruthy();
     expect(await screen.findByText(/\+25 points/i)).toBeTruthy();
     expect(await screen.findByText(/Manager notified/i)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /Report another/i })).toBeTruthy();
+  });
+
+  it("lets the demo report flow complete when live containers are empty", async () => {
+    vi.mocked(containersApi.list).mockResolvedValue({
+      containers: [],
+      pagination: {
+        total: 0,
+        page: 1,
+        pageSize: 80,
+        hasNext: false,
+      },
+    } as never);
+
+    await renderMobileScreenAsync(<ReportScreen />);
+
+    const searchInput = await screen.findByLabelText(/Search container code or label/i);
+
+    await mobileFireEvent.change(searchInput, {
+      target: {
+        value: "rivoli",
+      },
+    });
+
+    const [resultButton] = await screen.findAllByRole("button", {
+      name: /PAR-01-001 - Rue de Rivoli - Verre/i,
+    });
+    await mobileFireEvent.click(resultButton);
+
+    await mobileFireEvent.click(screen.getByRole("button", { name: /Report issue/i }));
+    await mobileFireEvent.click(screen.getByRole("button", { name: /Send report/i }));
+
+    expect(citizenApi.createReport).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Report sent\. History and challenge points are refreshing/i)).toBeTruthy();
+    expect(await screen.findByText(/\+25 points/i)).toBeTruthy();
   });
 });

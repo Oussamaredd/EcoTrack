@@ -38,10 +38,10 @@ const spacing = {
 } as const;
 
 const shape = {
-  sm: 12,
-  md: 18,
-  lg: 24,
-  xl: 32,
+  sm: 6,
+  md: 8,
+  lg: 12,
+  xl: 16,
   pill: 999
 } as const;
 

@@ -1,7 +1,14 @@
 import type { PropsWithChildren, ReactNode } from "react";
-import { useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { router, useSegments } from "expo-router";
-import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  View,
+  useWindowDimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent
+} from "react-native";
 import { Text } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -24,7 +31,10 @@ type ScreenContainerProps = PropsWithChildren<{
   title: string;
   description: string;
   actions?: ReactNode;
+  endReachedThreshold?: number;
+  onEndReached?: () => void;
   showMenuButton?: boolean;
+  scrollToTopSignal?: number;
 }>;
 
 const createStyles = (theme: AppTheme) => ({
@@ -76,10 +86,8 @@ const createStyles = (theme: AppTheme) => ({
     justifyContent: "center"
   },
   titleSlot: {
-    flex: 1,
     alignItems: "flex-end",
-    justifyContent: "center",
-    paddingLeft: MOBILE_HEADER_TOUCH_TARGET + theme.spacing.sm
+    justifyContent: "center"
   },
   titleButton: {
     minHeight: MOBILE_HEADER_TOUCH_TARGET,
@@ -122,12 +130,16 @@ export function ScreenContainer({
   title,
   description,
   actions,
+  endReachedThreshold = 120,
+  onEndReached,
   showMenuButton = true,
+  scrollToTopSignal,
   children
 }: ScreenContainerProps) {
   const theme = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const scrollViewRef = useRef<ScrollView | null>(null);
+  const lastEndReachedContentHeightRef = useRef(0);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const segments = useSegments();
@@ -179,12 +191,33 @@ export function ScreenContainer({
     [bottomPadding, horizontalPadding, maxContentWidth, styles.content, theme.spacing.md]
   );
   const titleAccessibilityLabel = `Scroll ${title} to top`;
-  const scrollToTop = () => {
+  const scrollToTop = useCallback(() => {
     scrollViewRef.current?.scrollTo({
       y: 0,
       animated: true
     });
-  };
+  }, []);
+  useEffect(() => {
+    if (typeof scrollToTopSignal !== "number") {
+      return;
+    }
+
+    scrollToTop();
+  }, [scrollToTop, scrollToTopSignal]);
+  const handleScroll = onEndReached
+    ? (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        const distanceFromEnd = contentSize.height - layoutMeasurement.height - contentOffset.y;
+
+        if (
+          distanceFromEnd <= endReachedThreshold &&
+          contentSize.height !== lastEndReachedContentHeightRef.current
+        ) {
+          lastEndReachedContentHeightRef.current = contentSize.height;
+          onEndReached();
+        }
+      }
+    : undefined;
   const handleLogoPress = () => {
     if (isOnAuthenticatedHome) {
       scrollToTop();
@@ -229,7 +262,15 @@ export function ScreenContainer({
                   <AppLogoMark size={20} variant="plain" tintColor={theme.colors.onSurface} />
                 </Pressable>
               </View>
-              <View style={styles.titleSlot}>
+              <View
+                style={[
+                  styles.titleSlot,
+                  {
+                    flex: 0,
+                    width: width < 390 ? 112 : 156
+                  }
+                ]}
+              >
                 <Pressable
                   onPress={scrollToTop}
                   style={styles.titleButton}
@@ -257,7 +298,13 @@ export function ScreenContainer({
           </View>
         </View>
       </View>
-      <ScrollView ref={scrollViewRef} style={styles.screen} contentContainerStyle={contentStyle}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.screen}
+        contentContainerStyle={contentStyle}
+        scrollEventThrottle={64}
+        onScroll={handleScroll}
+      >
         {shouldShowIntro ? (
           <View style={styles.intro}>
             {actions ? <View style={styles.actions}>{actions}</View> : null}

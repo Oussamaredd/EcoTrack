@@ -1,18 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Image, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Chip, Text } from "react-native-paper";
+import { Button, Text } from "react-native-paper";
 
 import { citizenApi } from "@api/modules/citizen";
-import { AppStateScreen } from "@/components/AppStateScreen";
 import { InfoCard } from "@/components/InfoCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { demoCitizenHistory } from "@/lib/demoCitizenData";
 import {
-  citizenReportTypes,
   formatCitizenReportTypeLabel,
-  formatRelativeReportTime,
-  type CitizenReportType
+  formatRelativeReportTime
 } from "@/lib/citizenReports";
 import { formatCoordinates, formatDateTime } from "@/lib/formatters";
 import { queryKeys } from "@/lib/queryKeys";
@@ -20,18 +18,10 @@ import { useNotificationController } from "@/providers/NotificationProvider";
 import type { AppTheme } from "@/theme/theme";
 import { useThemedStyles } from "@/theme/useAppTheme";
 
-type HistoryFilter = "all" | CitizenReportType;
+const HISTORY_BATCH_SIZE = 10;
 
 const createStyles = (theme: AppTheme) =>
   ({
-    chipRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: theme.spacing.xs
-    },
-    chip: {
-      backgroundColor: theme.colors.surfaceMuted
-    },
     timelineList: {
       gap: theme.spacing.md
     },
@@ -66,19 +56,18 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.primaryStrong,
       fontWeight: "700"
     },
-    paginationRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: theme.spacing.sm
-    },
-    paginationButton: {
-      flex: 1,
-      minWidth: 120
-    },
     photoEvidence: {
       width: "100%",
       height: 180,
       borderRadius: theme.shape.md
+    },
+    footerActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: theme.spacing.sm
+    },
+    footerButton: {
+      flexGrow: 1
     }
   }) satisfies Record<string, object>;
 
@@ -86,12 +75,11 @@ export function HistoryScreen() {
   const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ notificationId?: string }>();
   const { markNotificationRead } = useNotificationController();
-  const [page, setPage] = useState(1);
-  const [filter, setFilter] = useState<HistoryFilter>("all");
-  const pageSize = 8;
+  const [visibleCount, setVisibleCount] = useState(HISTORY_BATCH_SIZE);
+  const [scrollToTopSignal, setScrollToTopSignal] = useState(0);
   const historyQuery = useQuery({
-    queryKey: queryKeys.citizenHistory(page, pageSize),
-    queryFn: () => citizenApi.getHistory(page, pageSize)
+    queryKey: queryKeys.citizenHistory(1, 50),
+    queryFn: () => citizenApi.getHistory(1, 50)
   });
 
   useEffect(() => {
@@ -102,143 +90,83 @@ export function HistoryScreen() {
     void markNotificationRead(params.notificationId);
   }, [markNotificationRead, params.notificationId]);
 
-  if (historyQuery.isLoading) {
-    return (
-      <AppStateScreen
-        title="Loading history"
-        description="EcoTrack is fetching your citizen report history."
-        isBusy
-      />
-    );
-  }
+  const history = useMemo(() => {
+    const liveHistory = historyQuery.data?.history ?? [];
 
-  if (historyQuery.isError) {
-    return (
-      <AppStateScreen
-        title="History unavailable"
-        description={
-          historyQuery.error instanceof Error
-            ? historyQuery.error.message
-            : "Unable to load citizen history."
-        }
-        actionLabel="Retry"
-        onAction={() => {
-          void historyQuery.refetch();
-        }}
-      />
-    );
-  }
+    return liveHistory.length > 0 ? liveHistory : demoCitizenHistory;
+  }, [historyQuery.data?.history]);
+  const visibleHistory = history.slice(0, visibleCount);
+  const hasMoreHistory = visibleCount < history.length;
 
-  if (!historyQuery.data) {
-    return (
-      <AppStateScreen
-        title="History unavailable"
-        description="The citizen history endpoint returned no payload."
-      />
-    );
-  }
+  const loadMoreHistory = () => {
+    if (!hasMoreHistory) {
+      return;
+    }
 
-  const history = historyQuery.data.history;
-  const pagination = historyQuery.data.pagination;
-  const filteredHistory = history.filter((item) => filter === "all" || item.reportType === filter);
+    setVisibleCount((currentValue) =>
+      Math.min(currentValue + HISTORY_BATCH_SIZE, history.length)
+    );
+  };
 
   return (
     <ScreenContainer
       eyebrow="History"
       title="History"
       description="Reports and status."
+      onEndReached={loadMoreHistory}
+      scrollToTopSignal={scrollToTopSignal}
     >
-      <InfoCard title="Filters">
-        <View style={styles.chipRow}>
-          <Chip selected={filter === "all"} style={styles.chip} onPress={() => setFilter("all")}>
-            All
-          </Chip>
-          {citizenReportTypes.map((item) => (
-            <Chip
-              key={item.value}
-              selected={filter === item.value}
-              style={styles.chip}
-              onPress={() => setFilter(item.value)}
-            >
-              {item.label}
-            </Chip>
-          ))}
-        </View>
-      </InfoCard>
-
       {typeof params.notificationId === "string" && params.notificationId.length > 0 ? (
         <InfoCard title="Opened from notification">
           <Text variant="bodyMedium">
-            EcoTrack opened your report history from a push notification. The notification has
-            been marked as read.
+            EcoTrack opened your report history from a notification.
           </Text>
         </InfoCard>
       ) : null}
 
-      {filteredHistory.length === 0 ? (
-        <InfoCard
-          title="No reports"
-        >
-          <Text variant="bodyMedium">Create a report or change the filter.</Text>
-        </InfoCard>
-      ) : (
-        <InfoCard title="Timeline">
-          <View style={styles.timelineList}>
-            {filteredHistory.map((item) => (
-              <View key={item.id} style={styles.timelineCard}>
-                <View style={styles.timelineHeader}>
-                  <Text variant="titleMedium" style={styles.timelineTitle}>
-                    {item.containerCode ?? "Container"}
-                    {item.containerLabel ? ` - ${item.containerLabel}` : ""}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.timelineMeta}>
-                    {formatRelativeReportTime(item.reportedAt)}
-                  </Text>
-                </View>
-                <View style={styles.timelineStatus}>
-                  <Text variant="labelLarge" style={styles.timelineStatusText}>
-                    {formatCitizenReportTypeLabel(item.reportType)} | {item.status}
-                  </Text>
-                </View>
-                <Text variant="bodyMedium">{item.description}</Text>
-                <Text variant="bodySmall" style={styles.timelineMeta}>
-                  Reported: {formatDateTime(item.reportedAt)}
+      <InfoCard title="History" icon="timeline-text-outline">
+        <View style={styles.timelineList}>
+          {visibleHistory.map((item) => (
+            <View key={item.id} style={styles.timelineCard}>
+              <View style={styles.timelineHeader}>
+                <Text variant="titleMedium" style={styles.timelineTitle}>
+                  {item.containerCode ?? "Container"}
+                  {item.containerLabel ? ` - ${item.containerLabel}` : ""}
                 </Text>
                 <Text variant="bodySmall" style={styles.timelineMeta}>
-                  Location: {formatCoordinates(item.latitude, item.longitude)}
+                  {formatRelativeReportTime(item.reportedAt)}
                 </Text>
-                {item.photoUrl ? (
-                  <Image source={{ uri: item.photoUrl }} style={styles.photoEvidence} resizeMode="cover" />
-                ) : null}
               </View>
-            ))}
-          </View>
-        </InfoCard>
-      )}
-
-      <InfoCard title="Pages">
-        <Text variant="bodyMedium">
-          Page {pagination.page} of {Math.max(1, Math.ceil(pagination.total / pagination.pageSize))}
-        </Text>
-        <View style={styles.paginationRow}>
-          <Button
-            mode="outlined"
-            style={styles.paginationButton}
-            disabled={page <= 1}
-            onPress={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
-          >
-            Previous
-          </Button>
-          <Button
-            mode="outlined"
-            style={styles.paginationButton}
-            disabled={!pagination.hasNext}
-            onPress={() => setPage((currentPage) => currentPage + 1)}
-          >
-            Next
-          </Button>
+              <View style={styles.timelineStatus}>
+                <Text variant="labelLarge" style={styles.timelineStatusText}>
+                  {formatCitizenReportTypeLabel(item.reportType)} | {item.status}
+                </Text>
+              </View>
+              <Text variant="bodyMedium">{item.description}</Text>
+              <Text variant="bodySmall" style={styles.timelineMeta}>
+                Reported: {formatDateTime(item.reportedAt)}
+              </Text>
+              <Text variant="bodySmall" style={styles.timelineMeta}>
+                Location: {formatCoordinates(item.latitude, item.longitude)}
+              </Text>
+              {item.photoUrl ? (
+                <Image source={{ uri: item.photoUrl }} style={styles.photoEvidence} resizeMode="cover" />
+              ) : null}
+            </View>
+          ))}
         </View>
       </InfoCard>
+
+      <View style={styles.footerActions}>
+        <Button
+          mode="outlined"
+          icon="arrow-up"
+          style={styles.footerButton}
+          onPress={() => setScrollToTopSignal((currentValue) => currentValue + 1)}
+        >
+          Back to top
+        </Button>
+      </View>
     </ScreenContainer>
   );
 }

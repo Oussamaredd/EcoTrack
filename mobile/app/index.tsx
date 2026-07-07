@@ -29,7 +29,7 @@ export default function IndexRoute() {
   return (
     <ScreenContainer
       eyebrow="EcoTrack Mobile"
-      title="Choose your next action"
+      title="Workspace"
       description="Open a live workspace only when you are ready to use the product."
       actions={
         <View style={{ gap: 12 }}>

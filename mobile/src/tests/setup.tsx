@@ -347,6 +347,7 @@ vi.mock("expo-router", () => ({
     push: vi.fn(),
     replace: vi.fn(),
   },
+  useLocalSearchParams: () => ({}),
   useSegments: () => ["(tabs)"],
 }));
 
@@ -449,12 +450,10 @@ vi.mock("@/components/ScreenContainer", () => ({
   ScreenContainer: ({
     actions,
     children,
-    description,
     title,
   }: React.PropsWithChildren<{ actions?: React.ReactNode; description?: string; title: string }>) => (
     <section>
       <h1>{title}</h1>
-      {description ? <p>{description}</p> : null}
       {actions}
       <div>{children}</div>
     </section>

@@ -72,6 +72,8 @@
     "db:generate": "npm run db:generate --workspace=ecotrack-database",
     "db:push": "npm run db:push --workspace=ecotrack-database",
     "db:seed": "npm run db:seed --workspace=ecotrack-database",
+    "seed:soutenance": "npm run seed:soutenance --workspace=ecotrack-database",
+    "demo:seed": "npm run seed:soutenance",
     "db:migrate:seed": "npm run db:migrate:seed --workspace=ecotrack-database",
     "validate-env": "node ./infrastructure/scripts/validate-env.mjs",
     "validate-env:local": "node ./infrastructure/scripts/validate-env.mjs --workflow local-dev --files .env,app/.env.local,mobile/.env.local",

@@ -1,0 +1,353 @@
+{
+  "capturedAt": "2026-06-29T13:42:08.808Z",
+  "apiBase": "http://127.0.0.1:3001/api",
+  "endpoints": {
+    "health": {
+      "status": 200,
+      "ok": true
+    },
+    "zones": {
+      "status": 200,
+      "count": 6
+    },
+    "citizenReportPost": {
+      "status": 201,
+      "reportId": "454f60d3-336b-412b-abca-22a3de392b7f",
+      "containerCode": "SOUT-C-002"
+    },
+    "citizenReports": {
+      "status": 200,
+      "pageCount": 5
+    },
+    "dashboard": {
+      "status": 200,
+      "summary": {
+        "total": 11,
+        "open": 8,
+        "completed": 3,
+        "assigned": 11
+      },
+      "statusBreakdown": {
+        "open": 5,
+        "completed": 3,
+        "in_progress": 3
+      }
+    },
+    "agentTour": {
+      "status": 200,
+      "name": "Soutenance - Tournee Centre Nord live",
+      "stopCount": 4
+    }
+  },
+  "seededDemoSupport": {
+    "zones": [
+      {
+        "name": "Soutenance - Canal",
+        "riskTier": "high",
+        "averageRiskScore": 81,
+        "containerCount": 5
+      },
+      {
+        "name": "Soutenance - Centre Nord",
+        "riskTier": "high",
+        "averageRiskScore": 80,
+        "containerCount": 5
+      },
+      {
+        "name": "Soutenance - Rive Gauche",
+        "riskTier": "medium",
+        "averageRiskScore": 73,
+        "containerCount": 5
+      },
+      {
+        "name": "Soutenance - Ouest",
+        "riskTier": "medium",
+        "averageRiskScore": 73,
+        "containerCount": 5
+      },
+      {
+        "name": "Soutenance - Est",
+        "riskTier": "medium",
+        "averageRiskScore": 70,
+        "containerCount": 5
+      },
+      {
+        "name": "Paris 8e - Elysee",
+        "riskTier": "medium",
+        "averageRiskScore": 65,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 3e - Temple",
+        "riskTier": "medium",
+        "averageRiskScore": 65,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 13e - Gobelins",
+        "riskTier": "medium",
+        "averageRiskScore": 65,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 18e - Buttes-Montmartre",
+        "riskTier": "medium",
+        "averageRiskScore": 65,
+        "containerCount": 3
+      },
+      {
+        "name": "Soutenance - Sud",
+        "riskTier": "medium",
+        "averageRiskScore": 64,
+        "containerCount": 5
+      },
+      {
+        "name": "Paris 2e - Bourse",
+        "riskTier": "medium",
+        "averageRiskScore": 63,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 20e - Menilmontant",
+        "riskTier": "medium",
+        "averageRiskScore": 62,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 5e - Pantheon",
+        "riskTier": "medium",
+        "averageRiskScore": 62,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 15e - Vaugirard",
+        "riskTier": "medium",
+        "averageRiskScore": 62,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 10e - Entrepot",
+        "riskTier": "medium",
+        "averageRiskScore": 62,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 16e - Passy",
+        "riskTier": "medium",
+        "averageRiskScore": 61,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 1er - Louvre",
+        "riskTier": "medium",
+        "averageRiskScore": 61,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 11e - Popincourt",
+        "riskTier": "medium",
+        "averageRiskScore": 61,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 6e - Luxembourg",
+        "riskTier": "medium",
+        "averageRiskScore": 61,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 19e - Buttes-Chaumont",
+        "riskTier": "medium",
+        "averageRiskScore": 56,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 9e - Opera",
+        "riskTier": "medium",
+        "averageRiskScore": 56,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 4e - Hotel-de-Ville",
+        "riskTier": "medium",
+        "averageRiskScore": 56,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 14e - Observatoire",
+        "riskTier": "medium",
+        "averageRiskScore": 56,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 17e - Batignolles-Monceau",
+        "riskTier": "medium",
+        "averageRiskScore": 55,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 7e - Palais-Bourbon",
+        "riskTier": "medium",
+        "averageRiskScore": 55,
+        "containerCount": 3
+      },
+      {
+        "name": "Paris 12e - Reuilly",
+        "riskTier": "medium",
+        "averageRiskScore": 55,
+        "containerCount": 3
+      }
+    ],
+    "criticalContainers": [
+      {
+        "code": "PAR-01-001",
+        "fillLevelPercent": 100,
+        "status": "critical",
+        "zoneName": "Paris 1er - Louvre"
+      },
+      {
+        "code": "PAR-01-002",
+        "fillLevelPercent": 100,
+        "status": "critical",
+        "zoneName": "Paris 1er - Louvre"
+      },
+      {
+        "code": "PAR-01-003",
+        "fillLevelPercent": 100,
+        "status": "critical",
+        "zoneName": "Paris 1er - Louvre"
+      },
+      {
+        "code": "PAR-02-001",
+        "fillLevelPercent": 100,
+        "status": "critical",
+        "zoneName": "Paris 2e - Bourse"
+      },
+      {
+        "code": "PAR-02-002",
+        "fillLevelPercent": 100,
+        "status": "critical",
+        "zoneName": "Paris 2e - Bourse"
+      },
+      {
+        "code": "PAR-02-003",
+        "fillLevelPercent": 100,
+        "status": "critical",
+        "zoneName": "Paris 2e - Bourse"
+      },
+      {
+        "code": "PAR-03-001",
+        "fillLevelPercent": 100,
+        "status": "critical",
+        "zoneName": "Paris 3e - Temple"
+      },
+      {
+        "code": "PAR-03-002",
+        "fillLevelPercent": 100,
+        "status": "critical",
+        "zoneName": "Paris 3e - Temple"
+      }
+    ],
+    "adminUsers": [
+      {
+        "email": "yassine.elammari@outlook.com",
+        "role": "citizen",
+        "active": true
+      },
+      {
+        "email": "soutenance.citizen2@ecotrack.local",
+        "role": "citizen",
+        "active": true
+      },
+      {
+        "email": "soutenance.citizen1@ecotrack.local",
+        "role": "citizen",
+        "active": true
+      },
+      {
+        "email": "soutenance.manager2@ecotrack.local",
+        "role": "manager",
+        "active": true
+      },
+      {
+        "email": "soutenance.admin@ecotrack.local",
+        "role": "admin",
+        "active": true
+      },
+      {
+        "email": "soutenance.citizen3@ecotrack.local",
+        "role": "citizen",
+        "active": true
+      },
+      {
+        "email": "soutenance.citizen4@ecotrack.local",
+        "role": "citizen",
+        "active": true
+      },
+      {
+        "email": "soutenance.agent1@ecotrack.local",
+        "role": "agent",
+        "active": true
+      },
+      {
+        "email": "soutenance.agent2@ecotrack.local",
+        "role": "agent",
+        "active": true
+      },
+      {
+        "email": "soutenance.agent3@ecotrack.local",
+        "role": "agent",
+        "active": true
+      }
+    ],
+    "roles": [
+      {
+        "name": "admin",
+        "permissions": 19
+      },
+      {
+        "name": "agent",
+        "permissions": 7
+      },
+      {
+        "name": "citizen",
+        "permissions": 4
+      },
+      {
+        "name": "manager",
+        "permissions": 10
+      },
+      {
+        "name": "super_admin",
+        "permissions": 19
+      }
+    ],
+    "reports": [
+      {
+        "status": "submitted",
+        "containerCode": "SOUT-C-002",
+        "reportedAt": "2026-06-29T13:42:03.616Z"
+      },
+      {
+        "status": "submitted",
+        "containerCode": "PAR-04-002",
+        "reportedAt": "2026-06-29T12:57:49.413Z"
+      },
+      {
+        "status": "submitted",
+        "containerCode": "PAR-01-001",
+        "reportedAt": "2026-06-29T12:52:19.873Z"
+      },
+      {
+        "status": "submitted",
+        "containerCode": "SOUT-C-011",
+        "reportedAt": "2026-06-29T12:43:48.552Z"
+      },
+      {
+        "status": "submitted",
+        "containerCode": "SOUT-C-018",
+        "reportedAt": "2026-06-29T12:29:53.804Z"
+      }
+    ]
+  }
+}

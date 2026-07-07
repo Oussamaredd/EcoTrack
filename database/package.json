@@ -24,6 +24,8 @@
     "db:migrate": "node ./scripts/ensure-direct-database-url.mjs drizzle-kit migrate",
     "db:push": "node ./scripts/ensure-direct-database-url.mjs drizzle-kit push",
     "db:seed": "npm run build && node ./scripts/ensure-direct-database-url.mjs node dist/seeds/run.js",
+    "seed:soutenance": "npm run build && node dist/seeds/run-soutenance.js",
+    "demo:seed": "npm run seed:soutenance",
     "db:migrate:seed": "npm run db:migrate && npm run db:seed",
     "db:baseline:managed": "node ./scripts/export-managed-postgres-baseline.mjs",
     "db:export:data": "node ./scripts/export-data-only.mjs",

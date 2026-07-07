@@ -20,11 +20,11 @@ export const resolveCitizenTabLayout = (
   width: number,
   bottomInset: number
 ): CitizenTabLayout => {
-  const hideScheduleTab = width < CITIZEN_COMPACT_TAB_BREAKPOINT;
+  const hideScheduleTab = false;
   const showLabels = width >= 340;
   const tabBarPaddingBottom = Math.max(bottomInset, 8);
-  const tabBarPaddingTop = hideScheduleTab ? 8 : 6;
-  const tabBarHeight = (hideScheduleTab ? 58 : 64) + tabBarPaddingTop + tabBarPaddingBottom;
+  const tabBarPaddingTop = width < CITIZEN_COMPACT_TAB_BREAKPOINT ? 7 : 6;
+  const tabBarHeight = 64 + tabBarPaddingTop + tabBarPaddingBottom;
 
   return {
     hideScheduleTab,
@@ -32,11 +32,11 @@ export const resolveCitizenTabLayout = (
     tabBarHeight,
     tabBarPaddingTop,
     tabBarPaddingBottom,
-    tabBarPaddingHorizontal: hideScheduleTab ? 2 : 4,
-    tabBarItemMarginVertical: hideScheduleTab ? 1 : 2,
-    tabBarItemPaddingVertical: hideScheduleTab ? 3 : 4,
-    tabBarLabelFontSize: width < 360 ? 10 : 11,
-    edgeSwipeWidth: hideScheduleTab ? 18 : 24
+    tabBarPaddingHorizontal: width < CITIZEN_COMPACT_TAB_BREAKPOINT ? 2 : 4,
+    tabBarItemMarginVertical: width < CITIZEN_COMPACT_TAB_BREAKPOINT ? 1 : 2,
+    tabBarItemPaddingVertical: width < CITIZEN_COMPACT_TAB_BREAKPOINT ? 3 : 4,
+    tabBarLabelFontSize: width < 360 ? 9 : 11,
+    edgeSwipeWidth: width < CITIZEN_COMPACT_TAB_BREAKPOINT ? 18 : 24
   };
 };
 

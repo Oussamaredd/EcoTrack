@@ -1,125 +1,253 @@
+import { useMemo, useState } from "react";
+import { router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, ProgressBar, Text } from "react-native-paper";
+import { View } from "react-native";
+import { Button, HelperText, ProgressBar, Text } from "react-native-paper";
 
-import { citizenApi } from "@api/modules/citizen";
-import { AppStateScreen } from "@/components/AppStateScreen";
+import { citizenApi, type CitizenChallenge } from "@api/modules/citizen";
 import { InfoCard } from "@/components/InfoCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { demoCitizenChallenges } from "@/lib/demoCitizenData";
 import { queryKeys } from "@/lib/queryKeys";
+import type { AppTheme } from "@/theme/theme";
+import { useThemedStyles } from "@/theme/useAppTheme";
+
+type ChallengeState = "active" | "available" | "completed";
+
+const resolveChallengeState = (challenge: CitizenChallenge): ChallengeState => {
+  if (challenge.enrollmentStatus === "not_enrolled") {
+    return "available";
+  }
+
+  if (challenge.enrollmentStatus === "completed") {
+    return "completed";
+  }
+
+  return "active";
+};
+
+const isDemoChallenge = (challengeId: string) => challengeId.startsWith("demo-");
+
+const applyDemoChallengeAction = (
+  challenges: CitizenChallenge[],
+  challengeId: string,
+  action: "enroll" | "progress"
+) =>
+  challenges.map((challenge) => {
+    if (challenge.id !== challengeId) {
+      return challenge;
+    }
+
+    if (action === "enroll") {
+      return {
+        ...challenge,
+        enrollmentStatus: "in_progress"
+      };
+    }
+
+    const nextProgress = Math.min(challenge.progress + 1, challenge.targetValue);
+    const nextCompletionPercent = Math.round((nextProgress / challenge.targetValue) * 100);
+
+    return {
+      ...challenge,
+      progress: nextProgress,
+      completionPercent: nextCompletionPercent,
+      enrollmentStatus:
+        nextProgress >= challenge.targetValue ? "completed" : challenge.enrollmentStatus
+    };
+  });
+
+const createStyles = (theme: AppTheme) =>
+  ({
+    list: {
+      gap: theme.spacing.md
+    },
+    cardBody: {
+      gap: theme.spacing.sm
+    },
+    meta: {
+      color: theme.colors.textMuted,
+      lineHeight: 20
+    },
+    footer: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: theme.spacing.sm
+    },
+    reward: {
+      color: theme.colors.primaryStrong,
+      fontWeight: "700"
+    },
+    actionButton: {
+      minWidth: 144
+    }
+  }) satisfies Record<string, object>;
 
 export function ChallengesScreen() {
+  const styles = useThemedStyles(createStyles);
   const queryClient = useQueryClient();
+  const [demoChallenges, setDemoChallenges] = useState(demoCitizenChallenges);
+  const [pendingChallengeId, setPendingChallengeId] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const challengesQuery = useQuery({
     queryKey: queryKeys.citizenChallenges,
     queryFn: () => citizenApi.getChallenges()
   });
   const enrollMutation = useMutation({
-    mutationFn: (challengeId: string) => citizenApi.enrollInChallenge(challengeId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.citizenChallenges });
-    }
+    mutationFn: (challengeId: string) => citizenApi.enrollInChallenge(challengeId)
   });
   const progressMutation = useMutation({
     mutationFn: (challengeId: string) =>
-      citizenApi.updateChallengeProgress(challengeId, 1),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.citizenChallenges }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.citizenProfile })
-      ]);
-    }
+      citizenApi.updateChallengeProgress(challengeId, 1)
   });
+  const liveChallenges = useMemo(
+    () => challengesQuery.data?.challenges ?? [],
+    [challengesQuery.data?.challenges]
+  );
+  const challenges = useMemo(
+    () => (liveChallenges.length > 0 ? liveChallenges : demoChallenges),
+    [demoChallenges, liveChallenges]
+  );
 
-  if (challengesQuery.isLoading) {
-    return (
-      <AppStateScreen
-        title="Loading challenges"
-        description="EcoTrack is syncing the citizen challenge catalog."
-        isBusy
-      />
-    );
-  }
+  const refreshChallenges = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.citizenChallenges }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.citizenProfile }),
+      challengesQuery.refetch()
+    ]);
+  };
 
-  if (challengesQuery.isError) {
-    return (
-      <AppStateScreen
-        title="Challenges unavailable"
-        description={
-          challengesQuery.error instanceof Error
-            ? challengesQuery.error.message
-            : "Unable to load challenges."
-        }
-        actionLabel="Retry"
-        onAction={() => {
-          void challengesQuery.refetch();
-        }}
-      />
-    );
-  }
+  const runChallengeAction = async (
+    challengeId: string,
+    title: string,
+    action: "enroll" | "progress"
+  ) => {
+    setPendingChallengeId(challengeId);
+    setStatusMessage(null);
+    setErrorMessage(null);
 
-  if (!challengesQuery.data) {
-    return (
-      <AppStateScreen
-        title="Challenges unavailable"
-        description="The challenge catalog returned no payload."
-      />
-    );
-  }
+    try {
+      if (isDemoChallenge(challengeId)) {
+        setDemoChallenges((currentChallenges) =>
+          applyDemoChallengeAction(currentChallenges, challengeId, action)
+        );
+        setStatusMessage(
+          action === "enroll" ? `${title} joined.` : `${title} updated.`
+        );
+        return;
+      }
 
-  const challenges = challengesQuery.data.challenges;
+      if (action === "enroll") {
+        await enrollMutation.mutateAsync(challengeId);
+        setStatusMessage(`${title} joined.`);
+      } else {
+        await progressMutation.mutateAsync(challengeId);
+        setStatusMessage(`${title} updated.`);
+      }
+      await refreshChallenges();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Challenge update failed.");
+    } finally {
+      setPendingChallengeId(null);
+    }
+  };
 
   return (
     <ScreenContainer
       eyebrow="Gamification"
       title="Challenges"
-      description="Points and goals."
+      description="Citizen goals."
     >
-      {challenges.length === 0 ? (
-        <InfoCard title="No challenges">
-          <Text variant="bodyMedium">No active items.</Text>
-        </InfoCard>
+      {statusMessage ? (
+        <HelperText type="info" visible>
+          {statusMessage}
+        </HelperText>
       ) : null}
-      {challenges.map((challenge) => {
-        const isEnrolled = challenge.enrollmentStatus !== "not_enrolled";
-        const isCompleted = challenge.enrollmentStatus === "completed";
+      {errorMessage ? (
+        <HelperText type="error" visible>
+          {errorMessage}
+        </HelperText>
+      ) : null}
 
-        return (
-          <InfoCard
-            key={challenge.id}
-            title={challenge.title}
-            caption={`${challenge.rewardPoints} points reward`}
-          >
-            <Text variant="bodyMedium">{challenge.description}</Text>
-            <Text variant="bodyMedium">
-              Progress: {challenge.progress}/{challenge.targetValue}
-            </Text>
-            <ProgressBar progress={challenge.completionPercent / 100} />
-            {!isEnrolled ? (
-              <Button
-                mode="contained"
-                onPress={() => {
-                  void enrollMutation.mutateAsync(challenge.id);
-                }}
-                loading={enrollMutation.isPending}
-                disabled={enrollMutation.isPending}
+      {challenges.length === 0 ? (
+        <InfoCard title="No challenges" icon="trophy-outline">
+          <Text variant="bodyMedium" style={styles.meta}>
+            No citizen challenges are available yet.
+          </Text>
+        </InfoCard>
+      ) : (
+        <View style={styles.list}>
+          {challenges.map((challenge) => {
+            const state = resolveChallengeState(challenge);
+            const isPending = pendingChallengeId === challenge.id;
+            const progressLabel = `${challenge.progress}/${challenge.targetValue} complete`;
+
+            return (
+              <InfoCard
+                key={challenge.id}
+                title={challenge.title}
+                icon={state === "completed" ? "check-decagram-outline" : "flag-checkered"}
               >
-                Join challenge
-              </Button>
-            ) : (
-              <Button
-                mode={isCompleted ? "outlined" : "contained"}
-                onPress={() => {
-                  void progressMutation.mutateAsync(challenge.id);
-                }}
-                loading={progressMutation.isPending}
-                disabled={progressMutation.isPending || isCompleted}
-              >
-                {isCompleted ? "Completed" : "Add progress +1"}
-              </Button>
-            )}
-          </InfoCard>
-        );
-      })}
+                <View style={styles.cardBody}>
+                  <Text variant="bodyMedium">{challenge.description}</Text>
+                  <Text variant="bodySmall" style={styles.meta}>
+                    {progressLabel} | {challenge.completionPercent}%
+                  </Text>
+                  <ProgressBar progress={challenge.completionPercent / 100} />
+                  <View style={styles.footer}>
+                    <Text variant="labelLarge" style={styles.reward}>
+                      {challenge.rewardPoints} pts
+                    </Text>
+                    {state === "available" ? (
+                      <Button
+                        mode="contained"
+                        style={styles.actionButton}
+                        loading={isPending}
+                        disabled={isPending}
+                        onPress={() => {
+                          void runChallengeAction(challenge.id, challenge.title, "enroll");
+                        }}
+                      >
+                        Join goal
+                      </Button>
+                    ) : null}
+                    {state === "active" ? (
+                      <Button
+                        mode="contained"
+                        style={styles.actionButton}
+                        loading={isPending}
+                        disabled={isPending}
+                        onPress={() => {
+                          void runChallengeAction(challenge.id, challenge.title, "progress");
+                        }}
+                      >
+                        Add progress
+                      </Button>
+                    ) : null}
+                    {state === "completed" ? (
+                      <Button mode="outlined" style={styles.actionButton} disabled>
+                        Completed
+                      </Button>
+                    ) : null}
+                  </View>
+                </View>
+              </InfoCard>
+            );
+          })}
+        </View>
+      )}
+
+      {challenges.length === 0 ? (
+        <Button
+          mode="contained"
+          icon="map-marker-alert-outline"
+          onPress={() => router.push("/(tabs)/report")}
+        >
+          Report a container
+        </Button>
+      ) : null}
     </ScreenContainer>
   );
 }

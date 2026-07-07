@@ -1,0 +1,97 @@
+{
+  "capturedAt": "2026-06-29T13:42:26.022Z",
+  "web": [
+    {
+      "email": "manager@example.com",
+      "targetPath": "/app/dashboard",
+      "outputPath": "/home/sofca/repos/EcoTrack/docs/soutenance/assets/screenshots/web/web-manager-dashboard.png",
+      "url": "http://127.0.0.1:5173/app/dashboard",
+      "bodyPreview": "ECOTRACK\nRole Hub\nManager Dashboard\nTour Planning\nTour Operations\nSettings\nSupport\nSign Out\nManager Dashboard\nManager User\n\nMANAGER WEB WORKSPACE\n\nWelcome back, Manager.\n\nTrack citizen-driven workload, planning risk, and operational activity from the primary desktop workspace for managers and admins.\n\nWebSocket live: WebSocket push active\nLast sync 3:40 PM\n6 recent updates loaded\n\nTOTAL TICKETS\n\n11\n\nOPEN QUEUE\n\n8\n\nCOMPLETED\n\n3\n\nASSIGNMENT COVERAGE\n\n100%\n\nCompletion rate 27%\n\nEcoTrack KPIs\n\nContainers, zones, and tours tracked by the planning domain.\n\nCONTAINERS\n\n90\n\nZONES\n\n26\n\nTOURS\n\n12\n\nOverf"
+    },
+    {
+      "email": "manager@example.com",
+      "targetPath": "/app/manager/planning",
+      "outputPath": "/home/sofca/repos/EcoTrack/docs/soutenance/assets/screenshots/web/planning-dashboard-heatmap.png",
+      "url": "http://127.0.0.1:5173/app/manager/planning",
+      "bodyPreview": "ECOTRACK\nRole Hub\nManager Dashboard\nTour Planning\nTour Operations\nSettings\nSupport\nSign Out\nTour Planning\nManager User\nTour Planning Wizard\n\nUse the primary manager desktop planner to turn citizen-driven demand and supporting context into a route plan. The planning service applies nearest-neighbor plus 2-opt from the selected zone depot, then tour creation persists the resulting route.\n\nTour name\nScheduled date/time\n\nUses your local time and also avoids containers already reserved on nearby tours for the selected schedule.\n\nZone\nSelect zone\nParis 10e - Entrepot\nParis 11e - Popincourt\nParis 12e"
+    },
+    {
+      "email": "admin@example.com",
+      "targetPath": "/app/admin",
+      "outputPath": "/home/sofca/repos/EcoTrack/docs/soutenance/assets/screenshots/web/admin-users-roles.png",
+      "url": "http://127.0.0.1:5173/app/admin",
+      "bodyPreview": "ECOTRACK\nRole Hub\nManager Dashboard\nAgent Tour\nTour Planning\nTour Operations\nCitizen Reporting\nImpact & History\nSettings\nSupport\nAdmin Center\nSign Out\nAdmin Center\nAdmin User\nECOTRACK\nAdmin Center\n\nWelcome back, Admin User. This is the web-only oversight lane for access, governance, and prototype configuration.\n\nCurrent User: admin@example.com\nLogout\nAdmin Menu\nOverview\nUser Management\nTicket Management\nAudit Logs\nSystem Settings\nSystem Overview\n\nTOTAL USERS\n\n23\n\nOPEN TICKETS\n\n-\n\nRESOLVED TICKETS\n\n-\n\nAUDIT EVENTS\n\n-\n\nEcoTrack role mapping is active for citizen, agent, manager, admin, and super"
+    },
+    {
+      "email": "agent@example.com",
+      "targetPath": "/app/agent/tour",
+      "outputPath": "/home/sofca/repos/EcoTrack/docs/soutenance/assets/screenshots/web/agent-tour-details.png",
+      "url": "http://127.0.0.1:5173/app/agent/tour",
+      "bodyPreview": "ECOTRACK\nRole Hub\nAgent Tour\nSettings\nSupport\nSign Out\nAgent Tour\nAgent User\nDaily Optimized Tour\n\nZone: Paris 1er - Louvre | Scheduled 5/11/2026, 2:30:00 PM\n\nWeb companion for review, recovery, and accessibility. Mobile remains the primary field-execution surface for agents.\n\nStatus: in_progress\n\nPROGRESS\n\n0%\n\nCOMPLETED STOPS\n\n0/3\n\nREMAINING STOPS\n\n3\n\nESTIMATED ROUTE\n\n1.5 km\n\n5 min\n\nCurrent Run Active\nRefresh Tour Data\nReload Without Cache\nActive run is overdue. Continue only if this is still the live round; otherwise reload from the server before proceeding.\nRoute Overview\n\nPersisted route d"
+    },
+    {
+      "email": "test@test.com",
+      "targetPath": "/app/citizen/report",
+      "outputPath": "/home/sofca/repos/EcoTrack/docs/soutenance/assets/screenshots/web/citizen-report-form.png",
+      "url": "http://127.0.0.1:5173/app/citizen/report",
+      "bodyPreview": "ECOTRACK\nRole Hub\nCitizen Reporting\nImpact & History\nSettings\nSupport\nSign Out\nCitizen Reporting\nTest\nReport Container Issue\n\nOpening this feature prepares the reporting workspace, loads mapped containers and zones, then lets you send a typed signal into the manager queue.\n\nEcoTrack is mobile-first for citizens. This web flow stays available for accessibility, demo, and fallback use cases. Citizens report issues on existing mapped containers only, and web GPS remains optional.\n\nFind a mapped container\n\nSearch the live mapped-container list if the nearest container is not obvious.\n\nContainer\nSe"
+    },
+    {
+      "email": "test@test.com",
+      "targetPath": "/app/citizen/profile",
+      "outputPath": "/home/sofca/repos/EcoTrack/docs/soutenance/assets/screenshots/web/citizen-history-profile.png",
+      "url": "http://127.0.0.1:5173/app/citizen/profile",
+      "bodyPreview": "ECOTRACK\nRole Hub\nCitizen Reporting\nImpact & History\nSettings\nSupport\nSign Out\nImpact & History\nTest\nCitizen Impact and Follow-up\n\nThis is the current citizen follow-up surface on web: report status, resolved totals, prototype impact estimates, and community participation in one place.\n\nREPORTS SUBMITTED\n\n0\n\nAWAITING FOLLOW-UP\n\n0\n\nRESOLVED REPORTS\n\n0\n\nCITIZEN POINTS\n\n0\n\nBadges and Community Progress\n\nLevel\n\n1\n\nLeaderboard\n\n#8\n\nNo badges yet.\nPrototype Impact Visibility\n\nResolved Reports\n\n0\n\nEstimated Waste Diverted\n\n0 kg\n\nEstimated CO2 Saved\n\n0 kg\n\nThese impact figures are prototype estimates "
+    }
+  ],
+  "api": {
+    "health": {
+      "status": 200,
+      "ok": true
+    },
+    "zones": {
+      "status": 200,
+      "count": 6
+    },
+    "citizenReportPost": {
+      "status": 201,
+      "reportId": "454f60d3-336b-412b-abca-22a3de392b7f",
+      "containerCode": "SOUT-C-002"
+    },
+    "citizenReports": {
+      "status": 200,
+      "pageCount": 5
+    },
+    "dashboard": {
+      "status": 200,
+      "summary": {
+        "total": 11,
+        "open": 8,
+        "completed": 3,
+        "assigned": 11
+      },
+      "statusBreakdown": {
+        "open": 5,
+        "completed": 3,
+        "in_progress": 3
+      }
+    },
+    "agentTour": {
+      "status": 200,
+      "name": "Soutenance - Tournee Centre Nord live",
+      "stopCount": 4
+    }
+  },
+  "githubActions": {
+    "url": "https://github.com/Oussamaredd/EcoTrack/actions",
+    "outputPath": "/home/sofca/repos/EcoTrack/docs/soutenance/assets/screenshots/proof/github-actions-ci-cd.png",
+    "captured": true,
+    "textPreview": "Skip to content\nNavigation Menu\nPlatform\nSolutions\nResources\nOpen Source\nEnterprise\nPricing\nSearch or jump to...\nSign in\nSign up\nOussamaredd\n/\nEcoTrack\nPublic\nNotifications\nFork 0\n Star 0\nCode\nIssues\nPull requests\nActions\nProjects\nSecurity and quality\nInsights\nActions: Oussamaredd/EcoTrack\nActions\nAll workflows\nCD Deployment\nCI Integration\nDocs Pages\nHosted Synthetic Monitoring\nManagement\nCaches\nDeployments\nAll workflows\nShowing runs from all workflows\n1,325 workflow runs\nWorkflow\nEvent\nStatus\nB"
+  },
+  "pagesProof": {
+    "url": "https://oussamaredd.github.io/EcoTrack/",
+    "outputPath": "/home/sofca/repos/EcoTrack/docs/soutenance/assets/screenshots/proof/github-pages-proof-portal.png",
+    "captured": true,
+    "textPreview": "EcoTrack Documentation\n\nEcoTrack est un projet de gestion et de coordination de signalements, tournées et opérations liées aux déchets urbains. Ce portail regroupe la documentation technique, les guides produit, les runbooks et le dossier de preuves Bloc A2 destiné au jury.\n\nParcourir la documentation complète\nConsulter le dossier de preuves - Bloc A2\nVoir le repository GitHub\nVoir l'application déployée\n\nL'URL applicative ci-dessus est référencée dans les notes de déploiement existantes. Les pr"
+  }
+}

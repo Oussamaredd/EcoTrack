@@ -13,9 +13,9 @@ type MetricCardProps = {
 const createStyles = (theme: AppTheme) =>
   ({
     card: {
-      minHeight: 128,
+      minHeight: 104,
       gap: theme.spacing.sm,
-      padding: theme.spacing.lg,
+      padding: theme.spacing.md,
       borderRadius: theme.shape.md,
       backgroundColor: theme.colors.surface,
       borderColor: theme.colors.borderSoft,

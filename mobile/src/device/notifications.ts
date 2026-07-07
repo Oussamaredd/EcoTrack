@@ -25,8 +25,16 @@ export type NotificationRegistrationResult =
     };
 
 type NotificationModule = typeof import("expo-notifications");
+type NotificationSubscription = {
+  remove: () => void;
+};
 
 const loadNotificationsModule = async (): Promise<NotificationModule> => import("expo-notifications");
+const noopNotificationSubscription = (): NotificationSubscription => ({
+  remove: () => undefined,
+});
+const canUseNativeNotifications = () =>
+  Platform.OS !== "web" && Constants.executionEnvironment !== "storeClient";
 
 const resolveProjectId = () =>
   Constants.expoConfig?.extra?.eas?.projectId ??
@@ -34,7 +42,7 @@ const resolveProjectId = () =>
   undefined;
 
 export const configureNotificationPresentation = async () => {
-  if (Platform.OS === "web" || Constants.executionEnvironment === "storeClient") {
+  if (!canUseNativeNotifications()) {
     return;
   }
 
@@ -131,6 +139,11 @@ export const registerForPushNotifications = async (): Promise<NotificationRegist
 export const addNotificationReceivedListener = async (
   listener: (notification: any) => void
 ) => {
+  if (!canUseNativeNotifications()) {
+    void listener;
+    return noopNotificationSubscription();
+  }
+
   const notifications = await loadNotificationsModule();
   return notifications.addNotificationReceivedListener(listener);
 };
@@ -138,12 +151,17 @@ export const addNotificationReceivedListener = async (
 export const addNotificationResponseListener = async (
   listener: (response: any) => void
 ) => {
+  if (!canUseNativeNotifications()) {
+    void listener;
+    return noopNotificationSubscription();
+  }
+
   const notifications = await loadNotificationsModule();
   return notifications.addNotificationResponseReceivedListener(listener);
 };
 
 export const getLastNotificationResponse = async () => {
-  if (Platform.OS === "web" || Constants.executionEnvironment === "storeClient") {
+  if (!canUseNativeNotifications()) {
     return null;
   }
 

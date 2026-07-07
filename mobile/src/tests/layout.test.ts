@@ -11,7 +11,7 @@ describe("citizen tab layout", () => {
   it("uses compact navigation on narrow phones", () => {
     const layout = resolveCitizenTabLayout(360, 0);
 
-    expect(layout.hideScheduleTab).toBe(true);
+    expect(layout.hideScheduleTab).toBe(false);
     expect(layout.showLabels).toBe(true);
     expect(layout.edgeSwipeWidth).toBe(18);
   });

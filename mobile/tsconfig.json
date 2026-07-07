@@ -7,15 +7,14 @@
       "react",
       "react-native"
     ],
-    "baseUrl": ".",
     "incremental": true,
     "tsBuildInfoFile": "../tmp/tsc/mobile.tsbuildinfo",
     "paths": {
       "@api/*": [
-        "src/api/*"
+        "./src/api/*"
       ],
       "@/*": [
-        "src/*"
+        "./src/*"
       ]
     }
   },

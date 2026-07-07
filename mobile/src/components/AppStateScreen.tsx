@@ -1,6 +1,10 @@
+import { View } from "react-native";
 import { ActivityIndicator, Button, Text } from "react-native-paper";
 
+import { InfoCard } from "@/components/InfoCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
+import type { AppTheme } from "@/theme/theme";
+import { useThemedStyles } from "@/theme/useAppTheme";
 
 type AppStateScreenProps = {
   title: string;
@@ -10,6 +14,20 @@ type AppStateScreenProps = {
   onAction?: () => void;
 };
 
+const createStyles = (theme: AppTheme) =>
+  ({
+    stateCard: {
+      alignItems: "center",
+      gap: theme.spacing.md,
+      paddingVertical: theme.spacing.lg
+    },
+    stateText: {
+      color: theme.colors.textMuted,
+      lineHeight: 20,
+      textAlign: "center"
+    }
+  }) satisfies Record<string, object>;
+
 export function AppStateScreen({
   title,
   description,
@@ -17,10 +35,13 @@ export function AppStateScreen({
   isBusy,
   onAction
 }: AppStateScreenProps) {
+  const styles = useThemedStyles(createStyles);
+  const headerTitle = isBusy ? "EcoTrack" : title;
+
   return (
     <ScreenContainer
       eyebrow="EcoTrack Mobile"
-      title={title}
+      title={headerTitle}
       description={description}
       actions={
         actionLabel && onAction ? (
@@ -30,8 +51,14 @@ export function AppStateScreen({
         ) : undefined
       }
     >
-      {isBusy ? <ActivityIndicator animating size="large" /> : null}
-      {!isBusy ? <Text variant="bodyMedium">{description}</Text> : null}
+      <InfoCard title={title}>
+        <View style={styles.stateCard}>
+          {isBusy ? <ActivityIndicator animating size="large" /> : null}
+          <Text variant="bodyMedium" style={styles.stateText}>
+            {description}
+          </Text>
+        </View>
+      </InfoCard>
     </ScreenContainer>
   );
 }

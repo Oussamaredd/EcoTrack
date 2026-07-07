@@ -73,6 +73,13 @@ Overall status: `IMPLEMENTED IN DIRTY WORKTREE - DATABASE AND API VALIDATION PAS
 - Real containers must be inserted through explicit real-data import/application workflows, not by `db:seed`.
 - No schema migration is required for this cleanup.
 
+2026-06-29 soutenance demo seed note:
+
+- `database/seeds/soutenance.ts` provides an opt-in, data-only soutenance demo dataset for the school defense.
+- The seed requires `ALLOW_SOUTENANCE_SEED=true`, requires a dev-only `SOUTENANCE_DEMO_PASSWORD_HASH`, refuses `NODE_ENV=production`, and uses `SOUTENANCE_DATABASE_URL` or `DATABASE_POOLER_URL` only when the URL points to a Supabase Session pooler host on port `5432`.
+- It does not call `database/seeds/index.ts`, does not run destructive cleanup, and does not add schema or migration requirements.
+- Demo rows are scoped through stable identifiers such as `SOUT-*`, `soutenance.*@ecotrack.local`, `SOUT-NOTIFICATION-*`, and `soutenance:*` so the dataset remains auditable and removable without touching production-like rows.
+
 Known readiness exceptions from the original rollout pass:
 
 - the worktree still had broad unrelated local changes across `app`, `api`, `database`, `docs`, environment templates, and `package-lock.json`

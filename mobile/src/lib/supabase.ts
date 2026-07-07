@@ -4,6 +4,12 @@ import * as SecureStore from 'expo-secure-store';
 import 'react-native-url-polyfill/auto';
 import { createClient, processLock } from '@supabase/supabase-js';
 
+import {
+  deleteChunkedSecureStoreItem,
+  getChunkedSecureStoreItem,
+  setChunkedSecureStoreItem,
+} from './chunkedSecureStore';
+
 const TEST_SUPABASE_URL = 'https://ecotrack.test.supabase.co';
 const TEST_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_test_key';
 const MOBILE_SUPABASE_STORAGE_KEY = 'ecotrack.mobile.supabase.auth';
@@ -41,9 +47,9 @@ const resolveSupabaseConfig = () => {
 };
 
 const secureStoreAdapter = {
-  getItem: (key: string) => SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+  getItem: (key: string) => getChunkedSecureStoreItem(SecureStore, key),
+  setItem: (key: string, value: string) => setChunkedSecureStoreItem(SecureStore, key, value),
+  removeItem: (key: string) => deleteChunkedSecureStoreItem(SecureStore, key),
 };
 
 const { supabaseUrl, supabasePublishableKey } = resolveSupabaseConfig();

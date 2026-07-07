@@ -50,6 +50,7 @@ import {
   resolveNearestContainer,
   type CitizenReportType
 } from "@/lib/citizenReports";
+import { demoCitizenContainers } from "@/lib/demoCitizenData";
 import { formatCoordinates, formatDistanceMeters } from "@/lib/formatters";
 import {
   bearingDegrees,
@@ -147,6 +148,8 @@ const USER_FOCUS_BASE_RADIUS_METERS = 100;
 const INDICATOR_TRAVEL_DISTANCE = 4;
 const INDICATOR_CLUSTER_THRESHOLD = 8;
 const MAP_REGION_EPSILON = 0.00005;
+
+const isDemoContainer = (containerId: string) => containerId.startsWith("demo-container-");
 
 const metersToLatitudeDelta = (meters: number) => meters / 111_320;
 
@@ -559,8 +562,33 @@ export function ReportScreen() {
     enabled: isAuthenticated
   });
 
-  const baseContainers = useMemo(() => containersQuery.data?.containers ?? [], [containersQuery.data]);
-  const searchContainers = useMemo(() => searchQuery.data?.containers ?? [], [searchQuery.data]);
+  const liveBaseContainers = useMemo(
+    () => containersQuery.data?.containers ?? [],
+    [containersQuery.data]
+  );
+  const baseContainers = useMemo(
+    () => (liveBaseContainers.length > 0 ? liveBaseContainers : demoCitizenContainers),
+    [liveBaseContainers]
+  );
+  const searchContainers = useMemo(() => {
+    const liveSearchContainers = searchQuery.data?.containers ?? [];
+
+    if (liveSearchContainers.length > 0) {
+      return liveSearchContainers;
+    }
+
+    if (deferredSearch.length < 2) {
+      return [];
+    }
+
+    const normalizedSearch = deferredSearch.toLowerCase();
+
+    return demoCitizenContainers.filter((container) =>
+      `${container.code} ${container.label} ${container.zoneName ?? ""}`
+        .toLowerCase()
+        .includes(normalizedSearch)
+    );
+  }, [deferredSearch, searchQuery.data]);
   const mapContainers = useMemo(
     () => mergeContainerCollections(baseContainers, searchContainers).filter(hasContainerCoordinates),
     [baseContainers, searchContainers]
@@ -1030,9 +1058,41 @@ export function ReportScreen() {
         );
       }
 
-      const resolvedLocation = capturedLocation ?? (await captureCurrentLocation());
+      const isDemoSelection = isDemoContainer(selectedContainer.id);
+      const demoContainerLocation =
+        isDemoSelection && selectedContainer.latitude && selectedContainer.longitude
+          ? {
+              latitude: selectedContainer.latitude,
+              longitude: selectedContainer.longitude
+            }
+          : null;
+      const resolvedLocation =
+        capturedLocation ??
+        demoContainerLocation ??
+        (await captureCurrentLocation());
       setCapturedLocation(resolvedLocation);
       setLocationSource("gps");
+
+      if (isDemoSelection) {
+        return {
+          response: {
+            id: `demo-report-${Date.now()}`,
+            reportType,
+            description: description.trim() || "Demo citizen report",
+            confirmationState: "submitted",
+            confirmationMessage: "Demo report captured locally.",
+            managerNotificationQueued: true,
+            citizenPushNotificationQueued: false,
+            gamification: {
+              pointsAwarded: 25,
+              badges: ["Reporter"]
+            }
+          },
+          container: selectedContainer,
+          location: resolvedLocation,
+          photo: photoEvidence
+        };
+      }
 
       const response = await citizenApi.createReport(
         buildCitizenReportPayload({
@@ -1071,7 +1131,7 @@ export function ReportScreen() {
     }
   });
 
-  if (isSessionLoading || (containersQuery.isLoading && !containersQuery.data)) {
+  if (isSessionLoading) {
     return (
       <AppStateScreen
         title="Loading report flow"
@@ -1088,23 +1148,6 @@ export function ReportScreen() {
         description="Citizen reporting is available only after sign-in."
         actionLabel="Go to login"
         onAction={() => router.replace("/login")}
-      />
-    );
-  }
-
-  if (containersQuery.isError && !containersQuery.data) {
-    return (
-      <AppStateScreen
-        title="Containers unavailable"
-        description={
-          containersQuery.error instanceof Error
-            ? containersQuery.error.message
-            : "Unable to load mapped containers."
-        }
-        actionLabel="Retry"
-        onAction={() => {
-          void containersQuery.refetch();
-        }}
       />
     );
   }
@@ -1568,6 +1611,16 @@ export function ReportScreen() {
               </Button>
               <Button mode="outlined" onPress={() => router.push("/(tabs)/challenges")}>
                 View challenges
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setLastSubmission(null);
+                  setStatusMessage(null);
+                  setErrorMessage(null);
+                }}
+              >
+                Report another
               </Button>
             </View>
           </View>

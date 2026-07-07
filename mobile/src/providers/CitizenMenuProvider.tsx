@@ -23,7 +23,10 @@ type CitizenMenuContextValue = {
 
 type MenuDestination =
   | "/profile"
+  | "/(tabs)"
   | "/(tabs)/report"
+  | "/(tabs)/challenges"
+  | "/(tabs)/history"
   | "/(tabs)/schedule"
   | "/settings"
   | "/feedback"
@@ -81,6 +84,9 @@ const createStyles = (theme: AppTheme) => ({
   topActions: {
     gap: theme.spacing.sm,
     paddingTop: theme.spacing.md
+  },
+  navGrid: {
+    gap: theme.spacing.sm
   },
   footer: {
     gap: theme.spacing.md
@@ -274,7 +280,10 @@ export function CitizenMenuProvider({ children }: PropsWithChildren) {
                 elevation={2}
               >
                 <View style={styles.drawerTop}>
-                  <Pressable style={styles.profileCard} onPress={() => handleNavigation("/profile")}>
+                  <Pressable
+                    style={styles.profileCard}
+                    onPress={() => handleNavigation("/profile")}
+                  >
                     <ProfileAvatar name={user?.displayName ?? user?.email} size={52} />
                     <View style={styles.profileCopy}>
                       <Text variant="titleMedium" style={styles.profileName}>
@@ -293,26 +302,47 @@ export function CitizenMenuProvider({ children }: PropsWithChildren) {
                     >
                       Profile
                     </Button>
-                    <Button
-                      mode="contained-tonal"
-                      icon="map-marker-alert-outline"
-                      onPress={() => handleNavigation("/(tabs)/report")}
-                    >
-                      Report container
-                    </Button>
+                    <View style={styles.navGrid}>
+                      <Button
+                        mode="contained-tonal"
+                        icon="home-outline"
+                        onPress={() => handleNavigation("/(tabs)")}
+                      >
+                        Home
+                      </Button>
+                      <Button
+                        mode="contained-tonal"
+                        icon="map-marker-alert-outline"
+                        onPress={() => handleNavigation("/(tabs)/report")}
+                      >
+                        Report container
+                      </Button>
+                      <Button
+                        mode="contained-tonal"
+                        icon="history"
+                        onPress={() => handleNavigation("/(tabs)/history")}
+                      >
+                        History
+                      </Button>
+                      <Button
+                        mode="contained-tonal"
+                        icon="trophy-outline"
+                        onPress={() => handleNavigation("/(tabs)/challenges")}
+                      >
+                        Challenges
+                      </Button>
+                      <Button
+                        mode="contained-tonal"
+                        icon="calendar-clock-outline"
+                        onPress={() => handleNavigation("/(tabs)/schedule")}
+                      >
+                        Schedule
+                      </Button>
+                    </View>
                   </View>
                 </View>
                 <View style={styles.footer}>
                   <Divider />
-                  {tabLayout.hideScheduleTab ? (
-                    <Button
-                      mode="text"
-                      icon="calendar-clock-outline"
-                      onPress={() => handleNavigation("/(tabs)/schedule")}
-                    >
-                      Schedule
-                    </Button>
-                  ) : null}
                   <View>
                     <Button
                       mode="text"

@@ -1,4 +1,10 @@
 import type { SessionRole, SessionUser } from "@api/modules/auth";
+import {
+  deleteChunkedSecureStoreItem,
+  getChunkedSecureStoreItem,
+  setChunkedSecureStoreItem,
+  type SecureStoreBackend,
+} from "@/lib/chunkedSecureStore";
 
 const ACCESS_TOKEN_STORAGE_KEY = "ecotrack.mobile.access-token";
 const SESSION_USER_STORAGE_KEY = "ecotrack.mobile.session-user";
@@ -7,7 +13,7 @@ let accessTokenCache: string | null = null;
 let sessionUserCache: SessionUser | null = null;
 let storageHydrated = false;
 
-const loadSecureStore = async () => import("expo-secure-store");
+const loadSecureStore = async (): Promise<SecureStoreBackend> => import("expo-secure-store");
 
 export type PersistedSessionSnapshot = {
   accessToken: string | null;
@@ -61,17 +67,23 @@ const persistSessionSnapshot = async () => {
     const writes: Promise<void>[] = [];
 
     if (accessTokenCache) {
-      writes.push(secureStore.setItemAsync(ACCESS_TOKEN_STORAGE_KEY, accessTokenCache));
+      writes.push(
+        setChunkedSecureStoreItem(secureStore, ACCESS_TOKEN_STORAGE_KEY, accessTokenCache)
+      );
     } else {
-      writes.push(secureStore.deleteItemAsync(ACCESS_TOKEN_STORAGE_KEY));
+      writes.push(deleteChunkedSecureStoreItem(secureStore, ACCESS_TOKEN_STORAGE_KEY));
     }
 
     if (sessionUserCache) {
       writes.push(
-        secureStore.setItemAsync(SESSION_USER_STORAGE_KEY, JSON.stringify(sessionUserCache))
+        setChunkedSecureStoreItem(
+          secureStore,
+          SESSION_USER_STORAGE_KEY,
+          JSON.stringify(sessionUserCache)
+        )
       );
     } else {
-      writes.push(secureStore.deleteItemAsync(SESSION_USER_STORAGE_KEY));
+      writes.push(deleteChunkedSecureStoreItem(secureStore, SESSION_USER_STORAGE_KEY));
     }
 
     await Promise.all(writes);
@@ -91,8 +103,8 @@ export const hydrateSessionSnapshot = async (): Promise<PersistedSessionSnapshot
   try {
     const secureStore = await loadSecureStore();
     const [storedAccessToken, storedSessionUser] = await Promise.all([
-      secureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY),
-      secureStore.getItemAsync(SESSION_USER_STORAGE_KEY)
+      getChunkedSecureStoreItem(secureStore, ACCESS_TOKEN_STORAGE_KEY),
+      getChunkedSecureStoreItem(secureStore, SESSION_USER_STORAGE_KEY)
     ]);
 
     accessTokenCache = storedAccessToken?.trim() || null;

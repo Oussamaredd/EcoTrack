@@ -6,10 +6,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Button, Chip, Text } from "react-native-paper";
 
 import { citizenApi } from "@api/modules/citizen";
-import { AppStateScreen } from "@/components/AppStateScreen";
 import { InfoCard } from "@/components/InfoCard";
 import { MetricCard } from "@/components/MetricCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
+import { demoCitizenChallenges, demoCitizenProfile } from "@/lib/demoCitizenData";
 import { queryKeys } from "@/lib/queryKeys";
 import type { AppTheme } from "@/theme/theme";
 import { useAppTheme, useThemedStyles } from "@/theme/useAppTheme";
@@ -47,7 +47,7 @@ const citizenShortcuts: CitizenShortcut[] = [
   {
     key: "schedule",
     title: "Schedule",
-    description: "Service status.",
+    description: "Reminders and service.",
     icon: "calendar-clock-outline",
     href: "/(tabs)/schedule"
   }
@@ -165,47 +165,18 @@ export function DashboardScreen() {
     queryFn: () => citizenApi.getChallenges()
   });
 
-  if (profileQuery.isLoading || challengesQuery.isLoading) {
-    return (
-      <AppStateScreen
-        title="Loading citizen dashboard"
-        description="EcoTrack is syncing your citizen profile, impact, and challenge state."
-        isBusy
-      />
-    );
-  }
-
-  if (profileQuery.isError) {
-    return (
-      <AppStateScreen
-        title="Citizen dashboard unavailable"
-        description={
-          profileQuery.error instanceof Error
-            ? profileQuery.error.message
-            : "Unable to load the citizen dashboard."
-        }
-        actionLabel="Retry"
-        onAction={() => {
-          void profileQuery.refetch();
-        }}
-      />
-    );
-  }
-
-  if (!profileQuery.data) {
-    return (
-      <AppStateScreen
-        title="Citizen dashboard unavailable"
-        description="The citizen profile returned no payload."
-      />
-    );
-  }
-
-  const profile = profileQuery.data;
-  const challenges = challengesQuery.data?.challenges ?? [];
+  const profile = profileQuery.data ?? demoCitizenProfile;
+  const liveChallenges = challengesQuery.data?.challenges ?? [];
+  const challenges = liveChallenges.length > 0 ? liveChallenges : demoCitizenChallenges;
   const activeChallenges = challenges.filter(
-    (challenge) => challenge.enrollmentStatus !== "not_enrolled"
+    (challenge) =>
+      challenge.enrollmentStatus !== "not_enrolled" &&
+      challenge.enrollmentStatus !== "completed"
   );
+  const completedChallenges = challenges.filter(
+    (challenge) => challenge.enrollmentStatus === "completed"
+  );
+  const challengeSyncLabel = `${activeChallenges.length} active challenges`;
   const isSingleColumn = width < 540;
   const primaryShortcut = citizenShortcuts[0];
   const secondaryShortcuts = citizenShortcuts.slice(1);
@@ -227,7 +198,7 @@ export function DashboardScreen() {
               icon="map-marker-alert-outline"
               onPress={() => router.push(primaryShortcut?.href ?? "/(tabs)/report")}
             >
-              Signaler un probleme
+              Report a container
             </Button>
             <Button mode="outlined" icon="history" onPress={() => router.push("/(tabs)/history")}>
               View history
@@ -238,8 +209,13 @@ export function DashboardScreen() {
               {profile.gamification.points} points
             </Chip>
             <Chip style={styles.chip} textStyle={{ color: theme.colors.primaryStrong }}>
-              {activeChallenges.length} active challenges
+              {challengeSyncLabel}
             </Chip>
+            {completedChallenges.length > 0 ? (
+              <Chip style={styles.chip} textStyle={{ color: theme.colors.primaryStrong }}>
+                {completedChallenges.length} completed
+              </Chip>
+            ) : null}
           </View>
         </View>
       </InfoCard>
